@@ -1,10 +1,8 @@
 /* eslint-disable no-undef */
 
 /**
- * Most of this code is from Zotero team's official Make It Red example[1]
- * or the Zotero 7 documentation[2].
- * [1] https://github.com/zotero/make-it-red
- * [2] https://www.zotero.org/support/dev/zotero_7_for_developers
+ * Bootstrap script based on Zotero Plugin Template
+ * https://github.com/windingwind/zotero-plugin-template
  */
 
 var chromeHandle;

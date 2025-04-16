@@ -1,5 +1,9 @@
-pref-title = Addon Template Example
-pref-enable =
-    .label = Enable
-pref-input = Input
-pref-help = { $name } Build { $version } { $time }
+prefs-title = Library Search Settings
+prefs-enable =
+    .label = Enable Library Search
+prefs-python-path = Python Path:
+prefs-script-path = Search Script Path:
+prefs-browse = Browse...
+prefs-table-setting = Setting
+prefs-table-value = Value
+prefs-help = { $name } Version { $version } { $time }

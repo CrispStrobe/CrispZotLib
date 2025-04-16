@@ -1,5 +1,9 @@
-pref-title = 插件模板设置示例
-pref-enable =
-    .label = 开启
-pref-input = 输入
-pref-help = { $name } Build { $version } { $time }
+prefs-title = 图书馆搜索设置
+prefs-enable =
+    .label = 启用图书馆搜索
+prefs-python-path = Python 路径:
+prefs-script-path = 搜索脚本路径:
+prefs-browse = 浏览...
+prefs-table-setting = 设置
+prefs-table-value = 值
+prefs-help = { $name } 版本 { $version } { $time }

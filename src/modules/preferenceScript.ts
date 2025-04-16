@@ -1,5 +1,6 @@
 import { config } from "../../package.json";
 import { getString } from "../utils/locale";
+import { getPref, setPref } from "../utils/prefs";
 
 export async function registerPrefsScripts(_window: Window) {
   // This function is called when the prefs window is opened
@@ -9,34 +10,31 @@ export async function registerPrefsScripts(_window: Window) {
       window: _window,
       columns: [
         {
-          dataKey: "title",
-          label: getString("prefs-table-title"),
+          dataKey: "setting",
+          label: getString("prefs-table-setting"),
           fixedWidth: true,
-          width: 100,
+          width: 150,
         },
         {
-          dataKey: "detail",
-          label: getString("prefs-table-detail"),
+          dataKey: "value",
+          label: getString("prefs-table-value"),
         },
       ],
       rows: [
         {
-          title: "Orange",
-          detail: "It's juicy",
+          setting: "Python Path",
+          value: getPref("pythonPath") || ""
         },
         {
-          title: "Banana",
-          detail: "It's sweet",
-        },
-        {
-          title: "Apple",
-          detail: "I mean the fruit APPLE",
-        },
+          setting: "Script Path",
+          value: getPref("scriptPath") || ""
+        }
       ],
     };
   } else {
     addon.data.prefs.window = _window;
   }
+
   updatePrefsUI();
   bindPrefEvents();
 }
@@ -47,15 +45,37 @@ async function updatePrefsUI() {
   // Or bind some events to the elements
   const renderLock = ztoolkit.getGlobal("Zotero").Promise.defer();
   if (addon.data.prefs?.window == undefined) return;
+
+  // Get input elements
+  const prefsWindow = addon.data.prefs.window;
+  const document = prefsWindow.document;
+  if (!document) return;
+
+  const pythonPathInput = document.getElementById(
+    `zotero-prefpane-${config.addonRef}-python-path`
+  ) as HTMLInputElement | null;
+
+  const scriptPathInput = document.getElementById(
+    `zotero-prefpane-${config.addonRef}-script-path`
+  ) as HTMLInputElement | null;
+
+  // Set current values
+  if (pythonPathInput) {
+    pythonPathInput.value = getPref("pythonPath") || "";
+  }
+
+  if (scriptPathInput) {
+    scriptPathInput.value = getPref("scriptPath") || "";
+  }
+
+  // Show settings in a table
   const tableHelper = new ztoolkit.VirtualizedTable(addon.data.prefs?.window)
     .setContainerId(`${config.addonRef}-table-container`)
     .setProp({
       id: `${config.addonRef}-prefs-table`,
-      // Do not use setLocale, as it modifies the Zotero.Intl.strings
-      // Set locales directly to columns
       columns: addon.data.prefs?.columns,
       showHeader: true,
-      multiSelect: true,
+      multiSelect: false,
       staticColumns: true,
       disableFontSizeScaling: true,
     })
@@ -64,68 +84,183 @@ async function updatePrefsUI() {
       "getRowData",
       (index) =>
         addon.data.prefs?.rows[index] || {
-          title: "no data",
-          detail: "no data",
+          setting: "unknown",
+          value: "unknown",
         },
     )
-    // Show a progress window when selection changes
-    .setProp("onSelectionChange", (selection) => {
-      new ztoolkit.ProgressWindow(config.addonName)
-        .createLine({
-          text: `Selected line: ${addon.data.prefs?.rows
-            .filter((v, i) => selection.isSelected(i))
-            .map((row) => row.title)
-            .join(",")}`,
-          progress: 100,
-        })
-        .show();
-    })
-    // When pressing delete, delete selected line and refresh table.
-    // Returning false to prevent default event.
-    .setProp("onKeyDown", (event: KeyboardEvent) => {
-      if (event.key == "Delete" || (Zotero.isMac && event.key == "Backspace")) {
-        addon.data.prefs!.rows =
-          addon.data.prefs?.rows.filter(
-            (v, i) => !tableHelper.treeInstance.selection.isSelected(i),
-          ) || [];
-        tableHelper.render();
-        return false;
-      }
-      return true;
-    })
-    // For find-as-you-type
-    .setProp(
-      "getRowString",
-      (index) => addon.data.prefs?.rows[index].title || "",
-    )
-    // Render the table.
+    // Render the table
     .render(-1, () => {
       renderLock.resolve();
     });
+
   await renderLock.promise;
   ztoolkit.log("Preference table rendered!");
 }
 
 function bindPrefEvents() {
-  addon.data
-    .prefs!.window.document?.querySelector(
-      `#zotero-prefpane-${config.addonRef}-enable`,
-    )
-    ?.addEventListener("command", (e: Event) => {
-      ztoolkit.log(e);
-      addon.data.prefs!.window.alert(
-        `Successfully changed to ${(e.target as XUL.Checkbox).checked}!`,
-      );
-    });
+  if (!addon.data.prefs || !addon.data.prefs.window || !addon.data.prefs.window.document) {
+    return;
+  }
 
-  addon.data
-    .prefs!.window.document?.querySelector(
-      `#zotero-prefpane-${config.addonRef}-input`,
-    )
-    ?.addEventListener("change", (e: Event) => {
-      ztoolkit.log(e);
-      addon.data.prefs!.window.alert(
-        `Successfully changed to ${(e.target as HTMLInputElement).value}!`,
-      );
-    });
+  const document = addon.data.prefs.window.document;
+
+  // Python path input
+  document.querySelector(
+    `#zotero-prefpane-${config.addonRef}-python-path`,
+  )?.addEventListener("change", (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    setPref("pythonPath", input.value);
+
+    // Update table row value
+    if (addon.data.prefs?.rows) {
+      addon.data.prefs.rows[0].value = input.value;
+      // Force table refresh
+      refreshTable();
+    }
+  });
+
+  // Browse button for Python path
+  document.querySelector(
+    `#zotero-prefpane-${config.addonRef}-browse-python`,
+  )?.addEventListener("command", async (e: Event) => {
+    try {
+      const filePath = await browsePath("executable");
+      if (filePath) {
+        const input = document.querySelector(
+          `#zotero-prefpane-${config.addonRef}-python-path`,
+        ) as HTMLInputElement | null;
+
+        if (input) {
+          input.value = filePath;
+          setPref("pythonPath", filePath);
+
+          // Update table row value
+          if (addon.data.prefs?.rows) {
+            addon.data.prefs.rows[0].value = filePath;
+            // Force table refresh
+            refreshTable();
+          }
+        }
+      }
+    } catch (error) {
+      ztoolkit.log("Error selecting Python path:", error);
+    }
+  });
+
+  // Script path input
+  document.querySelector(
+    `#zotero-prefpane-${config.addonRef}-script-path`,
+  )?.addEventListener("change", (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    setPref("scriptPath", input.value);
+
+    // Update table row value
+    if (addon.data.prefs?.rows) {
+      addon.data.prefs.rows[1].value = input.value;
+      // Force table refresh
+      refreshTable();
+    }
+  });
+
+  // Browse button for script path
+  document.querySelector(
+    `#zotero-prefpane-${config.addonRef}-browse-script`,
+  )?.addEventListener("command", async (e: Event) => {
+    try {
+      const filePath = await browsePath("file");
+      if (filePath) {
+        const input = document.querySelector(
+          `#zotero-prefpane-${config.addonRef}-script-path`,
+        ) as HTMLInputElement | null;
+
+        if (input) {
+          input.value = filePath;
+          setPref("scriptPath", filePath);
+
+          // Update table row value
+          if (addon.data.prefs?.rows) {
+            addon.data.prefs.rows[1].value = filePath;
+            // Force table refresh
+            refreshTable();
+          }
+        }
+      }
+    } catch (error) {
+      ztoolkit.log("Error selecting script path:", error);
+    }
+  });
+}
+
+/**
+ * Helper function to refresh the table display
+ */
+function refreshTable() {
+  if (!addon.data.prefs || !addon.data.prefs.window || !addon.data.prefs.window.document) {
+    return;
+  }
+  
+  const tableElem = addon.data.prefs.window.document.getElementById(
+    `${config.addonRef}-prefs-table`
+  ) as XUL.Tree;
+  
+  if (tableElem) {
+    // Force table refresh using appropriate method
+    try {
+      // Try modern approach
+      if (typeof (tableElem as any).invalidate === 'function') {
+        (tableElem as any).invalidate();
+      } 
+      // Fallback for legacy Zotero versions - using any type to bypass TypeScript checking
+      else if ((tableElem as any).builder && typeof (tableElem as any).builder.rebuild === 'function') {
+        (tableElem as any).builder.rebuild();
+      }
+    } catch (e) {
+      ztoolkit.log('Error refreshing table:', e);
+    }
+  }
+}
+
+/**
+ * Helper function to browse for a file path
+ * @param type "file" or "executable"
+ */
+async function browsePath(type: "file" | "executable"): Promise<string | undefined> {
+  return new Promise((resolve, reject) => {
+    try {
+      // Use 'any' to bypass TypeScript Component.classes checking
+      const cc = Components.classes as any;
+      const ci = Components.interfaces;
+      
+      const filePicker = cc["@mozilla.org/filepicker;1"]
+        .createInstance(ci.nsIFilePicker);
+      
+      const window = ztoolkit.getGlobal("Zotero").getMainWindow();
+      filePicker.init(window, 
+        type === "executable" ? "Select Python Executable" : "Select Search Script", 
+        ci.nsIFilePicker.modeOpen);
+      
+      // Set file picker filters
+      if (type === "executable") {
+        // For Python executable
+        if (Zotero.isWin) {
+          filePicker.appendFilter("Executable", "*.exe");
+        } else {
+          filePicker.appendFilter("All Files", "*");
+        }
+      } else {
+        // For Python script
+        filePicker.appendFilter("Python Files", "*.py");
+        filePicker.appendFilter("All Files", "*");
+      }
+      
+      const result = filePicker.open();
+      if (result === ci.nsIFilePicker.returnOK) {
+        resolve(filePicker.file.path);
+      } else {
+        resolve(undefined);
+      }
+    } catch (error) {
+      reject(error);
+    }
+  });
 }

@@ -19,9 +19,14 @@ class Addon {
       rows: Array<{ [dataKey: string]: string }>;
     };
     dialog?: DialogHelper;
+    pythonPath?: string;
+    scriptPath?: string;
+    lastSearchResults?: any[];
   };
+
   // Lifecycle hooks
   public hooks: typeof hooks;
+
   // APIs
   public api: object;
 
@@ -31,6 +36,9 @@ class Addon {
       config,
       env: __env__,
       ztoolkit: createZToolkit(),
+      pythonPath: "",
+      scriptPath: "",
+      lastSearchResults: []
     };
     this.hooks = hooks;
     this.api = {};

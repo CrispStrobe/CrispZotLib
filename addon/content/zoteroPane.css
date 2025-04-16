@@ -1,3 +1,24 @@
-.makeItRed {
-  background-color: tomato;
+/* Styles for the Library Search plugin */
+
+/* Toolbar button */
+#librarysearch-toolbar-button {
+  list-style-image: url("chrome://librarysearch/content/icons/favicon.png");
+}
+
+/* Dialog styling */
+.result-item {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.result-item h3 {
+  margin-top: 0;
+  margin-bottom: 5px;
+}
+
+/* Adjust checkbox spacing */
+input[type="checkbox"] {
+  margin-left: 10px;
 }

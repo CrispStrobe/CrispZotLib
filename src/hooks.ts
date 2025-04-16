@@ -1,13 +1,7 @@
-import {
-  BasicExampleFactory,
-  HelperExampleFactory,
-  KeyExampleFactory,
-  PromptExampleFactory,
-  UIExampleFactory,
-} from "./modules/examples";
 import { getString, initLocale } from "./utils/locale";
 import { registerPrefsScripts } from "./modules/preferenceScript";
 import { createZToolkit } from "./utils/ztoolkit";
+import { LibrarySearchModule } from "./modules/librarySearch";
 
 async function onStartup() {
   await Promise.all([
@@ -18,25 +12,22 @@ async function onStartup() {
 
   initLocale();
 
-  BasicExampleFactory.registerPrefs();
+  // Register preferences
+  registerPreferences();
 
-  BasicExampleFactory.registerNotifier();
-
-  KeyExampleFactory.registerShortcuts();
-
-  await UIExampleFactory.registerExtraColumn();
-
-  await UIExampleFactory.registerExtraColumnWithCustomCell();
-
-  UIExampleFactory.registerItemPaneCustomInfoRow();
-
-  UIExampleFactory.registerItemPaneSection();
-
-  UIExampleFactory.registerReaderItemPaneSection();
-
+  // Wait for main window to be ready
   await Promise.all(
     Zotero.getMainWindows().map((win) => onMainWindowLoad(win)),
   );
+}
+
+function registerPreferences() {
+  Zotero.PreferencePanes.register({
+    pluginID: addon.data.config.addonID,
+    src: rootURI + "content/preferences.xhtml",
+    label: getString("prefs-title"),
+    image: `chrome://${addon.data.config.addonRef}/content/icons/favicon.png`,
+  });
 }
 
 async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
@@ -44,9 +35,7 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   addon.data.ztoolkit = createZToolkit();
 
   // @ts-ignore This is a moz feature
-  win.MozXULElement.insertFTLIfNeeded(
-    `${addon.data.config.addonRef}-mainWindow.ftl`,
-  );
+  win.MozXULElement.insertFTLIfNeeded(`${addon.data.config.addonRef}-mainWindow.ftl`);
 
   const popupWin = new ztoolkit.ProgressWindow(addon.data.config.addonName, {
     closeOnClick: true,
@@ -61,33 +50,54 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
 
   await Zotero.Promise.delay(1000);
   popupWin.changeLine({
-    progress: 30,
-    text: `[30%] ${getString("startup-begin")}`,
+    progress: 50,
+    text: `[50%] ${getString("startup-begin")}`,
   });
 
-  UIExampleFactory.registerStyleSheet(win);
+  // Register toolbar button
+  registerLibrarySearchButton(win);
 
-  UIExampleFactory.registerRightClickMenuItem();
-
-  UIExampleFactory.registerRightClickMenuPopup(win);
-
-  UIExampleFactory.registerWindowMenuWithSeparator();
-
-  PromptExampleFactory.registerNormalCommandExample();
-
-  PromptExampleFactory.registerAnonymousCommandExample(win);
-
-  PromptExampleFactory.registerConditionalCommandExample();
+  // Add to the tools menu
+  registerToolsMenuItem(win);
 
   await Zotero.Promise.delay(1000);
-
   popupWin.changeLine({
     progress: 100,
     text: `[100%] ${getString("startup-finish")}`,
   });
   popupWin.startCloseTimer(5000);
+}
 
-  addon.hooks.onDialogEvents("dialogExample");
+function registerLibrarySearchButton(win: _ZoteroTypes.MainWindow) {
+  // Add a button to the toolbar
+  const toolbarButton = ztoolkit.UI.createElement(win.document, "toolbarbutton", {
+    namespace: "xul",
+    properties: {
+      id: `${addon.data.config.addonRef}-toolbar-button`,
+      class: "zotero-tb-button",
+      label: getString("toolbar-button-label"),
+      tooltiptext: getString("toolbar-button-tooltip"),
+      type: "button",
+      onclick: "LibrarySearch.openSearch()",
+      hidden: false,
+    }
+  });
+
+  // Add the button to Zotero's toolbar
+  const toolbar = win.document.getElementById("zotero-toolbar");
+  if (toolbar) {
+    toolbar.appendChild(toolbarButton);
+  }
+}
+
+function registerToolsMenuItem(win: _ZoteroTypes.MainWindow) {
+  // Add to the tools menu
+  ztoolkit.Menu.register("menuTools", {
+    tag: "menuitem",
+    id: `${addon.data.config.addonRef}-menu-item`,
+    label: getString("menu-item-label"),
+    oncommand: "LibrarySearch.openSearch()",
+  });
 }
 
 async function onMainWindowUnload(win: Window): Promise<void> {
@@ -104,35 +114,6 @@ function onShutdown(): void {
   delete Zotero[addon.data.config.addonInstance];
 }
 
-/**
- * This function is just an example of dispatcher for Notify events.
- * Any operations should be placed in a function to keep this funcion clear.
- */
-async function onNotify(
-  event: string,
-  type: string,
-  ids: Array<string | number>,
-  extraData: { [key: string]: any },
-) {
-  // You can add your code to the corresponding notify type
-  ztoolkit.log("notify", event, type, ids, extraData);
-  if (
-    event == "select" &&
-    type == "tab" &&
-    extraData[ids[0]].type == "reader"
-  ) {
-    BasicExampleFactory.exampleNotifierCallback();
-  } else {
-    return;
-  }
-}
-
-/**
- * This function is just an example of dispatcher for Preference UI events.
- * Any operations should be placed in a function to keep this funcion clear.
- * @param type event type
- * @param data event data
- */
 async function onPrefsEvent(type: string, data: { [key: string]: any }) {
   switch (type) {
     case "load":
@@ -143,52 +124,32 @@ async function onPrefsEvent(type: string, data: { [key: string]: any }) {
   }
 }
 
-function onShortcuts(type: string) {
+async function onDialogEvents(type: string, data?: any) {
   switch (type) {
-    case "larger":
-      KeyExampleFactory.exampleShortcutLargerCallback();
+    case "openSearch":
+      await LibrarySearchModule.openSearchDialog();
       break;
-    case "smaller":
-      KeyExampleFactory.exampleShortcutSmallerCallback();
+    case "runSearch":
+      if (data) {
+        const results = await LibrarySearchModule.runSearch(data);
+        return results;
+      }
+      break;
+    case "importResults":
+      if (data) {
+        await LibrarySearchModule.importResults(data);
+      }
       break;
     default:
       break;
   }
 }
-
-function onDialogEvents(type: string) {
-  switch (type) {
-    case "dialogExample":
-      HelperExampleFactory.dialogExample();
-      break;
-    case "clipboardExample":
-      HelperExampleFactory.clipboardExample();
-      break;
-    case "filePickerExample":
-      HelperExampleFactory.filePickerExample();
-      break;
-    case "progressWindowExample":
-      HelperExampleFactory.progressWindowExample();
-      break;
-    case "vtableExample":
-      HelperExampleFactory.vtableExample();
-      break;
-    default:
-      break;
-  }
-}
-
-// Add your hooks here. For element click, etc.
-// Keep in mind hooks only do dispatch. Don't add code that does real jobs in hooks.
-// Otherwise the code would be hard to read and maintain.
 
 export default {
   onStartup,
   onShutdown,
   onMainWindowLoad,
   onMainWindowUnload,
-  onNotify,
   onPrefsEvent,
-  onShortcuts,
   onDialogEvents,
 };
