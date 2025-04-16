@@ -78,7 +78,8 @@ function registerLibrarySearchButton(win: _ZoteroTypes.MainWindow) {
       label: getString("toolbar-button-label"),
       tooltiptext: getString("toolbar-button-tooltip"),
       type: "button",
-      onclick: "LibrarySearch.openSearch()",
+      // Use this instead of calling the function directly
+      onclick: "_globalThis.LibrarySearch.openSearch()",
       hidden: false,
     }
   });
@@ -96,7 +97,7 @@ function registerToolsMenuItem(win: _ZoteroTypes.MainWindow) {
     tag: "menuitem",
     id: `${addon.data.config.addonRef}-menu-item`,
     label: getString("menu-item-label"),
-    oncommand: "LibrarySearch.openSearch()",
+    oncommand: "_globalThis.LibrarySearch.openSearch()",
   });
 }
 

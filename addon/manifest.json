@@ -12,7 +12,6 @@
   "applications": {
     "zotero": {
       "id": "librarysearch@example.com",
-      "update_url": "https://github.com/CrispStrobe/CrispZotLib/releases/download/release/update.json",
       "strict_min_version": "6.0",
       "strict_max_version": "7.*"
     }

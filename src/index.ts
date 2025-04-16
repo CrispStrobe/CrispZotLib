@@ -1,6 +1,7 @@
 import { BasicTool } from "zotero-plugin-toolkit";
 import Addon from "./addon";
 import { config } from "../package.json";
+import { LibrarySearchModule } from "./modules/librarySearch";
 
 const basicTool = new BasicTool();
 
@@ -10,6 +11,12 @@ if (!basicTool.getGlobal("Zotero")[config.addonInstance]) {
   defineGlobal("ztoolkit", () => {
     return _globalThis.addon.data.ztoolkit;
   });
+
+  // Define LibrarySearch globally
+  _globalThis.LibrarySearch = {
+    openSearch: () => addon.hooks.onDialogEvents("openSearch")
+  };
+
   // @ts-ignore - Plugin instance is not typed
   Zotero[config.addonInstance] = addon;
 }
