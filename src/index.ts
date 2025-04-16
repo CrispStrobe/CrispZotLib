@@ -1,4 +1,18 @@
 // index.ts
+import { ensureEnvironment } from './polyfills';
+
+// Apply polyfills early to ensure environment is ready
+try {
+  ensureEnvironment();
+} catch (e) {
+  if (typeof Zotero !== 'undefined') {
+    Zotero.debug("Error applying polyfills: " + e);
+  } else if (typeof console !== 'undefined') {
+    console.error("Error applying polyfills:", e);
+  }
+}
+
+// Rest of your code...
 import { BasicTool } from "zotero-plugin-toolkit";
 import Addon from "./addon";
 import { config } from "../package.json";

@@ -1,10 +1,18 @@
+// typings/global.d.ts
+
+// Declare _globalThis as it's used in the template
 declare const _globalThis: {
   [key: string]: any;
   Zotero: _ZoteroTypes.Zotero;
   ztoolkit: ZToolkit;
   addon: typeof addon;
+  addEventListener?: typeof window.addEventListener;
+  removeEventListener?: typeof window.removeEventListener;
+  dispatchEvent?: typeof window.dispatchEvent;
+  _console?: Console;
 };
 
+// Standard declarations
 declare type ZToolkit = ReturnType<
   typeof import("../src/utils/ztoolkit").createZToolkit
 >;
@@ -41,8 +49,24 @@ declare namespace Components {
   };
 }
 
+// Extend Window interface
 interface Window {
   matchMedia(query: string): MediaQueryList | null;
+  window2?: Window;
+  Zotero?: any;
+  ZoteroPane?: any;
+}
+
+// Global declarations
+declare global {
+  // Standard globalThis extensions
+  var globalThis: {
+    addEventListener: typeof window.addEventListener;
+    removeEventListener: typeof window.removeEventListener;
+    dispatchEvent: typeof window.dispatchEvent;
+    _console?: Console;
+    [key: string]: any;
+  }
 }
 
 interface MediaQueryList {
