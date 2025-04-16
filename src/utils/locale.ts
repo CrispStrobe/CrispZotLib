@@ -1,41 +1,138 @@
+/**
+ * locale.ts - Handles localization for the Library Search plugin
+ */
+
 import { config } from "../../package.json";
 
 export { initLocale, getString, getLocaleID };
 
+// Type for addon.data.locale
+// In src/utils/locale.ts, update the LocaleData interface
+interface LocaleData {
+  current: {
+    formatMessagesSync: (messages: Array<{ id: string; args?: Record<string, unknown> }>) => Array<{
+      value: string;
+      attributes?: Array<{ name: string; value: string }> | Record<string, string>;
+    }>;
+  };
+  fallbackMap: Record<string, string | ((name?: string, version?: string, time?: string) => string)>;
+}
+
 /**
- * Initialize locale data
+ * Initialize locale data and load all FTL files
  */
 function initLocale() {
   try {
-    // Ensure we're using the correct ID format without double prefixes
-    const localePath = `${config.addonRef}-addon.ftl`;
+    // Define all FTL files to load
+    const localePaths = [
+      `${config.addonRef}-addon.ftl`,
+      `${config.addonRef}-preferences.ftl`,
+      `${config.addonRef}-mainWindow.ftl`
+    ];
     
-    const l10n = new (
-      typeof Localization === "undefined"
-        ? ztoolkit.getGlobal("Localization")
-        : Localization
-    )([localePath], true);
+    // Get localization service
+    // Note the explicit any type to avoid the reference error
+    let localizer: any;
+    if (typeof Localization === "undefined") {
+      localizer = ztoolkit.getGlobal("Localization");
+    } else {
+      localizer = Localization;
+    }
     
-    addon.data.locale = {
+    // Initialize l10n with all paths
+    const l10n = new localizer(localePaths, true);
+    
+    // Create the locale object with proper typing
+    const localeData: LocaleData = {
       current: l10n,
+      fallbackMap: createFallbacks()
     };
-    ztoolkit.log("Locale initialized:", localePath);
+
+    // Store in addon data
+    addon.data.locale = localeData;
+    
+    // Add fallbacks separately to avoid type errors
+    // localeData.fallbackMap = createFallbacks();
+    
+    ztoolkit.log("Locale initialized with paths:", localePaths.join(", "));
   } catch (e) {
     ztoolkit.log('Error initializing locale:', e);
-    // Create a dummy locale object as fallback
-    addon.data.locale = {
+    
+    // Create a dummy locale object with fallbacks for critical UI elements
+    const dummyLocale: LocaleData = {
       current: {
-        formatMessagesSync: () => [{ value: "", attributes: {} }]
-      }
+        formatMessagesSync: () => [{ value: "", attributes: [] }]
+      },
+      fallbackMap: createFallbacks()
     };
+
+    addon.data.locale = dummyLocale;
   }
 }
 
 /**
- * Get locale string
- * @param localString ftl key
- * @param options.branch branch name
- * @param options.args args
+ * Create fallback values for critical UI strings
+ * This ensures the UI is usable even if locale files fail to load
+ */
+function createFallbacks(): Record<string, string | ((name?: string, version?: string, time?: string) => string)> {
+  return {
+    // Preferences strings
+    "prefs-title": "Library Search",
+    "prefs-enable": "Enable Library Search",
+    "prefs-python-path": "Python Executable Path",
+    "prefs-script-path": "Search Script Path",
+    "prefs-browse": "Browse...",
+    "prefs-table-setting": "Setting",
+    "prefs-table-value": "Value",
+    "prefs-help": (name?: string, version?: string, time?: string) => 
+      `${name || "Library Search"} ${version || ""}, built ${time || ""}`,
+    
+    // Main window strings
+    "startup-begin": "Library Search: Starting plugin...",
+    "startup-finish": "Library Search: Plugin ready",
+    "toolbar-button-label": "Search Libraries",
+    "toolbar-button-tooltip": "Search library catalogs and repositories",
+    "menu-item-label": "Library Search",
+    
+    // Dialog strings
+    "search-dialog-title": "Library Search",
+    "search-dialog-description": "Search libraries and repositories for items to import into Zotero.",
+    "search-dialog-config-section": "Configuration",
+    "search-dialog-python-path": "Python Path:",
+    "search-dialog-script-path": "Script Path:",
+    "search-dialog-search-section": "Search Parameters",
+    "search-dialog-protocol": "Protocol:",
+    "search-dialog-endpoint": "Endpoint:",
+    "search-dialog-title-field": "Title:",
+    "search-dialog-author": "Author:",
+    "search-dialog-isbn": "ISBN/ISSN:",
+    "search-dialog-max-results": "Max Results:",
+    "search-dialog-search-button": "Search",
+    "search-dialog-cancel-button": "Cancel",
+    "search-dialog-searching": "Searching...",
+    "search-dialog-no-results": "No results found",
+    "search-dialog-error": "An error occurred during search",
+    
+    // Results dialog strings
+    "results-dialog-title": "Search Results",
+    "results-dialog-import-selected": "Import Selected",
+    "results-dialog-import-all": "Import All",
+    "results-dialog-cancel": "Cancel",
+    "results-dialog-no-selection": "Please select at least one item to import",
+    "results-dialog-import-success": "Items successfully imported",
+    "results-dialog-import-error": "Error importing items",
+    
+    // Error messages
+    "search-error-missing-paths": "Python path and script path must be set",
+    "search-error-missing-endpoint": "Endpoint must be specified",
+    "search-error-missing-search-terms": "At least one search term must be provided",
+    "search-error-script-failed": "Search script execution failed",
+    "search-error-invalid-results": "Invalid results returned from search script"
+  };
+}
+
+/**
+ * Get localized string with various parameter options
  */
 function getString(localeString: string): string;
 function getString(localeString: string, branch: string): string;
@@ -57,50 +154,127 @@ function getString(...inputs: any[]) {
   }
 }
 
+/**
+ * Internal implementation of getString with robust error handling
+ */
 function _getString(
   localeString: string,
   options: { branch?: string | undefined; args?: Record<string, unknown> } = {},
 ): string {
   try {
-    // Add the addon reference prefix to the locale string if it doesn't already have it
-    const localStringWithPrefix = localeString.startsWith(`${config.addonRef}-`) 
-      ? localeString 
-      : `${config.addonRef}-${localeString}`;
+    // Ensure addon is initialized
+    if (!addon?.data?.locale?.current) {
+      return getFallbackString(localeString, options);
+    }
+    
+    // Add prefix if needed
+    const localStringWithPrefix = ensurePrefix(localeString);
     
     const { branch, args } = options;
     
-    // Make sure locale is initialized
-    if (!addon.data.locale?.current) {
-      ztoolkit.log("Locale not initialized, returning raw string");
-      return localStringWithPrefix;
+    // Try to get localized string
+    let pattern;
+    try {
+      pattern = addon.data.locale.current.formatMessagesSync([
+        { id: localStringWithPrefix, args },
+      ])[0];
+    } catch (e) {
+      ztoolkit.log(`Error formatting locale string ${localStringWithPrefix}:`, e);
+      return getFallbackString(localeString, options);
     }
     
-    const pattern = addon.data.locale.current.formatMessagesSync([
-      { id: localStringWithPrefix, args },
-    ])[0];
-    
-    if (!pattern) {
-      ztoolkit.log(`String not found: ${localStringWithPrefix}`);
-      return localeString; // Return without prefix to be more readable
+    // Handle null/undefined pattern
+    if (!pattern || !pattern.value) {
+      return getFallbackString(localeString, options);
     }
     
+    // Handle branch attribute if needed
     if (branch && pattern.attributes) {
-      for (const attr of pattern.attributes) {
-        if (attr.name === branch) {
-          return attr.value;
+      // Try to find the attribute directly
+      if (Array.isArray(pattern.attributes)) {
+        for (const attr of pattern.attributes) {
+          if (attr.name === branch) {
+            return attr.value;
+          }
         }
       }
-      return pattern.attributes[branch] || localeString;
-    } else {
-      return pattern.value || localeString;
+      
+      // Try to access as object property
+      const attrObj = pattern.attributes as Record<string, string>;
+      if (attrObj[branch]) {
+        return attrObj[branch];
+      }
+      
+      // Fall back to main value if no attribute found
+      return pattern.value;
     }
+    
+    // Return the main value
+    return pattern.value;
   } catch (e) {
-    // Fallback to a readable string if anything fails
-    ztoolkit.log('Error getting locale string:', e);
-    return localeString.replace(/^librarysearch-/, '').replace(/-/g, ' ');
+    ztoolkit.log(`Critical error in getString for ${localeString}:`, e);
+    return getFallbackString(localeString, options);
   }
 }
 
-function getLocaleID(id: string) {
-  return `${config.addonRef}-${id}`;
+/**
+ * Get fallback string when locale lookup fails
+ */
+function getFallbackString(
+  localeString: string, 
+  options: { branch?: string | undefined; args?: Record<string, unknown> } = {}
+): string {
+  try {
+    // Try to get from fallbacks using fallbackMap
+    const fallbackMap = addon?.data?.locale?.fallbackMap;
+    
+    if (fallbackMap && fallbackMap[localeString]) {
+      const fallback = fallbackMap[localeString];
+      if (typeof fallback === 'function') {
+        // Handle function fallbacks with args
+        const { args } = options;
+        if (args) {
+          return fallback(
+            args.name as string, 
+            args.version as string, 
+            args.time as string
+          );
+        }
+        return fallback();
+      }
+      return fallback;
+    }
+    
+    // Last resort: convert ID to readable text
+    return prettifyString(localeString);
+  } catch (e) {
+    // Absolute last resort
+    return prettifyString(localeString);
+  }
+}
+
+/**
+ * Ensure string has the addon reference prefix
+ */
+function ensurePrefix(str: string): string {
+  return str.startsWith(`${config.addonRef}-`) 
+    ? str 
+    : `${config.addonRef}-${str}`;
+}
+
+/**
+ * Convert a string ID to a readable format
+ */
+function prettifyString(str: string): string {
+  return str
+    .replace(new RegExp(`^${config.addonRef}-`), '')
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+/**
+ * Get locale ID with addon prefix
+ */
+function getLocaleID(id: string): string {
+  return ensurePrefix(id);
 }

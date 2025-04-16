@@ -12,6 +12,7 @@ class Addon {
     ztoolkit: ZToolkit;
     locale?: {
       current: any;
+      fallbackMap?: Record<string, string | ((name?: string, version?: string, time?: string) => string)>;
     };
     prefs?: {
       window: Window;
@@ -22,6 +23,11 @@ class Addon {
     pythonPath?: string;
     scriptPath?: string;
     lastSearchResults?: any[];
+    // New fields for theme support
+    mainThemeObserver?: MutationObserver;
+    themeObserver?: MutationObserver;
+    // For Python path detection
+    suggestedPythonPath?: string;
   };
 
   // Lifecycle hooks

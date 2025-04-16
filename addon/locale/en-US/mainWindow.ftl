@@ -1,5 +1,3 @@
-startup-begin = Library Search: Starting plugin...
-startup-finish = Library Search: Plugin ready
-toolbar-button-label = Search Libraries
-toolbar-button-tooltip = Search library catalogs and repositories
-menu-item-label = Library Search
+librarysearch-toolbar-button-label = Search Libraries
+librarysearch-toolbar-button-tooltip = Search library catalogs and repositories
+librarysearch-menu-item-label = Library Search

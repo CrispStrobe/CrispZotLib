@@ -2,6 +2,7 @@ import { getString, initLocale } from "./utils/locale";
 import { registerPrefsScripts } from "./modules/preferenceScript";
 import { createZToolkit } from "./utils/ztoolkit";
 import { LibrarySearchModule } from "./modules/librarySearch";
+import { ThemeUtils } from "./modules/themeUtils";
 
 async function onStartup() {
   try {
@@ -60,6 +61,9 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
       addon.data.ztoolkit = createZToolkit();
     }
 
+    // Inject the CSS into the main window for dark mode support
+    injectDarkModeCSS(win);
+
     // Load locale files
     try {
       // @ts-ignore This is a moz feature
@@ -86,6 +90,15 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
       // Add to the tools menu
       registerToolsMenuItem(win);
 
+      // Set up theme change observer for main window
+      const themeObserver = ThemeUtils.observeThemeChanges((isDarkMode) => {
+        // Update theme-dependent UI elements if needed
+        ztoolkit.log(`Theme changed to ${isDarkMode ? 'dark' : 'light'} mode`);
+      });
+      
+      // Store the observer in addon data so it can be cleaned up later
+      addon.data.mainThemeObserver = themeObserver;
+
       popupWin.changeLine({
         progress: 100,
         text: getString("startup-finish"),
@@ -103,18 +116,87 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   }
 }
 
+/**
+ * Injects the dark mode CSS into the main window
+ */
+function injectDarkModeCSS(win: Window) {
+  try {
+    const doc = win.document;
+    if (!doc) {
+      ztoolkit.log('No document available to inject CSS into');
+      return;
+    }
+    
+    // Check if our style is already injected
+    if (doc.getElementById('librarysearch-dark-mode-css')) {
+      return;
+    }
+    
+    // Create a style element
+    const style = doc.createElement('style');
+    style.id = 'librarysearch-dark-mode-css';
+    style.textContent = `
+      /* Dark mode support for Library Search plugin */
+      :root {
+        --ls-background-color: #ffffff;
+        --ls-text-color: #000000;
+        --ls-border-color: #cccccc;
+        --ls-highlight-color: #f0f0f0;
+        --ls-button-bg: #f0f0f0;
+        --ls-button-text: #000000;
+        --ls-button-hover: #e0e0e0;
+        --ls-dialog-bg: #ffffff;
+        --ls-dialog-text: #000000;
+        --ls-link-color: #0366d6;
+        --ls-result-bg: #ffffff;
+        --ls-result-border: #e0e0e0;
+      }
+      
+      /* Dark mode variables - will be applied when Zotero is in dark mode */
+      [data-theme="dark"] {
+        --ls-background-color: #2a2a2e;
+        --ls-text-color: #f9f9fa;
+        --ls-border-color: #4a4a4f;
+        --ls-highlight-color: #3a3a40;
+        --ls-button-bg: #4a4a4f;
+        --ls-button-text: #f9f9fa;
+        --ls-button-hover: #5a5a5f;
+        --ls-dialog-bg: #38383d;
+        --ls-dialog-text: #f9f9fa;
+        --ls-link-color: #45a1ff;
+        --ls-result-bg: #2a2a2e;
+        --ls-result-border: #4a4a4f;
+      }
+    `;
+    
+    // Add it to the document
+    if (doc.head) {
+      doc.head.appendChild(style);
+      ztoolkit.log('Injected dark mode CSS into main window');
+    } else {
+      ztoolkit.log('Could not find document head to inject CSS');
+    }
+  } catch (e) {
+    ztoolkit.log('Error injecting dark mode CSS:', e);
+  }
+}
+
 function registerLibrarySearchButton(win: _ZoteroTypes.MainWindow) {
   try {
-    // Add a button to the toolbar
+    if (!win.document) {
+      ztoolkit.log("No document available to register toolbar button");
+      return;
+    }
+    
     const toolbarButton = ztoolkit.UI.createElement(win.document, "toolbarbutton", {
       namespace: "xul",
       properties: {
         id: `${addon.data.config.addonRef}-toolbar-button`,
         class: "zotero-tb-button",
-        label: getString("toolbar-button-label"),
-        tooltiptext: getString("toolbar-button-tooltip"),
+        label: "Search Libraries", // Direct string instead of getString
+        tooltiptext: "Search library catalogs and repositories", // Direct string
         type: "button",
-        hidden: false,
+        hidden: false
       },
       listeners: [
         {
@@ -125,45 +207,56 @@ function registerLibrarySearchButton(win: _ZoteroTypes.MainWindow) {
         }
       ]
     });
-
-    // Add the button to Zotero's toolbar
+    
     const toolbar = win.document.getElementById("zotero-toolbar");
     if (toolbar) {
       toolbar.appendChild(toolbarButton);
+    } else {
+      ztoolkit.log("Could not find zotero-toolbar element");
     }
   } catch (e) {
-    ztoolkit.log('Error registering toolbar button:', e);
+    ztoolkit.log("Error registering toolbar button:", e);
   }
 }
 
 function registerToolsMenuItem(win: _ZoteroTypes.MainWindow) {
   try {
-    // Add to the tools menu using the plugin toolkit method
+    if (!win.document) {
+      ztoolkit.log("No document available to register menu item");
+      return;
+    }
+    
     const menuitem = ztoolkit.UI.createElement(win.document, "menuitem", {
       namespace: "xul",
       properties: {
         id: `${addon.data.config.addonRef}-menu-item`,
-        label: getString("menu-item-label")
+        label: "Library Search" // Direct string instead of getString
       }
     });
     
-    // Add event listener directly
     menuitem.addEventListener("command", () => {
       addon.hooks.onDialogEvents("openSearch");
     });
     
-    // Add to menu
     const toolsPopup = win.document.getElementById("menu_ToolsPopup");
     if (toolsPopup) {
       toolsPopup.appendChild(menuitem);
+    } else {
+      ztoolkit.log("Could not find menu_ToolsPopup element");
     }
   } catch (e) {
-    ztoolkit.log('Error registering tools menu item:', e);
+    ztoolkit.log("Error registering tools menu item:", e);
   }
 }
 
 async function onMainWindowUnload(win: Window): Promise<void> {
   try {
+    // Disconnect theme observers
+    if (addon.data.mainThemeObserver) {
+      addon.data.mainThemeObserver.disconnect();
+      addon.data.mainThemeObserver = undefined;
+    }
+    
     ztoolkit.unregisterAll();
     if (addon.data.dialog?.window && !addon.data.dialog.window.closed) {
       addon.data.dialog.window.close();
@@ -176,6 +269,16 @@ async function onMainWindowUnload(win: Window): Promise<void> {
 function onShutdown(): void {
   try {
     ztoolkit.log('Plugin shutting down');
+    
+    // Disconnect all theme observers
+    if (addon.data.mainThemeObserver) {
+      addon.data.mainThemeObserver.disconnect();
+    }
+    
+    if (addon.data.themeObserver) {
+      addon.data.themeObserver.disconnect();
+    }
+    
     ztoolkit.unregisterAll();
     
     if (addon.data.dialog?.window && !addon.data.dialog.window.closed) {
@@ -223,6 +326,12 @@ async function onDialogEvents(type: string, data?: any) {
       case "importResults":
         if (data) {
           await LibrarySearchModule.importResults(data);
+        }
+        break;
+      case "executeCommand":
+        if (data && data.command) {
+          const result = await LibrarySearchModule.executeCommand(data.command, data.args || []);
+          return result;
         }
         break;
       default:

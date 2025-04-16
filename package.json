@@ -3,6 +3,7 @@
   "type": "module",
   "version": "0.1.0",
   "description": "Search library catalogs and repositories directly from Zotero",
+  "homepage": "https://github.com/CrispStrobe/CrispZotLib",
   "config": {
     "addonName": "Library Search",
     "addonID": "librarysearch@example.com",

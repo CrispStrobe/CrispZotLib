@@ -1,19 +1,81 @@
 /* Styles for the Library Search plugin */
 
+/* Theme variables - light mode defaults */
+:root {
+  --ls-background-color: #ffffff;
+  --ls-text-color: #000000;
+  --ls-border-color: #cccccc;
+  --ls-highlight-color: #f0f0f0;
+  --ls-button-bg: #f0f0f0;
+  --ls-button-text: #000000;
+  --ls-button-hover: #e0e0e0;
+  --ls-dialog-bg: #ffffff;
+  --ls-dialog-text: #000000;
+  --ls-link-color: #0366d6;
+  --ls-result-bg: #ffffff;
+  --ls-result-border: #e0e0e0;
+}
+
+/* Dark mode variables */
+[data-theme="dark"] {
+  --ls-background-color: #2a2a2e;
+  --ls-text-color: #f9f9fa;
+  --ls-border-color: #4a4a4f;
+  --ls-highlight-color: #3a3a40;
+  --ls-button-bg: #4a4a4f;
+  --ls-button-text: #f9f9fa;
+  --ls-button-hover: #5a5a5f;
+  --ls-dialog-bg: #38383d;
+  --ls-dialog-text: #f9f9fa;
+  --ls-link-color: #45a1ff;
+  --ls-result-bg: #2a2a2e;
+  --ls-result-border: #4a4a4f;
+}
+
 /* Toolbar button */
 #librarysearch-toolbar-button {
   list-style-image: url("chrome://librarysearch/content/icons/favicon.png");
 }
 
 /* Dialog styling */
+.librarysearch-dialog {
+  background-color: var(--ls-dialog-bg);
+  color: var(--ls-dialog-text);
+}
+
+.librarysearch-dialog input[type="text"],
+.librarysearch-dialog input[type="number"],
+.librarysearch-dialog select {
+  background-color: var(--ls-background-color);
+  color: var(--ls-text-color);
+  border: 1px solid var(--ls-border-color);
+  padding: 5px;
+}
+
+.librarysearch-dialog button {
+  background-color: var(--ls-button-bg);
+  color: var(--ls-button-text);
+  border: 1px solid var(--ls-border-color);
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.librarysearch-dialog button:hover {
+  background-color: var(--ls-button-hover);
+}
+
+/* Result items */
 .result-item {
-  border: 1px solid #ccc;
+  background-color: var(--ls-result-bg);
+  color: var(--ls-dialog-text);
+  border: 1px solid var(--ls-result-border);
   border-radius: 4px;
   padding: 10px;
   margin-bottom: 10px;
 }
 
 .result-item h3 {
+  color: var(--ls-dialog-text);
   margin-top: 0;
   margin-bottom: 5px;
 }
@@ -21,4 +83,152 @@
 /* Adjust checkbox spacing */
 input[type="checkbox"] {
   margin-left: 10px;
+  accent-color: var(--ls-link-color);
+}
+
+/* Enhanced dark mode styling for dialogs */
+
+/* Dialog window enhancements */
+.dialog-container {
+  background-color: var(--ls-dialog-bg);
+  color: var(--ls-dialog-text);
+}
+
+/* XUL dialog style fixes */
+dialog, window {
+  background-color: var(--ls-dialog-bg) !important;
+  color: var(--ls-dialog-text) !important;
+}
+
+/* Dialog header */
+.dialog-header h1 {
+  color: var(--ls-dialog-text);
+  font-size: 1.5em;
+  margin: 0.5em 0;
+}
+
+/* Input fields */
+.librarysearch-dialog input[type="text"],
+.librarysearch-dialog input[type="number"],
+.librarysearch-dialog input[type="password"],
+.librarysearch-dialog select,
+.librarysearch-dialog textarea {
+  background-color: var(--ls-background-color);
+  color: var(--ls-text-color);
+  border: 1px solid var(--ls-border-color);
+  border-radius: 3px;
+  padding: 5px 8px;
+  margin: 4px 0;
+  box-sizing: border-box;
+  min-height: 28px;
+}
+
+/* Select dropdown */
+.librarysearch-dialog select {
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url('data:image/svg+xml;charset=US-ASCII,<svg width="14" height="10" xmlns="http://www.w3.org/2000/svg"><path d="M1 3l6 6 6-6" stroke="%23999" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 30px;
+}
+
+/* Buttons in dialog */
+.librarysearch-dialog button,
+.librarysearch-dialog input[type="button"],
+button.primary {
+  background-color: var(--ls-button-bg);
+  color: var(--ls-button-text);
+  border: 1px solid var(--ls-border-color);
+  border-radius: 3px;
+  padding: 5px 10px;
+  cursor: pointer;
+  min-height: 28px;
+  margin: 4px;
+  transition: background-color 0.2s;
+}
+
+.librarysearch-dialog button:hover,
+.librarysearch-dialog input[type="button"]:hover,
+button.primary:hover {
+  background-color: var(--ls-button-hover);
+}
+
+/* Primary action button */
+.librarysearch-dialog button.primary,
+button.primary,
+.librarysearch-dialog input[type="button"].primary {
+  background-color: #0060df;
+  color: white;
+  font-weight: 500;
+}
+
+.librarysearch-dialog button.primary:hover,
+button.primary:hover,
+.librarysearch-dialog input[type="button"].primary:hover {
+  background-color: #0250bb;
+}
+
+/* Section headers */
+.librarysearch-dialog h2,
+.librarysearch-dialog h3 {
+  color: var(--ls-dialog-text);
+  border-bottom: 1px solid var(--ls-border-color);
+  padding-bottom: 5px;
+  margin-top: 15px;
+  margin-bottom: 10px;
+}
+
+/* Labels */
+.librarysearch-dialog label {
+  color: var(--ls-dialog-text);
+  display: block;
+  margin-bottom: 3px;
+  font-weight: 500;
+}
+
+/* Form field containers */
+.librarysearch-dialog .field-container {
+  margin-bottom: 10px;
+}
+
+/* Dialog specific - search dialog */
+.search-dialog {
+  padding: 15px;
+  max-width: 600px;
+}
+
+/* Dialog specific - results dialog */
+.results-dialog {
+  padding: 15px;
+  max-width: 800px;
+  max-height: 600px;
+}
+
+/* Results container */
+.results-container {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--ls-border-color);
+  border-radius: 3px;
+  padding: 5px;
+  margin: 10px 0;
+  background-color: var(--ls-background-color);
+}
+
+/* Button container */
+.button-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 15px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ls-border-color);
+}
+
+/* Add focus styles */
+.librarysearch-dialog input:focus,
+.librarysearch-dialog select:focus,
+.librarysearch-dialog button:focus {
+  outline: 2px solid var(--ls-link-color);
+  outline-offset: 1px;
 }

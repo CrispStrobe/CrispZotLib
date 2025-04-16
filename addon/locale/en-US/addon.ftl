@@ -1,11 +1,11 @@
 # General strings
-startup-begin = Library Search: Starting plugin...
-startup-finish = Library Search: Plugin ready
+# startup-begin = Library Search: Starting plugin...
+# startup-finish = Library Search: Plugin ready
 
 # UI strings
-toolbar-button-label = Search Libraries
-toolbar-button-tooltip = Search library catalogs and repositories
-menu-item-label = Library Search
+# toolbar-button-label = Search Libraries
+# toolbar-button-tooltip = Search library catalogs and repositories
+# menu-item-label = Library Search
 
 # Search dialog strings
 search-dialog-title = Library Search

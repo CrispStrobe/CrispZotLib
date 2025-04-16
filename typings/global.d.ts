@@ -32,10 +32,30 @@ declare namespace Components {
     nsIScriptableInputStream: any;
     nsIFilePicker: any;
     nsIXULRuntime: any;
+    nsIEnvironment: any;
+    nsIProperties: any;  
+    nsIWindowMediator: any;
   };
   const utils: {
     isDeadWrapper(obj: any): boolean;
   };
+}
+
+interface Window {
+  matchMedia(query: string): MediaQueryList | null;
+}
+
+interface MediaQueryList {
+  matches: boolean;
+  media: string;
+  onchange: ((this: MediaQueryList, ev: MediaQueryListEvent) => any) | null;
+  addListener(callback: (this: MediaQueryList, ev: MediaQueryListEvent) => any): void;
+  removeListener(callback: (this: MediaQueryList, ev: MediaQueryListEvent) => any): void;
+}
+
+interface MediaQueryListEvent {
+  matches: boolean;
+  media: string;
 }
 
 // Add interface extension for XUL Tree
@@ -93,6 +113,7 @@ declare namespace _ZoteroTypes {
     logError(error: any): void;
     isWin: boolean;
     isMac: boolean;
+    isLinux: boolean;
     LibrarySearch?: {
       openSearch: () => void;
       hooks?: {

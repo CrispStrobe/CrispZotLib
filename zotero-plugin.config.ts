@@ -1,6 +1,11 @@
 import { defineConfig } from "zotero-plugin-scaffold";
 import pkg from "./package.json";
 
+// Create a safe accessor function for optional properties
+const getSafe = (obj: any, key: string, defaultValue: any = undefined) => {
+  return obj && Object.prototype.hasOwnProperty.call(obj, key) ? obj[key] : defaultValue;
+};
+
 export default defineConfig({
   source: ["src", "addon"],
   dist: ".scaffold/build",
@@ -14,12 +19,17 @@ export default defineConfig({
     "https://github.com/{{owner}}/{{repo}}/releases/download/v{{version}}/{{xpiName}}.xpi",
 
   build: {
-    assets: ["addon/**/*.*"],
+    assets: [
+      "addon/**/*.*",
+      // Make sure to include the bootstrap.js file
+      "bootstrap.js"
+    ],
     define: {
       ...pkg.config,
       author: pkg.author,
       description: pkg.description,
-      homepage: pkg.homepage,
+      // Use safe accessor for optional properties
+      homepage: getSafe(pkg, 'homepage', getSafe(pkg.repository, 'url', '')),
       buildVersion: pkg.version,
       buildTime: "{{buildTime}}",
     },
@@ -39,6 +49,6 @@ export default defineConfig({
     ],
   },
 
-  // If you need to see a more detailed log, uncomment the following line:
-  // logLevel: "trace",
-});
+  // Use uppercase for logLevel
+  logLevel: "TRACE",  // Enable this to see detailed logs
+ });
