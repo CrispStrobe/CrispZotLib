@@ -241,8 +241,25 @@ async function browsePath(type: "file" | "executable"): Promise<string | undefin
       
       // Set file picker filters
       if (type === "executable") {
-        // For Python executable
-        if (Zotero.isWin) {
+        // Simple platform detection that should work in any Zotero version
+        let isWindows = false;
+        
+        try {
+          // Try to get runtime OS from xre/app-info
+          if (cc["@mozilla.org/xre/app-info;1"]) {
+            const runtime = cc["@mozilla.org/xre/app-info;1"]
+              .getService(ci.nsIXULRuntime);
+            if (runtime && runtime.OS) {
+              isWindows = runtime.OS.toLowerCase() === 'winnt';
+            }
+          }
+        } catch (e) {
+          // If we can't get the OS directly, just show all files
+          isWindows = false;
+          ztoolkit.log('Could not determine platform:', e);
+        }
+        
+        if (isWindows) {
           filePicker.appendFilter("Executable", "*.exe");
         } else {
           filePicker.appendFilter("All Files", "*");
@@ -253,13 +270,56 @@ async function browsePath(type: "file" | "executable"): Promise<string | undefin
         filePicker.appendFilter("All Files", "*");
       }
       
-      const result = filePicker.open();
-      if (result === ci.nsIFilePicker.returnOK) {
-        resolve(filePicker.file.path);
-      } else {
-        resolve(undefined);
+      // Handle both sync and async versions of file picker
+      let asyncAttemptFailed = false;
+      
+      try {
+        // First try async version (Zotero 7)
+        const openPromise = filePicker.open();
+        
+        // Check if open() returned a promise
+        if (openPromise && typeof openPromise.then === 'function') {
+          openPromise.then((result: number) => {
+            if (result === ci.nsIFilePicker.returnOK) {
+              resolve(filePicker.file.path);
+            } else {
+              resolve(undefined);
+            }
+          }).catch((error: any) => {
+            asyncAttemptFailed = true;
+            ztoolkit.log('Async file picker failed, trying sync:', error);
+            // Try sync version as fallback
+            trySync();
+          });
+        } else {
+          // If open() didn't return a promise, it's using the sync API
+          asyncAttemptFailed = true;
+          trySync();
+        }
+      } catch (e) {
+        // If the Promise approach fails, it might be synchronous API
+        asyncAttemptFailed = true;
+        trySync();
+      }
+      
+      // Only call this if the async attempt failed
+      function trySync() {
+        if (asyncAttemptFailed) {
+          try {
+            const result = filePicker.open();
+            if (result === ci.nsIFilePicker.returnOK) {
+              resolve(filePicker.file.path);
+            } else {
+              resolve(undefined);
+            }
+          } catch (finalError) {
+            ztoolkit.log('Sync file picker also failed:', finalError);
+            resolve(undefined);
+          }
+        }
       }
     } catch (error) {
+      ztoolkit.log('File picker error:', error);
       reject(error);
     }
   });

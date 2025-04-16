@@ -19,8 +19,20 @@ declare const __env__: "production" | "development";
 
 // Add namespace for Components
 declare namespace Components {
-  const classes: any;
-  const interfaces: any;
+  const classes: {
+    [key: string]: {
+      createInstance(interface: any): any;
+      getService(interface: any): any;
+    };
+  };
+  const interfaces: {
+    nsIProcess: any;
+    nsIFile: any;
+    nsIPipe: any;
+    nsIScriptableInputStream: any;
+    nsIFilePicker: any;
+    nsIXULRuntime: any;
+  };
   const utils: {
     isDeadWrapper(obj: any): boolean;
   };
@@ -31,19 +43,32 @@ declare namespace XUL {
   interface Tree {
     invalidate?: () => void;
     // We intentionally don't include builder to prevent TypeScript errors
-    // Use 'as any' to access builder in code instead
+    // builder property can be accessed using (tree as any).builder
   }
 }
 
 // Add interface extension for Zotero namespace and types
 declare namespace _ZoteroTypes {
+  // Define the full Zotero interface instead of just extending it
   interface Zotero {
+    Item: new (itemType: string) => Item;
+    initializationPromise: Promise<void>;
+    unlockPromise: Promise<void>;
+    uiReadyPromise: Promise<void>;
+    getMainWindows(): Window[];
+    getMainWindow(): Window;
+    getActiveZoteroPane(): ZoteroPane;
+    PreferencePanes: {
+      register(options: {
+        pluginID: string;
+        src: string;
+        label: string;
+        image: string;
+      }): void;
+    };
     Promise: {
       defer(): { promise: Promise<any>; resolve: (value?: any) => void; reject: (reason?: any) => void };
-      // other Promise methods
-    };
-    CreatorTypes: {
-      getID(type: string): number;
+      delay(ms: number): Promise<void>;
     };
     Creators: {
       getDataID(data: any): number;
@@ -56,11 +81,45 @@ declare namespace _ZoteroTypes {
         fieldMode: number;
       };
     };
-    getMainWindow(): Window;
+    CreatorTypes: {
+      getID(type: string): number;
+    };
+    Prefs: {
+      get(pref: string, global?: boolean): any;
+      set(pref: string, value: any, global?: boolean): any;
+      clear(pref: string, global?: boolean): void;
+    };
+    debug(message: any): void;
+    logError(error: any): void;
+    isWin: boolean;
+    isMac: boolean;
+    LibrarySearch?: {
+      openSearch: () => void;
+      hooks?: {
+        onStartup: () => Promise<void>;
+        onShutdown: () => void;
+        onMainWindowLoad: (win: Window) => Promise<void>;
+        onMainWindowUnload: (win: Window) => Promise<void>;
+        onPrefsEvent: (type: string, data: { [key: string]: any }) => Promise<void>;
+        onDialogEvents: (type: string, data?: any) => Promise<any>;
+      };
+      data?: any;
+    };
+  }
+  
+  interface ZoteroPane {
+    getSelectedCollection(): { id: number; libraryID: number } | null;
+    getSelectedLibraryID(): number;
+    selectItems(itemIDs: number[]): void;
   }
   
   interface Item {
+    id?: number;
+    itemType: string;
+    setField(field: string, value: string): void;
     setCreator(position: number, creatorDataID: any, creatorTypeID: any): void;
     addTag(tag: string): void;
+    setCollections(collectionIDs: number[]): void;
+    saveTx(): Promise<void>;
   }
 }

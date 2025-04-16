@@ -22,33 +22,54 @@ async function startup({ id, version, resourceURI, rootURI }, reason) {
   ].getService(Components.interfaces.amIAddonManagerStartup);
   var manifestURI = Services.io.newURI(rootURI + "manifest.json");
   chromeHandle = aomStartup.registerChrome(manifestURI, [
-    ["content", "__addonRef__", rootURI + "content/"],
+    ["content", "librarysearch", rootURI + "content/"],
+    ["locale", "librarysearch", "en-US", rootURI + "locale/en-US/"],
   ]);
 
   /**
    * Global variables for plugin code.
    * The `_globalThis` is the global root variable of the plugin sandbox environment
    * and all child variables assigned to it is globally accessible.
-   * See `src/index.ts` for details.
    */
   const ctx = {
     rootURI,
   };
   ctx._globalThis = ctx;
 
+  // Initialize Zotero.LibrarySearch if it doesn't exist
+  if (!Zotero.LibrarySearch) {
+    Zotero.LibrarySearch = {};
+  }
+
+  // Load the script
   Services.scriptloader.loadSubScript(
-    `${rootURI}/content/scripts/__addonRef__.js`,
+    `${rootURI}/content/scripts/librarysearch.js`,
     ctx,
   );
-  Zotero.__addonInstance__.hooks.onStartup();
+  
+  // Transfer the addon object from the context to Zotero.LibrarySearch
+  if (ctx.addon) {
+    // Store a reference to the addon object
+    Zotero.LibrarySearch.hooks = ctx.addon.hooks;
+    Zotero.LibrarySearch.data = ctx.addon.data;
+    
+    // Run startup hook
+    if (typeof Zotero.LibrarySearch.hooks?.onStartup === 'function') {
+      Zotero.LibrarySearch.hooks.onStartup();
+    }
+  }
 }
 
 async function onMainWindowLoad({ window }, reason) {
-  Zotero.__addonInstance__?.hooks.onMainWindowLoad(window);
+  if (Zotero.LibrarySearch && typeof Zotero.LibrarySearch.hooks?.onMainWindowLoad === 'function') {
+    Zotero.LibrarySearch.hooks.onMainWindowLoad(window);
+  }
 }
 
 async function onMainWindowUnload({ window }, reason) {
-  Zotero.__addonInstance__?.hooks.onMainWindowUnload(window);
+  if (Zotero.LibrarySearch && typeof Zotero.LibrarySearch.hooks?.onMainWindowUnload === 'function') {
+    Zotero.LibrarySearch.hooks.onMainWindowUnload(window);
+  }
 }
 
 function shutdown({ id, version, resourceURI, rootURI }, reason) {
@@ -61,13 +82,16 @@ function shutdown({ id, version, resourceURI, rootURI }, reason) {
       Components.interfaces.nsISupports,
     ).wrappedJSObject;
   }
-  Zotero.__addonInstance__?.hooks.onShutdown();
+  
+  if (Zotero.LibrarySearch && typeof Zotero.LibrarySearch.hooks?.onShutdown === 'function') {
+    Zotero.LibrarySearch.hooks.onShutdown();
+  }
 
   Cc["@mozilla.org/intl/stringbundle;1"]
     .getService(Components.interfaces.nsIStringBundleService)
     .flushBundles();
 
-  Cu.unload(`${rootURI}/content/scripts/__addonRef__.js`);
+  Cu.unload(`${rootURI}/content/scripts/librarysearch.js`);
 
   if (chromeHandle) {
     chromeHandle.destruct();

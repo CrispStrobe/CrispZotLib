@@ -6,14 +6,29 @@ export { initLocale, getString, getLocaleID };
  * Initialize locale data
  */
 function initLocale() {
-  const l10n = new (
-    typeof Localization === "undefined"
-      ? ztoolkit.getGlobal("Localization")
-      : Localization
-  )([`${config.addonRef}-addon.ftl`], true);
-  addon.data.locale = {
-    current: l10n,
-  };
+  try {
+    // Ensure we're using the correct ID format without double prefixes
+    const localePath = `${config.addonRef}-addon.ftl`;
+    
+    const l10n = new (
+      typeof Localization === "undefined"
+        ? ztoolkit.getGlobal("Localization")
+        : Localization
+    )([localePath], true);
+    
+    addon.data.locale = {
+      current: l10n,
+    };
+    ztoolkit.log("Locale initialized:", localePath);
+  } catch (e) {
+    ztoolkit.log('Error initializing locale:', e);
+    // Create a dummy locale object as fallback
+    addon.data.locale = {
+      current: {
+        formatMessagesSync: () => [{ value: "", attributes: {} }]
+      }
+    };
+  }
 }
 
 /**
@@ -46,23 +61,43 @@ function _getString(
   localeString: string,
   options: { branch?: string | undefined; args?: Record<string, unknown> } = {},
 ): string {
-  const localStringWithPrefix = `${config.addonRef}-${localeString}`;
-  const { branch, args } = options;
-  const pattern = addon.data.locale?.current.formatMessagesSync([
-    { id: localStringWithPrefix, args },
-  ])[0];
-  if (!pattern) {
-    return localStringWithPrefix;
-  }
-  if (branch && pattern.attributes) {
-    for (const attr of pattern.attributes) {
-      if (attr.name === branch) {
-        return attr.value;
-      }
+  try {
+    // Add the addon reference prefix to the locale string if it doesn't already have it
+    const localStringWithPrefix = localeString.startsWith(`${config.addonRef}-`) 
+      ? localeString 
+      : `${config.addonRef}-${localeString}`;
+    
+    const { branch, args } = options;
+    
+    // Make sure locale is initialized
+    if (!addon.data.locale?.current) {
+      ztoolkit.log("Locale not initialized, returning raw string");
+      return localStringWithPrefix;
     }
-    return pattern.attributes[branch] || localStringWithPrefix;
-  } else {
-    return pattern.value || localStringWithPrefix;
+    
+    const pattern = addon.data.locale.current.formatMessagesSync([
+      { id: localStringWithPrefix, args },
+    ])[0];
+    
+    if (!pattern) {
+      ztoolkit.log(`String not found: ${localStringWithPrefix}`);
+      return localeString; // Return without prefix to be more readable
+    }
+    
+    if (branch && pattern.attributes) {
+      for (const attr of pattern.attributes) {
+        if (attr.name === branch) {
+          return attr.value;
+        }
+      }
+      return pattern.attributes[branch] || localeString;
+    } else {
+      return pattern.value || localeString;
+    }
+  } catch (e) {
+    // Fallback to a readable string if anything fails
+    ztoolkit.log('Error getting locale string:', e);
+    return localeString.replace(/^librarysearch-/, '').replace(/-/g, ' ');
   }
 }
 
