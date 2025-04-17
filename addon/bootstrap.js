@@ -2,7 +2,7 @@
 
 /**
  * Zotero bootstrap for Library Search plugin.
- * Follows the official scaffold template exactly.
+ * Mirrors the scaffold template, with window2 stubbed into the script context.
  */
 
 var chromeHandle;
@@ -10,15 +10,15 @@ var chromeHandle;
 function install(data, reason) {}
 
 async function startup({ id, version, resourceURI, rootURI }, reason) {
-  // Wait for Zotero to be ready
+  // 1. Wait for Zotero to be ready
   await Zotero.initializationPromise;
 
-  // Zotero 7 passes rootURI; fall back for Zotero 6
+  // 2. Normalize rootURI (Zotero 7 vs 6)
   if (!rootURI) {
     rootURI = resourceURI.spec;
   }
 
-  // Register only our content: bucket under chrome://librarysearch/
+  // 3. Register only our “content” bucket under chrome://librarysearch/
   const aomStartup = Components.classes[
     "@mozilla.org/addons/addon-manager-startup;1"
   ].getService(Components.interfaces.amIAddonManagerStartup);
@@ -27,15 +27,24 @@ async function startup({ id, version, resourceURI, rootURI }, reason) {
     ["content", "__addonRef__", rootURI + "content/"],
   ]);
 
-  // Load the compiled script bundle into a sandbox
+  // 4. Build our sandbox and stub in window & window2
   const ctx = { rootURI };
+  try {
+    const mainWin = Zotero.getMainWindow();
+    ctx.window  = mainWin;
+    ctx.window2 = mainWin;
+  } catch (e) {
+    // Ignore if getMainWindow isn’t available yet
+  }
   ctx._globalThis = ctx;
+
+  // 5. Load the compiled bundle into that sandbox
   Services.scriptloader.loadSubScript(
     `${rootURI}/content/scripts/__addonRef__.js`,
     ctx
   );
 
-  // Kick off our TS‐side startup hook
+  // 6. Finally, kick off our TS hooks
   Zotero.__addonInstance__.hooks.onStartup();
 }
 
@@ -48,14 +57,13 @@ async function onMainWindowUnload({ window }, reason) {
 }
 
 function shutdown({ id, version, resourceURI, rootURI }, reason) {
-  // Skip cleanup on full app shutdown
+  // Don’t clean up on full app shutdown
   if (reason === APP_SHUTDOWN) return;
 
-  // In case Zotero global was lost
+  // Restore Zotero global if it was lost
   if (typeof Zotero === "undefined") {
     Zotero = Components.classes["@zotero.org/Zotero;1"]
-      .getService(Components.interfaces.nsISupports)
-      .wrappedJSObject;
+      .getService(Components.interfaces.nsISupports).wrappedJSObject;
   }
   Zotero.__addonInstance__?.hooks.onShutdown();
 
