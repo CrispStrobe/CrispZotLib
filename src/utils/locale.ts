@@ -7,7 +7,6 @@ import { config } from "../../package.json";
 export { initLocale, getString, getLocaleID };
 
 // Type for addon.data.locale
-// In src/utils/locale.ts, update the LocaleData interface
 interface LocaleData {
   current: {
     formatMessagesSync: (messages: Array<{ id: string; args?: Record<string, unknown> }>) => Array<{

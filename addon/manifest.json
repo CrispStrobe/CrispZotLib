@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Search library catalogs and repositories directly from Zotero",
   "homepage_url": "https://github.com/CrispStrobe/CrispZotLib",
-  "author": "Your Name",
+  "author": "CrispStrobe",
   "icons": {
     "48": "content/icons/favicon@0.5x.png",
     "96": "content/icons/favicon.png"
