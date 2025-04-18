@@ -115,721 +115,619 @@ function createStyledDialog(rows: number, cols: number): any {
   return dialogHelper;
 }
 
-export class LibrarySearchModule {
-
-
 
 /**
- * Opens the search dialog to configure and run a library search
+ * LibrarySearchModule - Handles searching library catalogs through Python script integration
+ * 
+ * This module provides functionality for searching library catalogs via a Python script
+ * and importing the results into Zotero.
  */
-static async openSearchDialog() {
-  // Get the existing dialog window if it exists
-  if (addon.data.dialog?.window) {
-    addon.data.dialog.window.focus();
-    return;
+export class LibrarySearchModule {
+  /**
+   * Opens the search dialog to configure and run a library search
+   */
+  static async openSearchDialog() {
+    // Get the existing dialog window if it exists
+    if (addon.data.dialog?.window) {
+      addon.data.dialog.window.focus();
+      return;
+    }
+
+    // Get the Python path and script path from preferences
+    const pythonPath = getPref("pythonPath") || "";
+    const scriptPath = getPref("scriptPath") || "";
+    
+    // Log current values for debugging
+    ztoolkit.log("Initial paths from prefs:", { pythonPath, scriptPath });
+
+    // Create dialog data with default values
+    const dialogData: { [key: string | number]: any } = {
+      pythonPath: pythonPath,
+      scriptPath: scriptPath,
+      protocol: "sru",
+      endpoint: "dnb",
+      title: "",
+      author: "",
+      isbn: "",
+      issn: "",
+      year: "",
+      maxResults: 10,
+      loadCallback: (window: Window) => {
+        // Dialog opened callback
+        ztoolkit.log("Search dialog opened");
+        ThemeUtils.applyTheme(window);
+      },
+      unloadCallback: () => {
+        ztoolkit.log("Search dialog closed");
+        addon.data.dialog = undefined;
+      },
+      searchResults: [],
+      searching: false,
+      searchComplete: false,
+      errorMessage: "",
+    };
+
+    // Create the dialog helper
+    const dialogHelper = new ztoolkit.Dialog(12, 2)
+      // Dialog header
+      .addCell(0, 0, {
+        tag: "h1",
+        properties: { innerHTML: getString("search-dialog-title") },
+        styles: { gridColumn: "1 / span 2" }
+      })
+      .addCell(1, 0, {
+        tag: "div",
+        styles: { gridColumn: "1 / span 2" },
+        properties: {
+          innerHTML: getString("search-dialog-description")
+        }
+      })
+
+      // Configuration section
+      .addCell(2, 0, {
+        tag: "h3",
+        properties: { innerHTML: getString("search-dialog-config-section") },
+        styles: { gridColumn: "1 / span 2", marginBottom: "5px", marginTop: "15px" }
+      })
+
+      // Python Path
+      .addCell(3, 0, {
+        tag: "label",
+        namespace: "html",
+        attributes: { for: "pythonPath" },
+        properties: { innerHTML: getString("search-dialog-python-path") },
+      })
+      .addCell(3, 1, {
+        tag: "input",
+        namespace: "html",
+        id: "pythonPath",
+        attributes: {
+          type: "text",
+          "data-bind": "pythonPath",
+          "data-prop": "value"
+        },
+        styles: { width: "100%" },
+      })
+
+      // Script Path
+      .addCell(4, 0, {
+        tag: "label",
+        namespace: "html",
+        attributes: { for: "scriptPath" },
+        properties: { innerHTML: getString("search-dialog-script-path") },
+      })
+      .addCell(4, 1, {
+        tag: "input",
+        namespace: "html",
+        id: "scriptPath",
+        attributes: {
+          type: "text",
+          "data-bind": "scriptPath",
+          "data-prop": "value"
+        },
+        styles: { width: "100%" },
+      })
+
+      // Search section
+      .addCell(5, 0, {
+        tag: "h3",
+        properties: { innerHTML: getString("search-dialog-search-section") },
+        styles: { gridColumn: "1 / span 2", marginBottom: "5px", marginTop: "15px" }
+      })
+
+      // Protocol
+      .addCell(6, 0, {
+        tag: "label",
+        namespace: "html",
+        attributes: { for: "protocol" },
+        properties: { innerHTML: getString("search-dialog-protocol") },
+      })
+      .addCell(6, 1, {
+        tag: "select",
+        namespace: "html",
+        id: "protocol",
+        attributes: {
+          "data-bind": "protocol",
+          "data-prop": "value"
+        },
+        children: [
+          {
+            tag: "option",
+            attributes: { value: "sru" },
+            properties: { innerHTML: "SRU" }
+          },
+          {
+            tag: "option",
+            attributes: { value: "oai" },
+            properties: { innerHTML: "OAI-PMH" }
+          },
+          {
+            tag: "option",
+            attributes: { value: "ixtheo" },
+            properties: { innerHTML: "IxTheo" }
+          }
+        ]
+      })
+
+      // Endpoint
+      .addCell(7, 0, {
+        tag: "label",
+        namespace: "html",
+        attributes: { for: "endpoint" },
+        properties: { innerHTML: getString("search-dialog-endpoint") },
+      })
+      .addCell(7, 1, {
+        tag: "input",
+        namespace: "html",
+        id: "endpoint",
+        attributes: {
+          type: "text",
+          "data-bind": "endpoint",
+          "data-prop": "value"
+        },
+        styles: { width: "100%" },
+      })
+
+      // Search terms
+      // Title
+      .addCell(8, 0, {
+        tag: "label",
+        namespace: "html",
+        attributes: { for: "title" },
+        properties: { innerHTML: getString("search-dialog-title-field") },
+      })
+      .addCell(8, 1, {
+        tag: "input",
+        namespace: "html",
+        id: "title",
+        attributes: {
+          type: "text",
+          "data-bind": "title",
+          "data-prop": "value"
+        },
+        styles: { width: "100%" },
+        listeners: [
+          {
+            type: "input",
+            listener: (e) => {
+              dialogData.title = (e.target as HTMLInputElement).value;
+            }
+          }
+        ]
+      })
+
+      // Author
+      .addCell(9, 0, {
+        tag: "label",
+        namespace: "html",
+        attributes: { for: "author" },
+        properties: { innerHTML: getString("search-dialog-author") },
+      })
+      .addCell(9, 1, {
+        tag: "input",
+        namespace: "html",
+        id: "author",
+        attributes: {
+          type: "text",
+          "data-bind": "author",
+          "data-prop": "value"
+        },
+        styles: { width: "100%" },
+      })
+
+      // ISBN
+      .addCell(10, 0, {
+        tag: "label",
+        namespace: "html",
+        attributes: { for: "isbn" },
+        properties: { innerHTML: getString("search-dialog-isbn") },
+      })
+      .addCell(10, 1, {
+        tag: "input",
+        namespace: "html",
+        id: "isbn",
+        attributes: {
+          type: "text",
+          "data-bind": "isbn",
+          "data-prop": "value"
+        },
+        styles: { width: "100%" },
+        listeners: [
+          {
+            type: "input",
+            listener: (e) => {
+              dialogData.isbn = (e.target as HTMLInputElement).value;
+            }
+          }
+        ]
+      })
+
+      // Max Results
+      .addCell(11, 0, {
+        tag: "label",
+        namespace: "html",
+        attributes: { for: "maxResults" },
+        properties: { innerHTML: getString("search-dialog-max-results") },
+      })
+      .addCell(11, 1, {
+        tag: "input",
+        namespace: "html",
+        id: "maxResults",
+        attributes: {
+          type: "number",
+          min: "1",
+          max: "100",
+          "data-bind": "maxResults",
+          "data-prop": "value"
+        },
+        styles: { width: "100px" },
+        listeners: [
+          {
+            type: "input",
+            listener: (e) => {
+              dialogData.maxResults = (e.target as HTMLInputElement).value;
+            }
+          }
+        ]
+      })
+
+      // Add buttons
+      .addButton(getString("search-dialog-search-button"), "search", {
+        callback: async (e) => {
+          // Prevent multiple searches
+          if (dialogData.searching) {
+            return;
+          }
+        
+          // Save the Python and script paths to preferences
+          if (dialogData.pythonPath) {
+            setPref("pythonPath", dialogData.pythonPath.trim());
+          }
+          if (dialogData.scriptPath) {
+            setPref("scriptPath", dialogData.scriptPath.trim());
+          }
+        
+          // Update all input fields from the UI to dialogData
+          if (dialogHelper.window) {
+            const doc = dialogHelper.window.document;
+            if (doc) {
+              const fields = ['pythonPath', 'scriptPath', 'protocol', 'endpoint', 'title', 'author', 'isbn', 'maxResults'];
+              for (const field of fields) {
+                const elem = doc.getElementById(field) as HTMLInputElement | HTMLSelectElement;
+                if (elem) {
+                  dialogData[field] = elem.value;
+                  ztoolkit.log(`Updated ${field} from UI: ${elem.value}`);
+                }
+              }
+            }
+          }
+        
+          // Reset search state
+          dialogData.searching = true;
+          dialogData.searchComplete = false;
+          dialogData.errorMessage = "";
+          dialogData.searchResults = [];
+        
+          // Update UI to show searching state
+          const searchButton = dialogHelper.window?.document?.querySelector("#search") as HTMLButtonElement | null;
+          if (searchButton) {
+            searchButton.disabled = true;
+            searchButton.textContent = getString("search-dialog-searching");
+          }
+        
+          try {
+            // Get final values directly from input fields
+            const pythonPathInput = dialogHelper.window?.document?.getElementById('pythonPath') as HTMLInputElement;
+            const scriptPathInput = dialogHelper.window?.document?.getElementById('scriptPath') as HTMLInputElement;
+            
+            if (pythonPathInput && pythonPathInput.value.trim()) {
+              dialogData.pythonPath = pythonPathInput.value.trim();
+            }
+            
+            if (scriptPathInput && scriptPathInput.value.trim()) {
+              dialogData.scriptPath = scriptPathInput.value.trim();
+            }
+            
+            ztoolkit.log("Search parameters:", {
+              pythonPath: dialogData.pythonPath,
+              scriptPath: dialogData.scriptPath,
+              protocol: dialogData.protocol,
+              endpoint: dialogData.endpoint,
+              title: dialogData.title,
+              author: dialogData.author,
+              isbn: dialogData.isbn,
+              maxResults: dialogData.maxResults
+            });
+        
+            const searchParams = {
+              pythonPath: dialogData.pythonPath,
+              scriptPath: dialogData.scriptPath,
+              protocol: dialogData.protocol,
+              endpoint: dialogData.endpoint,
+              title: dialogData.title,
+              author: dialogData.author,
+              isbn: dialogData.isbn,
+              maxResults: dialogData.maxResults
+            };
+        
+            // Run the search
+            const results = await LibrarySearchModule.runSearch(searchParams);
+
+            // Store results
+            dialogData.searchResults = results;
+            dialogData.searchComplete = true;
+
+            // Open results dialog if we have results
+            if (results && results.length > 0) {
+              await LibrarySearchModule.openResultsDialog(results);
+            } else {
+              dialogData.errorMessage = getString("search-dialog-no-results");
+            }
+          } catch (error: any) {
+            ztoolkit.log("Search error:", error);
+            dialogData.errorMessage = error?.message || getString("search-dialog-error");
+          } finally {
+            // Reset search button
+            dialogData.searching = false;
+            if (searchButton) {
+              searchButton.disabled = false;
+              searchButton.textContent = getString("search-dialog-search-button");
+            }
+
+            // Show error message if any
+            if (dialogData.errorMessage && dialogHelper.window) {
+              dialogHelper.window.alert(dialogData.errorMessage);
+            }
+          }
+        },
+        noClose: true
+      })
+      .addButton(getString("search-dialog-cancel-button"), "cancel")
+      .setDialogData(dialogData);
+  
+    // Open the dialog
+    dialogHelper.open(getString("search-dialog-title"));
+    
+    addon.data.dialog = dialogHelper;
   }
 
-  // Get the Python path and script path from preferences
-  const pythonPath = getPref("pythonPath") || "";
-  const scriptPath = getPref("scriptPath") || "";
-  
-  // Log current values for debugging
-  ztoolkit.log("Initial paths from prefs:", { pythonPath, scriptPath });
-
-  // Create dialog data with default values
-  const dialogData: { [key: string | number]: any } = {
-    pythonPath: pythonPath,
-    scriptPath: scriptPath,
-    protocol: "sru",
-    endpoint: "dnb",
-    title: "",
-    author: "",
-    isbn: "",
-    issn: "",
-    year: "",
-    maxResults: 10,
-    loadCallback: (window: Window) => {
-      ztoolkit.log("Search dialog opened");
-      
-      // Apply theme to the dialog
-      ThemeUtils.applyTheme(window);
-      
-      // Apply styling with proper null checks
-      if (window.document) {
-        const doc = window.document;
-        
-        if (doc.body) {
-          // Add dialog class
-          doc.body.classList.add('librarysearch-dialog');
-          
-          // Create container
-          const container = doc.createElement('div');
-          container.className = 'dialog-container';
-          
-          // Move content to container - with proper null checking
-          const childNodes = Array.from(doc.body.childNodes);
-          for (const node of childNodes) {
-            if (node) {
-              container.appendChild(node);
-            }
-          }
-          
-          doc.body.appendChild(container);
-          
-          // Style header
-          const h1 = doc.querySelector('h1');
-          if (h1 && h1.parentNode) {
-            const header = doc.createElement('div');
-            header.className = 'dialog-header';
-            h1.parentNode.insertBefore(header, h1);
-            header.appendChild(h1);
-          }
-          
-          // Style buttons
-          const buttons = doc.querySelectorAll('button');
-          if (buttons.length > 0) {
-            const buttonContainer = doc.createElement('div');
-            buttonContainer.className = 'button-container';
-            container.appendChild(buttonContainer);
-            
-            Array.from(buttons).forEach(btn => {
-              const button = btn as HTMLButtonElement;
-              if (button.parentNode) {
-                button.parentNode.removeChild(button);
-              }
-              
-              // Add primary class to action buttons
-              if (button.id === 'search' || 
-                  (button.textContent && button.textContent.includes('Search'))) {
-                button.classList.add('primary');
-              }
-              
-              buttonContainer.appendChild(button);
-            });
-          }
-        } else if (doc.documentElement) {
-          // Fallback if body isn't available
-          doc.documentElement.classList.add('librarysearch-dialog');
-        }
+  /**
+   * Opens a dialog to display search results
+   */
+  static async openResultsDialog(results: any[]) {
+    // Create dialog data
+    const dialogData: { [key: string | number]: any } = {
+      searchResults: results,
+      selectedResults: [],
+      loadCallback: (window: Window) => {
+        ztoolkit.log("Results dialog opened");
+        ThemeUtils.applyTheme(window);
+      },
+      unloadCallback: () => {
+        ztoolkit.log("Results dialog closed");
       }
-    },
-    unloadCallback: () => {
-      ztoolkit.log("Search dialog closed");
-      addon.data.dialog = undefined;
-    },
-    searchResults: [],
-    searching: false,
-    searchComplete: false,
-    errorMessage: "",
-  };
+    };
 
-  // Create the dialog helper
-  const dialogHelper = new ztoolkit.Dialog(12, 2)
-    .addCell(0, 0, {
-      tag: "h1",
-      properties: { innerHTML: getString("search-dialog-title") },
-      styles: { gridColumn: "1 / span 2" }
-    })
-    .addCell(1, 0, {
-      tag: "div",
-      styles: { gridColumn: "1 / span 2" },
-      properties: {
-        innerHTML: getString("search-dialog-description")
-      }
-    })
+    // Function to generate HTML content for each result
+    const generateResultHTML = (result: any, index: number) => {
+      const title = result.title || "Untitled";
+      const authors = result.authors?.join(", ") || "Unknown";
+      const year = result.year || "";
+      const publisher = result.publisher_name || "";
 
-    // Configuration section
-    .addCell(2, 0, {
-      tag: "h3",
-      properties: { innerHTML: getString("search-dialog-config-section") },
-      styles: { gridColumn: "1 / span 2", marginBottom: "5px", marginTop: "15px" }
-    })
-
-    // Python Path
-    .addCell(3, 0, {
-      tag: "label",
-      namespace: "html",
-      attributes: { for: "pythonPath" },
-      properties: { innerHTML: getString("search-dialog-python-path") },
-    })
-    .addCell(3, 1, {
-      tag: "input",
-      namespace: "html",
-      id: "pythonPath",
-      attributes: {
-        type: "text",
-        "data-bind": "pythonPath",
-        "data-prop": "value"
-      },
-      styles: { width: "100%" },
-    })
-
-    // Script Path
-    .addCell(4, 0, {
-      tag: "label",
-      namespace: "html",
-      attributes: { for: "scriptPath" },
-      properties: { innerHTML: getString("search-dialog-script-path") },
-    })
-    .addCell(4, 1, {
-      tag: "input",
-      namespace: "html",
-      id: "scriptPath",
-      attributes: {
-        type: "text",
-        "data-bind": "scriptPath",
-        "data-prop": "value"
-      },
-      styles: { width: "100%" },
-    })
-
-    // Search section
-    .addCell(5, 0, {
-      tag: "h3",
-      properties: { innerHTML: getString("search-dialog-search-section") },
-      styles: { gridColumn: "1 / span 2", marginBottom: "5px", marginTop: "15px" }
-    })
-
-    // Protocol
-    .addCell(6, 0, {
-      tag: "label",
-      namespace: "html",
-      attributes: { for: "protocol" },
-      properties: { innerHTML: getString("search-dialog-protocol") },
-    })
-    .addCell(6, 1, {
-      tag: "select",
-      namespace: "html",
-      id: "protocol",
-      attributes: {
-        "data-bind": "protocol",
-        "data-prop": "value"
-      },
-      children: [
-        {
-          tag: "option",
-          attributes: { value: "sru" },
-          properties: { innerHTML: "SRU" }
+      return {
+        tag: "div",
+        namespace: "html",
+        attributes: {
+          class: "result-item",
+          "data-index": index.toString()
         },
-        {
-          tag: "option",
-          attributes: { value: "oai" },
-          properties: { innerHTML: "OAI-PMH" }
-        },
-        {
-          tag: "option",
-          attributes: { value: "ixtheo" },
-          properties: { innerHTML: "IxTheo" }
-        }
-      ]
-    })
-
-    // Endpoint
-    .addCell(7, 0, {
-      tag: "label",
-      namespace: "html",
-      attributes: { for: "endpoint" },
-      properties: { innerHTML: getString("search-dialog-endpoint") },
-    })
-    .addCell(7, 1, {
-      tag: "input",
-      namespace: "html",
-      id: "endpoint",
-      attributes: {
-        type: "text",
-        "data-bind": "endpoint",
-        "data-prop": "value"
-      },
-      styles: { width: "100%" },
-    })
-
-    // Search terms
-    // Title
-    .addCell(8, 0, {
-      tag: "label",
-      namespace: "html",
-      attributes: { for: "title" },
-      properties: { innerHTML: getString("search-dialog-title-field") },
-    })
-    // For the title field:
-    .addCell(8, 1, {
-      tag: "input",
-      namespace: "html",
-      id: "title",
-      attributes: {
-        type: "text",
-        "data-bind": "title",
-        "data-prop": "value"
-      },
-      styles: { width: "100%" },
-      listeners: [
-        {
-          type: "input", // Use input event to catch changes in real-time
-          listener: (e) => {
-            dialogData.title = (e.target as HTMLInputElement).value;
-          }
-        }
-      ]
-    })
-
-    // Author
-    .addCell(9, 0, {
-      tag: "label",
-      namespace: "html",
-      attributes: { for: "author" },
-      properties: { innerHTML: getString("search-dialog-author") },
-    })
-    .addCell(9, 1, {
-      tag: "input",
-      namespace: "html",
-      id: "author",
-      attributes: {
-        type: "text",
-        "data-bind": "author",
-        "data-prop": "value"
-      },
-      styles: { width: "100%" },
-    })
-
-    // ISBN
-    .addCell(10, 0, {
-      tag: "label",
-      namespace: "html",
-      attributes: { for: "isbn" },
-      properties: { innerHTML: getString("search-dialog-isbn") },
-    })
-    .addCell(10, 1, {
-      tag: "input",
-      namespace: "html",
-      id: "isbn",
-      attributes: {
-        type: "text",
-        "data-bind": "isbn",
-        "data-prop": "value"
-      },
-      styles: { width: "100%" },
-      listeners: [
-        {
-          type: "input", // Use input event to catch changes in real-time
-          listener: (e) => {
-            dialogData.isbn = (e.target as HTMLInputElement).value;
-          }
-        }
-      ]
-    })
-
-    // Max Results
-    .addCell(11, 0, {
-      tag: "label",
-      namespace: "html",
-      attributes: { for: "maxResults" },
-      properties: { innerHTML: getString("search-dialog-max-results") },
-    })
-    .addCell(11, 1, {
-      tag: "input",
-      namespace: "html",
-      id: "maxResults",
-      attributes: {
-        type: "number",
-        min: "1",
-        max: "100",
-        "data-bind": "maxResults",
-        "data-prop": "value"
-      },
-      styles: { width: "100px" },
-      listeners: [
-        {
-          type: "input", // Use input event to catch changes in real-time
-          listener: (e) => {
-            dialogData.maxResults = (e.target as HTMLInputElement).value;
-          }
-        }
-      ]
-    })
-
-    // Add buttons
-    .addButton(getString("search-dialog-search-button"), "search", {
-      callback: async (e) => {
-        // Prevent multiple searches
-        if (dialogData.searching) {
-          return;
-        }
-      
-        // Save the Python and script paths to preferences
-        if (dialogData.pythonPath) {
-          setPref("pythonPath", dialogData.pythonPath.trim());
-        }
-        if (dialogData.scriptPath) {
-          setPref("scriptPath", dialogData.scriptPath.trim());
-        }
-      
-        // Get all form values directly from the UI elements
-        if (dialogHelper.window) {
-          const doc = dialogHelper.window.document;
-          if (doc) {
-            // Update all input fields from the UI to dialogData
-            const fields = ['pythonPath', 'scriptPath', 'protocol', 'endpoint', 'title', 'author', 'isbn', 'maxResults'];
-            for (const field of fields) {
-              const elem = doc.getElementById(field) as HTMLInputElement | HTMLSelectElement;
-              if (elem) {
-                dialogData[field] = elem.value;
-                ztoolkit.log(`Updated ${field} from UI: ${elem.value}`);
-              }
-            }
-          }
-        }
-      
-        // Log the dialog data for debugging
-        ztoolkit.log("Search parameters from dialog:", JSON.stringify(dialogData, null, 2));
-      
-        // Reset search state
-        dialogData.searching = true;
-        dialogData.searchComplete = false;
-        dialogData.errorMessage = "";
-        dialogData.searchResults = [];
-      
-        // Update UI to show searching state
-        const searchButton = dialogHelper.window?.document?.querySelector("#search") as HTMLButtonElement | null;
-        if (searchButton) {
-          searchButton.disabled = true;
-          searchButton.textContent = getString("search-dialog-searching");
-        }
-      
-        // Ensure we get a fresh copy of the data from the UI
-        try {
-          // Get the updated values directly from the input fields
-          const pythonPathInput = dialogHelper.window?.document?.getElementById('pythonPath') as HTMLInputElement;
-          const scriptPathInput = dialogHelper.window?.document?.getElementById('scriptPath') as HTMLInputElement;
-          
-          if (pythonPathInput && pythonPathInput.value.trim()) {
-            dialogData.pythonPath = pythonPathInput.value.trim();
-          }
-          
-          if (scriptPathInput && scriptPathInput.value.trim()) {
-            dialogData.scriptPath = scriptPathInput.value.trim();
-          }
-          
-          ztoolkit.log("Updated paths from UI:", {
-            pythonPath: dialogData.pythonPath,
-            scriptPath: dialogData.scriptPath
-          });
-      
-          const searchParams = {
-            pythonPath: dialogData.pythonPath,
-            scriptPath: dialogData.scriptPath,
-            protocol: dialogData.protocol,
-            endpoint: dialogData.endpoint,
-            title: dialogData.title,
-            author: dialogData.author,
-            isbn: dialogData.isbn,
-            maxResults: dialogData.maxResults
-          };
-      
-          // Run the search with more detailed error handling
-          const results = await LibrarySearchModule.runSearch(searchParams);
-
-          // Store the results
-          dialogData.searchResults = results;
-          dialogData.searchComplete = true;
-
-          // Open results dialog
-          if (results && results.length > 0) {
-            await LibrarySearchModule.openResultsDialog(results);
-          } else {
-            dialogData.errorMessage = getString("search-dialog-no-results");
-          }
-        } catch (error: any) {
-          ztoolkit.log("Search error:", error);
-          dialogData.errorMessage = error?.message || getString("search-dialog-error");
-        } finally {
-          // Reset search button
-          dialogData.searching = false;
-          if (searchButton) {
-            searchButton.disabled = false;
-            searchButton.textContent = getString("search-dialog-search-button");
-          }
-
-          // Show error message if any
-          if (dialogData.errorMessage && dialogHelper.window) {
-            dialogHelper.window.alert(dialogData.errorMessage);
-          }
-        }
-      },
-      noClose: true
-    })
-    .addButton(getString("search-dialog-cancel-button"), "cancel")
-    .setDialogData(dialogData);
-  
-  // Open the dialog
-  dialogHelper.open(getString("search-dialog-title"));
-  
-  addon.data.dialog = dialogHelper;
-}
-
-  
-/**
- * Opens a dialog to display search results with proper styling
- */
-static async openResultsDialog(results: any[]) {
-  // Create dialog data
-  const dialogData: { [key: string | number]: any } = {
-    searchResults: results,
-    selectedResults: [],
-    loadCallback: (window: Window) => {
-      ztoolkit.log("Results dialog opened");
-      
-      // Apply theme and styling
-      ThemeUtils.applyTheme(window);
-      
-      // Apply styling with proper null checks
-      if (window.document) {
-        const doc = window.document;
-        
-        if (doc.body) {
-          // Add dialog class
-          doc.body.classList.add('librarysearch-dialog');
-          doc.body.classList.add('results-dialog');
-          
-          // Create container
-          const container = doc.createElement('div');
-          container.className = 'dialog-container';
-          
-          // Move content to container - with proper null checking
-          const childNodes = Array.from(doc.body.childNodes);
-          for (const node of childNodes) {
-            if (node) {
-              container.appendChild(node);
-            }
-          }
-          
-          doc.body.appendChild(container);
-          
-          // Style header
-          const h1 = doc.querySelector('h1');
-          if (h1 && h1.parentNode) {
-            const header = doc.createElement('div');
-            header.className = 'dialog-header';
-            h1.parentNode.insertBefore(header, h1);
-            header.appendChild(h1);
-          }
-          
-          // Style results container
-          const resultsElem = doc.querySelector('.results-container');
-          if (!resultsElem) {
-            const resultsDiv = doc.createElement('div');
-            resultsDiv.className = 'results-container';
-            
-            // Find all result items and move them to container
-            const resultItems = doc.querySelectorAll('.result-item');
-            if (resultItems.length > 0) {
-              resultItems.forEach((item: Element) => {
-                if (item.parentNode) {
-                  item.parentNode.removeChild(item);
-                }
-                resultsDiv.appendChild(item);
-              });
-              
-              // Add to main container
-              container.appendChild(resultsDiv);
-            }
-          }
-          
-          // Style buttons
-          const buttons = doc.querySelectorAll('button');
-          if (buttons.length > 0) {
-            const buttonContainer = doc.createElement('div');
-            buttonContainer.className = 'button-container';
-            container.appendChild(buttonContainer);
-            
-            Array.from(buttons).forEach(btn => {
-              const button = btn as HTMLButtonElement;
-              if (button.parentNode) {
-                button.parentNode.removeChild(button);
-              }
-              
-              // Add primary class to action buttons
-              if (button.id === 'import' || button.id === 'importAll') {
-                button.classList.add('primary');
-              }
-              
-              buttonContainer.appendChild(button);
-            });
-          }
-        } else if (doc.documentElement) {
-          // Fallback if body isn't available
-          doc.documentElement.classList.add('librarysearch-dialog');
-        }
-      }
-    },
-    unloadCallback: () => {
-      ztoolkit.log("Results dialog closed");
-    }
-  };
-
-  // Create a function to generate HTML content for each result
-  const generateResultHTML = (result: any, index: number) => {
-    const title = result.title || "Untitled";
-    const authors = result.authors?.join(", ") || "Unknown";
-    const year = result.year || "";
-    const publisher = result.publisher_name || "";
-
-    return {
-      tag: "div",
-      namespace: "html",
-      attributes: {
-        class: "result-item",
-        "data-index": index.toString()
-      },
-      children: [
-        {
-          tag: "div",
-          styles: {
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "5px"
-          },
-          children: [
-            {
-              tag: "h3",
-              styles: { margin: "0" },
-              properties: { innerHTML: title }
+        children: [
+          {
+            tag: "div",
+            styles: {
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "5px"
             },
-            {
-              tag: "input",
-              attributes: {
-                type: "checkbox",
-                "data-index": index.toString()
+            children: [
+              {
+                tag: "h3",
+                styles: { margin: "0" },
+                properties: { innerHTML: title }
               },
-              listeners: [
-                {
-                  type: "change",
-                  listener: (e: Event) => {
-                    const checkbox = e.target as HTMLInputElement;
-                    const idx = parseInt(checkbox.getAttribute("data-index") || "0");
+              {
+                tag: "input",
+                attributes: {
+                  type: "checkbox",
+                  "data-index": index.toString()
+                },
+                listeners: [
+                  {
+                    type: "change",
+                    listener: (e: Event) => {
+                      const checkbox = e.target as HTMLInputElement;
+                      const idx = parseInt(checkbox.getAttribute("data-index") || "0");
 
-                    if (checkbox.checked) {
-                      if (!dialogData.selectedResults.includes(idx)) {
-                        dialogData.selectedResults.push(idx);
-                      }
-                    } else {
-                      const pos = dialogData.selectedResults.indexOf(idx);
-                      if (pos >= 0) {
-                        dialogData.selectedResults.splice(pos, 1);
+                      if (checkbox.checked) {
+                        if (!dialogData.selectedResults.includes(idx)) {
+                          dialogData.selectedResults.push(idx);
+                        }
+                      } else {
+                        const pos = dialogData.selectedResults.indexOf(idx);
+                        if (pos >= 0) {
+                          dialogData.selectedResults.splice(pos, 1);
+                        }
                       }
                     }
                   }
-                }
-              ]
-            }
-          ]
-        },
-        {
-          tag: "div",
-          properties: { innerHTML: `<strong>Authors:</strong> ${authors}` }
-        },
-        {
-          tag: "div",
-          properties: { innerHTML: `<strong>Year:</strong> ${year}` }
-        },
-        {
-          tag: "div",
-          properties: { innerHTML: `<strong>Publisher:</strong> ${publisher}` }
-        }
-      ]
+                ]
+              }
+            ]
+          },
+          {
+            tag: "div",
+            properties: { innerHTML: `<strong>Authors:</strong> ${authors}` }
+          },
+          {
+            tag: "div",
+            properties: { innerHTML: `<strong>Year:</strong> ${year}` }
+          },
+          {
+            tag: "div",
+            properties: { innerHTML: `<strong>Publisher:</strong> ${publisher}` }
+          }
+        ]
+      };
     };
-  };
 
-  // Calculate dialog size based on number of results
-  const rows = Math.min(results.length * 2 + 3, 20);
+    // Calculate dialog size based on number of results
+    const rows = Math.min(results.length * 2 + 3, 20);
 
-  // Create the dialog
-  const dialogHelper = new ztoolkit.Dialog(rows, 1)
-    .addCell(0, 0, {
-      tag: "h1",
-      properties: { innerHTML: getString("results-dialog-title") }
-    })
-    .addCell(1, 0, {
+    // Create the dialog
+    const dialogHelper = new ztoolkit.Dialog(rows, 1)
+      .addCell(0, 0, {
+        tag: "h1",
+        properties: { innerHTML: getString("results-dialog-title") }
+      })
+      .addCell(1, 0, {
+        tag: "div",
+        properties: { innerHTML: `Found ${results.length} results. Select items to import:` }
+      });
+
+    // Add results
+    const resultsContainer = {
       tag: "div",
-      properties: { innerHTML: `Found ${results.length} results. Select items to import:` }
-    });
-
-  // Add results
-  const resultsContainer = {
-    tag: "div",
-    namespace: "html",
-    attributes: { 
-      class: "results-container" 
-    },
-    styles: {
-      maxHeight: "400px",
-      overflowY: "auto",
-      marginTop: "10px",
-      marginBottom: "10px"
-    },
-    children: results.map((result, index) => generateResultHTML(result, index))
-  };
-
-  dialogHelper.addCell(2, 0, resultsContainer);
-
-  // Add buttons
-  dialogHelper
-    .addButton(getString("results-dialog-import-selected"), "import", {
-      callback: async (e) => {
-        // Get selected results
-        const selectedResults = dialogData.selectedResults.map((index: number) => results[index]);
-
-        if (selectedResults.length === 0) {
-          if (dialogHelper.window) {
-            dialogHelper.window.alert(getString("results-dialog-no-selection"));
-          }
-          return;
-        }
-
-        try {
-          await LibrarySearchModule.importResults(selectedResults);
-          if (dialogHelper.window) {
-            dialogHelper.window.alert(getString("results-dialog-import-success"));
-            dialogHelper.window.close();
-          }
-        } catch (error: any) {
-          if (dialogHelper.window) {
-            dialogHelper.window.alert(getString("results-dialog-import-error") + ": " + error?.message);
-          }
-        }
+      namespace: "html",
+      attributes: { 
+        class: "results-container" 
       },
-      noClose: true
-    })
-    .addButton(getString("results-dialog-import-all"), "importAll", {
-      callback: async (e) => {
-        try {
-          await LibrarySearchModule.importResults(results);
-          if (dialogHelper.window) {
-            dialogHelper.window.alert(getString("results-dialog-import-success"));
-            dialogHelper.window.close();
-          }
-        } catch (error: any) {
-          if (dialogHelper.window) {
-            dialogHelper.window.alert(getString("results-dialog-import-error") + ": " + error?.message);
-          }
-        }
+      styles: {
+        maxHeight: "400px",
+        overflowY: "auto",
+        marginTop: "10px",
+        marginBottom: "10px"
       },
-      noClose: true
-    })
-    .addButton(getString("results-dialog-cancel"), "cancel")
-    .setDialogData(dialogData);
+      children: results.map((result, index) => generateResultHTML(result, index))
+    };
+
+    dialogHelper.addCell(2, 0, resultsContainer);
+
+    // Add buttons
+    dialogHelper
+      .addButton(getString("results-dialog-import-selected"), "import", {
+        callback: async (e) => {
+          // Get selected results
+          const selectedResults = dialogData.selectedResults.map((index: number) => results[index]);
+
+          if (selectedResults.length === 0) {
+            if (dialogHelper.window) {
+              dialogHelper.window.alert(getString("results-dialog-no-selection"));
+            }
+            return;
+          }
+
+          try {
+            await LibrarySearchModule.importResults(selectedResults);
+            if (dialogHelper.window) {
+              dialogHelper.window.alert(getString("results-dialog-import-success"));
+              dialogHelper.window.close();
+            }
+          } catch (error: any) {
+            if (dialogHelper.window) {
+              dialogHelper.window.alert(getString("results-dialog-import-error") + ": " + error?.message);
+            }
+          }
+        },
+        noClose: true
+      })
+      .addButton(getString("results-dialog-import-all"), "importAll", {
+        callback: async (e) => {
+          try {
+            await LibrarySearchModule.importResults(results);
+            if (dialogHelper.window) {
+              dialogHelper.window.alert(getString("results-dialog-import-success"));
+              dialogHelper.window.close();
+            }
+          } catch (error: any) {
+            if (dialogHelper.window) {
+              dialogHelper.window.alert(getString("results-dialog-import-error") + ": " + error?.message);
+            }
+          }
+        },
+        noClose: true
+      })
+      .addButton(getString("results-dialog-cancel"), "cancel")
+      .setDialogData(dialogData);
   
-  // Open the dialog
-  dialogHelper.open(getString("results-dialog-title"));
-}
+    // Open the dialog
+    dialogHelper.open(getString("results-dialog-title"));
+  }
 
-  /**
-   * Runs a search using the library_search.py script
-   */
   static async runSearch(searchParams: any): Promise<any[]> {
     const { pythonPath, scriptPath, protocol, endpoint, title, author, isbn, maxResults } = searchParams;
     
-    // Existing validation code...
+    // Create a log collection for debugging
+    const debugLogs: string[] = [];
+    const log = (message: string) => {
+      ztoolkit.log(message);
+      debugLogs.push(message);
+    };
+    
+    log("========== SEARCH PARAMETERS ==========");
+    log(`Python Path: "${pythonPath}"`);
+    log(`Script Path: "${scriptPath}"`);
+    log(`Protocol: "${protocol}"`);
+    log(`Endpoint: "${endpoint}"`);
+    log(`Title: "${title || 'None'}"`);
+    log(`Author: "${author || 'None'}"`);
+    log(`ISBN: "${isbn || 'None'}"`);
+    log(`Max Results: ${maxResults}`);
+    log("======================================");
+    
+    // Validation checks for paths
+    if (!pythonPath || !scriptPath) {
+      throw new Error(getString("search-error-missing-paths"));
+    }
+    
+    // Check if Python and script paths exist
+    try {
+      const pythonFile = Components.classes["@mozilla.org/file/local;1"]
+        .createInstance(Components.interfaces.nsIFile);
+      pythonFile.initWithPath(pythonPath);
+      
+      const scriptFile = Components.classes["@mozilla.org/file/local;1"]
+        .createInstance(Components.interfaces.nsIFile);
+      scriptFile.initWithPath(scriptPath);
+      
+      if (!pythonFile.exists() || !scriptFile.exists()) {
+        throw new Error("Python or script path does not exist");
+      }
+    } catch (e) {
+      log(`Error checking paths: ${String(e)}`);
+      throw new Error(`Invalid Python or script path: ${String(e)}`);
+    }
     
     // Build command args
     const args = [
@@ -844,173 +742,1068 @@ static async openResultsDialog(results: any[]) {
     if (author) args.push('--author', author);
     if (isbn) args.push('--isbn', isbn);
     
-    // Log the full command for debugging
-    ztoolkit.log("Executing search command:", pythonPath, args.join(' '));
+    const testCommand = `${pythonPath} ${args.join(' ')}`;
+    log("Test command: " + testCommand);
     
+    // Use synchronous execution with system shell
     try {
-      const { exitCode, result, stderr } = await LibrarySearchModule.executeCommand(pythonPath, args);
+      log("Executing command through system shell...");
       
-      // Log the raw output for debugging
-      ztoolkit.log("Command exit code:", exitCode);
-      ztoolkit.log("Raw command output:", result);
-      if (stderr) {
-        ztoolkit.log("Command stderr:", stderr);
+      let shellCommand;
+      let shellArgs;
+      
+      // Create temporary output file path
+      const timestamp = Date.now();
+      const tempOutputPath = Zotero.isWin 
+        ? `C:\\Temp\\zotero_out_${timestamp}.json`
+        : `/tmp/zotero_out_${timestamp}.json`;
+      
+      // Set up shell command with output redirection
+      if (Zotero.isWin) {
+        shellCommand = 'cmd.exe';
+        shellArgs = ['/c', `"${pythonPath}" ${args.join(' ')} > "${tempOutputPath}"`];
+      } else {
+        shellCommand = '/bin/sh';
+        shellArgs = ['-c', `"${pythonPath}" ${args.join(' ')} > "${tempOutputPath}"`];
       }
       
-      if (exitCode !== 0) {
-        ztoolkit.log("Search script error:", stderr);
-        throw new Error(getString("search-error-script-failed") + ": " + stderr);
+      log(`Shell command: ${shellCommand} ${shellArgs.join(' ')}`);
+      
+      // Execute the shell command synchronously
+      const shellFile = Components.classes["@mozilla.org/file/local;1"]
+        .createInstance(Components.interfaces.nsIFile);
+      shellFile.initWithPath(shellCommand);
+      
+      // Create and initialize process
+      const process = Components.classes["@mozilla.org/process/util;1"]
+        .createInstance(Components.interfaces.nsIProcess);
+      process.init(shellFile);
+      
+      // Run synchronously
+      process.run(true, shellArgs, shellArgs.length);
+      
+      log(`Command completed with exit code: ${process.exitValue}`);
+      log(`Checking for output file: ${tempOutputPath}`);
+      
+      // Check if output file exists
+      const outputFile = Components.classes["@mozilla.org/file/local;1"]
+        .createInstance(Components.interfaces.nsIFile);
+      outputFile.initWithPath(tempOutputPath);
+      
+      if (!outputFile.exists()) {
+        throw new Error(`Output file not created: ${tempOutputPath}`);
       }
       
-      // Trim and log the JSON content
-      const trimmedResult = result.trim();
-      ztoolkit.log("Trimmed result:", trimmedResult);
+      // Now read the file using a very simple approach
+      const tempResultPath = tempOutputPath + ".read.txt";
       
-      try {
-        // Try to parse as JSON
-        const results = JSON.parse(trimmedResult);
+      // Execute a simple cat/type command to read the file
+      let readCommand;
+      let readArgs;
+      
+      if (Zotero.isWin) {
+        readCommand = 'cmd.exe';
+        readArgs = ['/c', `type "${tempOutputPath}" > "${tempResultPath}"`];
+      } else {
+        readCommand = '/bin/sh';
+        readArgs = ['-c', `cat "${tempOutputPath}" > "${tempResultPath}"`];
+      }
+      
+      log(`Reading file using: ${readCommand} ${readArgs.join(' ')}`);
+      
+      const readFile = Components.classes["@mozilla.org/file/local;1"]
+        .createInstance(Components.interfaces.nsIFile);
+      readFile.initWithPath(readCommand);
+      
+      const readProcess = Components.classes["@mozilla.org/process/util;1"]
+        .createInstance(Components.interfaces.nsIProcess);
+      readProcess.init(readFile);
+      
+      readProcess.run(true, readArgs, readArgs.length);
+      
+      // This is now a simpler file that hopefully we can read directly
+      log(`Checking for read result file: ${tempResultPath}`);
+      
+      // Try to read the content as a plain text file
+      const resultFile = Components.classes["@mozilla.org/file/local;1"]
+        .createInstance(Components.interfaces.nsIFile);
+      resultFile.initWithPath(tempResultPath);
+      
+      if (!resultFile.exists()) {
+        throw new Error(`Result file not created: ${tempResultPath}`);
+      }
+      
+      // Use FileUtils to read the file as text (less prone to TypeScript errors)
+      // We'll use a simple XMLHttpRequest to load a local file
+      const fileUrl = `file://${tempResultPath}`;
+      log(`Loading file URL: ${fileUrl}`);
+      
+      const xhr = new XMLHttpRequest();
+      xhr.open("GET", fileUrl, false); // synchronous request
+      xhr.overrideMimeType("application/json");
+      xhr.send(null);
+      
+      if (xhr.status === 0 || xhr.status === 200) {
+        const content = xhr.responseText || "";
+        log(`File content length: ${content.length}`);
         
-        // Validate the structure
-        if (!Array.isArray(results)) {
-          ztoolkit.log("Results are not an array:", results);
-          throw new Error(getString("search-error-invalid-results") + ": Results are not an array");
+        // Clean up temporary files
+        try {
+          outputFile.remove(false);
+          resultFile.remove(false);
+        } catch (e) {
+          log(`Warning: Could not remove temporary files: ${String(e)}`);
         }
         
-        // Log each result's structure
-        results.forEach((item, index) => {
-          ztoolkit.log(`Result ${index} structure:`, JSON.stringify(item, null, 2));
-        });
-        
-        ztoolkit.log(`Found ${results.length} results`);
-        addon.data.lastSearchResults = results;
-        return results;
-      } catch (e) {
-        ztoolkit.log("Error parsing JSON results:", e);
-        
-        // Try to show part of the raw result to help debugging
-        const preview = result.length > 200 ? result.substring(0, 200) + "..." : result;
-        throw new Error(getString("search-error-invalid-results") + 
-                       `\n\nParser error: ${e}\n\nPreview: ${preview}`);
+        if (content && content.length > 0) {
+          try {
+            // Modified parsing approach - extract JSON objects
+            log("Extracting individual JSON objects from output");
+            
+            // Method 1: Try to parse as a single JSON array
+            try {
+              const results = JSON.parse(content);
+              log("Successfully parsed entire content as JSON");
+              
+              if (Array.isArray(results)) {
+                return results;
+              } else {
+                return [results]; // Wrap single object in array
+              }
+            } catch (e) {
+              log(`Could not parse as complete JSON: ${String(e)}`);
+              // Continue to alternate parsing methods
+            }
+            
+            // Method 2: Extract individual JSON objects
+            log("Trying to extract individual JSON objects");
+            const jsonObjects = [];
+            
+            // Regular expression to find JSON objects (matches content between { and })
+            const objectRegex = /{[^{]*(?:{[^{}]*}[^{}]*)*}/g;
+            let match;
+            
+            while ((match = objectRegex.exec(content)) !== null) {
+              try {
+                const obj = JSON.parse(match[0]);
+                jsonObjects.push(obj);
+                log(`Found JSON object: ${match[0].substring(0, 50)}...`);
+              } catch (e) {
+                log(`Failed to parse potential JSON object: ${match[0].substring(0, 50)}...`);
+              }
+            }
+            
+            if (jsonObjects.length > 0) {
+              log(`Successfully extracted ${jsonObjects.length} JSON objects`);
+              return jsonObjects;
+            }
+            
+            // Method 3: Try line-by-line approach for JSON objects
+            log("Trying line-by-line JSON object extraction");
+            const lines = content.split('\n');
+            const lineObjects = [];
+            
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i].trim();
+              if (line.startsWith('{') && line.endsWith('}')) {
+                try {
+                  const obj = JSON.parse(line);
+                  lineObjects.push(obj);
+                  log(`Found JSON object on line ${i+1}`);
+                } catch (e) {
+                  log(`Failed to parse line ${i+1} as JSON`);
+                }
+              }
+            }
+            
+            if (lineObjects.length > 0) {
+              log(`Successfully extracted ${lineObjects.length} JSON objects from lines`);
+              return lineObjects;
+            }
+            
+            // Method 4: Manually extract each result section
+            log("Trying to extract JSON between result markers");
+            const resultSections = content.split('--- Result');
+            const sectionObjects = [];
+            
+            for (let i = 1; i < resultSections.length; i++) {
+              const section = resultSections[i];
+              // Extract the JSON part (after the "of X ---" header)
+              const jsonStartIndex = section.indexOf('{');
+              const jsonEndIndex = section.lastIndexOf('}');
+              
+              if (jsonStartIndex !== -1 && jsonEndIndex !== -1 && jsonEndIndex > jsonStartIndex) {
+                const jsonText = section.substring(jsonStartIndex, jsonEndIndex + 1);
+                try {
+                  const obj = JSON.parse(jsonText);
+                  sectionObjects.push(obj);
+                  log(`Successfully parsed result section ${i}`);
+                } catch (e) {
+                  log(`Failed to parse result section ${i}: ${e}`);
+                }
+              }
+            }
+            
+            if (sectionObjects.length > 0) {
+              log(`Successfully extracted ${sectionObjects.length} objects from result sections`);
+              return sectionObjects;
+            }
+            
+            throw new Error("Could not extract any valid JSON objects from the output");
+          } catch (e) {
+            throw new Error(`Error parsing result: ${String(e)}`);
+          }
+        } else {
+          throw new Error("Output file was empty");
+        }
+      } else {
+        throw new Error(`Failed to load file: ${xhr.status} ${xhr.statusText}`);
       }
     } catch (error) {
-      ztoolkit.log("Command execution error:", error);
+      // Show debug dialog and rethrow
+      this.showDebugDialog(
+        "Search Issue",
+        `Error executing search: ${String(error)}`,
+        debugLogs.join("\n")
+      );
       throw error;
     }
   }
 
   /**
-   * Execute a command with the OS command processor
-   * @param command Command to execute
-   * @param args Arguments for the command
-   * @returns Promise resolving to execution result
+   * Runs a search using the library_search.py script
+   * Includes robust error handling and multiple approaches to capture output
+   */
+  static async NonWorkingrunSearch(searchParams: any): Promise<any[]> {
+    const { pythonPath, scriptPath, protocol, endpoint, title, author, isbn, maxResults } = searchParams;
+    
+    // Create a log collection to show in UI if needed
+    const debugLogs: string[] = [];
+    
+    // Helper to add to both Zotero logs and our debug collection
+    const log = (message: string) => {
+      ztoolkit.log(message);
+      debugLogs.push(message);
+    };
+    
+    log("========== SEARCH PARAMETERS ==========");
+    log(`Python Path: "${pythonPath}"`);
+    log(`Script Path: "${scriptPath}"`);
+    log(`Protocol: "${protocol}"`);
+    log(`Endpoint: "${endpoint}"`);
+    log(`Title: "${title || 'None'}"`);
+    log(`Author: "${author || 'None'}"`);
+    log(`ISBN: "${isbn || 'None'}"`);
+    log(`Max Results: ${maxResults}`);
+    log("======================================");
+    
+    // Validate paths first
+    if (!pythonPath || !scriptPath) {
+      throw new Error(getString("search-error-missing-paths"));
+    }
+    
+    // Check if Python path exists
+    try {
+      const pythonFile = Components.classes["@mozilla.org/file/local;1"]
+        .createInstance(Components.interfaces.nsIFile);
+      pythonFile.initWithPath(pythonPath);
+      
+      if (!pythonFile.exists()) {
+        log(`ERROR: Python executable not found at: "${pythonPath}"`);
+        throw new Error(`Python executable not found at: ${pythonPath}`);
+      }
+      
+      log(`✓ Python executable exists at "${pythonPath}"`);
+    } catch (e) {
+      log(`ERROR checking Python path: ${String(e)}`);
+      throw new Error(`Invalid Python path: ${pythonPath}. Error: ${String(e)}`);
+    }
+    
+    // Check if script path exists
+    try {
+      const scriptFile = Components.classes["@mozilla.org/file/local;1"]
+        .createInstance(Components.interfaces.nsIFile);
+      scriptFile.initWithPath(scriptPath);
+      
+      if (!scriptFile.exists()) {
+        log(`ERROR: Script not found at: "${scriptPath}"`);
+        throw new Error(`Script not found at: ${scriptPath}`);
+      }
+      
+      log(`✓ Script exists at "${scriptPath}"`);
+    } catch (e) {
+      log(`ERROR checking script path: ${String(e)}`);
+      throw new Error(`Invalid script path: ${scriptPath}. Error: ${String(e)}`);
+    }
+    
+    // Generate a unique timestamp for temp files
+    const timestamp = Date.now();
+    
+    // Determine system-appropriate temp directory for output file
+    let outputPath: string;
+    if (Zotero.isWin) {
+      outputPath = `C:\\Temp\\zotero_search_${timestamp}.json`;
+    } else if (Zotero.isMac) {
+      outputPath = `/tmp/zotero_search_${timestamp}.json`;
+    } else {
+      // Linux or other
+      outputPath = `/tmp/zotero_search_${timestamp}.json`;
+    }
+    
+    log(`Will use output file: ${outputPath}`);
+    
+    // -------- APPROACH 1: OUTPUT TO FILE --------
+    log("\n=== TRYING APPROACH 1: Output to File ===");
+    
+    // Build command args with output file
+    const fileOutputArgs = [
+      scriptPath,
+      '--protocol', protocol,
+      '--endpoint', endpoint,
+      '--format', 'json',
+      '--max-records', maxResults.toString(),
+      '--output', outputPath
+    ];
+    
+    if (title) fileOutputArgs.push('--title', title);
+    if (author) fileOutputArgs.push('--author', author);
+    if (isbn) fileOutputArgs.push('--isbn', isbn);
+    
+    // Command string for debugging/testing
+    const fileOutputCmd = `${pythonPath} ${fileOutputArgs.join(' ')}`;
+    log(`Command: ${fileOutputCmd}`);
+    
+    try {
+      log("Executing command (output to file)...");
+      const { exitCode, result, stderr } = await this.executeCommand(pythonPath, fileOutputArgs);
+      
+      log(`Exit code: ${exitCode}`);
+      log(`Result length: ${result ? result.length : 0}`);
+      log(`Stderr: ${stderr || '(none)'}`);
+      
+      if (exitCode !== 0) {
+        log(`Command failed with exit code ${exitCode}, will try other approaches`);
+      } else {
+        log("Command executed successfully, checking for output file...");
+        
+        // Check if output file was created
+        try {
+          const outputFile = Components.classes["@mozilla.org/file/local;1"]
+            .createInstance(Components.interfaces.nsIFile);
+          outputFile.initWithPath(outputPath);
+          
+          if (outputFile.exists()) {
+            log(`✓ Output file exists: ${outputPath}`);
+            
+            // Read the file contents
+            try {
+              // Use a more compatible approach for file reading
+              const fileContents = await this.readFile(outputPath);
+              log(`Read ${fileContents.length} bytes from output file`);
+              
+              if (fileContents && fileContents.length > 0) {
+                log(`File content (first 200 chars): ${fileContents.substring(0, 200)}...`);
+                
+                try {
+                  const parsedData = JSON.parse(fileContents);
+                  log("✓ Successfully parsed JSON data from file");
+                  
+                  // Clean up the file
+                  try {
+                    outputFile.remove(false);
+                    log("Removed temporary output file");
+                  } catch (e) {
+                    log(`Warning: Could not remove temporary file: ${e}`);
+                  }
+                  
+                  if (Array.isArray(parsedData)) {
+                    log(`Success: Found array with ${parsedData.length} items`);
+                    addon.data.lastSearchResults = parsedData;
+                    return parsedData;
+                  } else if (typeof parsedData === 'object') {
+                    // Single object - wrap in array
+                    log("Success: Found single object, wrapping in array");
+                    const results = [parsedData];
+                    addon.data.lastSearchResults = results;
+                    return results;
+                  } else {
+                    throw new Error(`Invalid data type: ${typeof parsedData}`);
+                  }
+                } catch (parseError) {
+                  log(`ERROR parsing JSON from file: ${String(parseError)}`);
+                  // Continue to next approach
+                }
+              } else {
+                log("Output file exists but is empty");
+              }
+            } catch (readError) {
+              log(`ERROR reading output file: ${String(readError)}`);
+            }
+          } else {
+            log(`Output file was not created: ${outputPath}`);
+          }
+        } catch (fileError) {
+          log(`ERROR checking output file: ${String(fileError)}`);
+        }
+      }
+    } catch (approachError) {
+      log(`Error in Approach 1: ${String(approachError)}`);
+    }
+    
+    // -------- APPROACH 2: DIRECT OUTPUT CAPTURE --------
+    log("\n=== TRYING APPROACH 2: Direct Output Capture ===");
+    
+    // Build command args without output file
+    const directOutputArgs = [
+      scriptPath,
+      '--protocol', protocol,
+      '--endpoint', endpoint,
+      '--format', 'json',
+      '--max-records', maxResults.toString()
+    ];
+    
+    if (title) directOutputArgs.push('--title', title);
+    if (author) directOutputArgs.push('--author', author);
+    if (isbn) directOutputArgs.push('--isbn', isbn);
+    
+    // Command string for debugging/testing
+    const directOutputCmd = `${pythonPath} ${directOutputArgs.join(' ')}`;
+    log(`Command: ${directOutputCmd}`);
+    
+    try {
+      log("Executing command (direct output)...");
+      const { exitCode, result, stderr } = await this.executeCommand(
+        pythonPath, 
+        directOutputArgs
+      );
+      
+      log(`Exit code: ${exitCode}`);
+      log(`Result length: ${result ? result.length : 0}`);
+      log(`Stderr: ${stderr || '(none)'}`);
+      
+      if (exitCode !== 0) {
+        log(`Command failed with exit code ${exitCode}, will try other approaches`);
+      } else if (result && result.length > 0) {
+        log(`Result (first 200 chars): ${result.substring(0, 200)}...`);
+        
+        try {
+          const parsedData = JSON.parse(result);
+          log("✓ Successfully parsed JSON from direct output");
+          
+          if (Array.isArray(parsedData)) {
+            log(`Success: Found array with ${parsedData.length} items`);
+            addon.data.lastSearchResults = parsedData;
+            return parsedData;
+          } else if (typeof parsedData === 'object') {
+            // Single object - wrap in array
+            log("Success: Found single object, wrapping in array");
+            const results = [parsedData];
+            addon.data.lastSearchResults = results;
+            return results;
+          } else {
+            throw new Error(`Invalid data type: ${typeof parsedData}`);
+          }
+        } catch (parseError) {
+          log(`ERROR parsing JSON from direct output: ${String(parseError)}`);
+          // Continue to next approach
+        }
+      } else {
+        log("Command returned empty output");
+      }
+    } catch (approachError) {
+      log(`Error in Approach 2: ${String(approachError)}`);
+    }
+    
+    // -------- APPROACH 3: PYTHON SUBPROCESS MODULE --------
+    log("\n=== TRYING APPROACH 3: Python Subprocess Module ===");
+    
+    // Prepare a Python command that uses subprocess to capture output
+    const escapedTitle = title ? title.replace(/"/g, '\\"') : '';
+    const escapedAuthor = author ? author.replace(/"/g, '\\"') : '';
+    const escapedISBN = isbn ? isbn.replace(/"/g, '\\"') : '';
+    
+    const pythonCode = `
+import json, subprocess, sys
+
+cmd = [
+  "${pythonPath.replace(/\\/g, '\\\\')}", 
+  "${scriptPath.replace(/\\/g, '\\\\')}", 
+  "--protocol", "${protocol}", 
+  "--endpoint", "${endpoint}", 
+  "--format", "json", 
+  "--max-records", "${maxResults}"
+]
+
+${title ? `cmd.extend(["--title", "${escapedTitle}"])` : ''}
+${author ? `cmd.extend(["--author", "${escapedAuthor}"])` : ''}
+${isbn ? `cmd.extend(["--isbn", "${escapedISBN}"])` : ''}
+
+try:
+  result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+  print(json.dumps({
+    "exit_code": result.returncode,
+    "stdout": result.stdout,
+    "stderr": result.stderr
+  }))
+except Exception as e:
+  print(json.dumps({
+    "exit_code": -1,
+    "stdout": "",
+    "stderr": str(e)
+  }))
+`;
+
+    const tempScriptPath = outputPath.replace('.json', '.py');
+    log(`Writing Python script to: ${tempScriptPath}`);
+    
+    try {
+      // Write the Python code to the temp file using our helper
+      await this.writeFile(tempScriptPath, pythonCode);
+      log("Executing Python subprocess script...");
+      
+      const { exitCode, result, stderr } = await this.executeCommand(
+        pythonPath, 
+        [tempScriptPath]
+      );
+      
+      // Clean up the temp script file
+      try {
+        const tempScript = Components.classes["@mozilla.org/file/local;1"]
+          .createInstance(Components.interfaces.nsIFile);
+        tempScript.initWithPath(tempScriptPath);
+        if (tempScript.exists()) {
+          tempScript.remove(false);
+        }
+      } catch (e) {
+        log(`Warning: Could not remove temporary script: ${String(e)}`);
+      }
+      
+      log(`Subprocess exit code: ${exitCode}`);
+      log(`Subprocess result length: ${result ? result.length : 0}`);
+      
+      if (exitCode !== 0) {
+        log(`Subprocess script failed with exit code ${exitCode}`);
+        log(`Stderr: ${stderr}`);
+      } else if (result && result.length > 0) {
+        log(`Subprocess result (first 200 chars): ${result.substring(0, 200)}...`);
+        
+        try {
+          const subprocessResult = JSON.parse(result);
+          
+          log(`Script exit code: ${subprocessResult.exit_code}`);
+          log(`Script stdout length: ${subprocessResult.stdout ? subprocessResult.stdout.length : 0}`);
+          log(`Script stderr: ${subprocessResult.stderr || '(none)'}`);
+          
+          if (subprocessResult.stdout && subprocessResult.stdout.length > 0) {
+            log(`Script stdout (first 200 chars): ${subprocessResult.stdout.substring(0, 200)}...`);
+            
+            try {
+              const parsedData = JSON.parse(subprocessResult.stdout);
+              log("✓ Successfully parsed JSON from subprocess output");
+              
+              if (Array.isArray(parsedData)) {
+                log(`Success: Found array with ${parsedData.length} items`);
+                addon.data.lastSearchResults = parsedData;
+                return parsedData;
+              } else if (typeof parsedData === 'object') {
+                // Single object - wrap in array
+                log("Success: Found single object, wrapping in array");
+                const results = [parsedData];
+                addon.data.lastSearchResults = results;
+                return results;
+              } else {
+                throw new Error(`Invalid data type: ${typeof parsedData}`);
+              }
+            } catch (parseError) {
+              log(`ERROR parsing JSON from subprocess output: ${String(parseError)}`);
+              // Continue to next approach
+            }
+          } else {
+            log("Subprocess returned empty stdout");
+          }
+        } catch (jsonError) {
+          log(`ERROR parsing subprocess result JSON: ${String(jsonError)}`);
+        }
+      } else {
+        log("Subprocess returned empty result");
+      }
+    } catch (approachError) {
+      log(`Error in Approach 3: ${String(approachError)}`);
+    }
+    
+    // -------- APPROACH 4: Try Python -c flag --------
+    log("\n=== TRYING APPROACH 4: Python -c flag ===");
+    
+    // This approach uses Python's -c flag to run a Python program that executes our script
+    // This gives better control over how Python runs and captures output
+    const pyEscapedTitle = title ? title.replace(/'/g, "\\'") : '';
+    const pyEscapedAuthor = author ? author.replace(/'/g, "\\'") : '';
+    const pyEscapedISBN = isbn ? isbn.replace(/'/g, "\\'") : '';
+
+    const inlinePythonCode = `
+import sys, json, subprocess
+cmd = [sys.executable, '${scriptPath.replace(/'/g, "\\'")}', 
+  '--protocol', '${protocol}', '--endpoint', '${endpoint}', 
+  '--format', 'json', '--max-records', '${maxResults}'
+]
+${title ? `cmd.extend(['--title', '${pyEscapedTitle}'])` : ''}
+${author ? `cmd.extend(['--author', '${pyEscapedAuthor}'])` : ''}
+${isbn ? `cmd.extend(['--isbn', '${pyEscapedISBN}'])` : ''}
+try:
+  result = subprocess.run(cmd, capture_output=True, text=True)
+  print(result.stdout)
+except Exception as e:
+  sys.stderr.write(str(e))
+  sys.exit(1)
+`;
+
+    try {
+      log("Executing Python with -c flag...");
+      const { exitCode, result, stderr } = await this.executeCommand(
+        pythonPath,
+        ['-c', inlinePythonCode]
+      );
+      
+      log(`Python -c exit code: ${exitCode}`);
+      log(`Python -c result length: ${result ? result.length : 0}`);
+      log(`Python -c stderr: ${stderr || '(none)'}`);
+      
+      if (exitCode !== 0) {
+        log(`Python -c failed with exit code ${exitCode}`);
+      } else if (result && result.length > 0) {
+        log(`Python -c result (first 200 chars): ${result.substring(0, 200)}...`);
+        
+        try {
+          const parsedData = JSON.parse(result);
+          log("✓ Successfully parsed JSON from Python -c output");
+          
+          if (Array.isArray(parsedData)) {
+            log(`Success: Found array with ${parsedData.length} items`);
+            addon.data.lastSearchResults = parsedData;
+            return parsedData;
+          } else if (typeof parsedData === 'object') {
+            // Single object - wrap in array
+            log("Success: Found single object, wrapping in array");
+            const results = [parsedData];
+            addon.data.lastSearchResults = results;
+            return results;
+          } else {
+            throw new Error(`Invalid data type: ${typeof parsedData}`);
+          }
+        } catch (parseError) {
+          log(`ERROR parsing JSON from Python -c output: ${String(parseError)}`);
+        }
+      } else {
+        log("Python -c returned empty result");
+      }
+    } catch (approachError) {
+      log(`Error in Approach 4: ${String(approachError)}`);
+    }
+    
+    // -------- APPROACH 5: Try to run directly with system shell --------
+    log("\n=== TRYING APPROACH 5: System shell ===");
+    
+    let shellCommand: string;
+    let shellArgs: string[];
+    
+    if (Zotero.isWin) {
+      // Windows: use cmd.exe
+      shellCommand = 'cmd.exe';
+      shellArgs = ['/c', `"${pythonPath}" "${scriptPath}" --protocol ${protocol} --endpoint ${endpoint} --format json --max-records ${maxResults}${title ? ` --title "${title}"` : ''}${author ? ` --author "${author}"` : ''}${isbn ? ` --isbn "${isbn}"` : ''}`];
+    } else {
+      // Unix: use sh
+      shellCommand = '/bin/sh';
+      shellArgs = ['-c', `"${pythonPath}" "${scriptPath}" --protocol ${protocol} --endpoint ${endpoint} --format json --max-records ${maxResults}${title ? ` --title "${title}"` : ''}${author ? ` --author "${author}"` : ''}${isbn ? ` --isbn "${isbn}"` : ''}`];
+    }
+    
+    try {
+      log(`Executing system shell: ${shellCommand} ${shellArgs.join(' ')}`);
+      const { exitCode, result, stderr } = await this.executeCommand(shellCommand, shellArgs);
+      
+      log(`Shell exit code: ${exitCode}`);
+      log(`Shell result length: ${result ? result.length : 0}`);
+      log(`Shell stderr: ${stderr || '(none)'}`);
+      
+      if (exitCode !== 0) {
+        log(`Shell command failed with exit code ${exitCode}`);
+      } else if (result && result.length > 0) {
+        log(`Shell result (first 200 chars): ${result.substring(0, 200)}...`);
+        
+        try {
+          const parsedData = JSON.parse(result);
+          log("✓ Successfully parsed JSON from shell output");
+          
+          if (Array.isArray(parsedData)) {
+            log(`Success: Found array with ${parsedData.length} items`);
+            addon.data.lastSearchResults = parsedData;
+            return parsedData;
+          } else if (typeof parsedData === 'object') {
+            // Single object - wrap in array
+            log("Success: Found single object, wrapping in array");
+            const results = [parsedData];
+            addon.data.lastSearchResults = results;
+            return results;
+          } else {
+            throw new Error(`Invalid data type: ${typeof parsedData}`);
+          }
+        } catch (parseError) {
+          log(`ERROR parsing JSON from shell output: ${String(parseError)}`);
+          // Try to extract JSON objects from output
+          const jsonObjects = this.extractJsonObjects(result);
+          if (jsonObjects.length > 0) {
+            log(`Extracted ${jsonObjects.length} JSON objects from mixed output`);
+            addon.data.lastSearchResults = jsonObjects;
+            return jsonObjects;
+          }
+        }
+      } else {
+        log("Shell command returned empty result");
+      }
+    } catch (approachError) {
+      log(`Error in Approach 5: ${String(approachError)}`);
+    }
+    
+    // If we reach here, all approaches failed
+    log("\n=== ALL APPROACHES FAILED ===");
+    
+    // Create a user-friendly manual test command
+    const manualTestCmd = `${pythonPath} ${scriptPath} --protocol ${protocol} --endpoint ${endpoint} --format json --max-records ${maxResults}${title ? ` --title "${title}"` : ''}${author ? ` --author "${author}"` : ''}${isbn ? ` --isbn "${isbn}"` : ''}`;
+    
+    // Show debug dialog with all the logs
+    this.showDebugDialog(
+      "Search Script Issue",
+      "The search script could not be executed properly or its output could not be captured. Please try running the command directly in a terminal to check if it works.",
+      `Manual test command:\n${manualTestCmd}\n\nDebug Logs:\n${debugLogs.join("\n")}`
+    );
+    
+    throw new Error("Could not retrieve search results after trying multiple approaches. Please check the logs and try running the command manually.");
+  }
+
+  /**
+   * Execute a command with OS command processor
    */
   static async executeCommand(command: string, args: string[]): Promise<{ exitCode: number, result: string, stderr: string }> {
     return new Promise((resolve, reject) => {
       try {
+        ztoolkit.log(`Executing command: ${command} ${args.join(' ')}`);
+        
+        // Create file for the command
+        const file = Components.classes["@mozilla.org/file/local;1"]
+          .createInstance(Components.interfaces.nsIFile);
+        file.initWithPath(command);
+        
         // Create process
         const process = Components.classes["@mozilla.org/process/util;1"]
           .createInstance(Components.interfaces.nsIProcess);
-
-        // Initialize with command path
-        const file = Components.classes["@mozilla.org/file/local;1"]
-          .createInstance(Components.interfaces.nsIFile);
-        
-        // If the command is a non-absolute path like 'which' or 'where', use special handling
-        if (!command.includes('/') && !command.includes('\\')) {
-          // For system commands without a path, create a temporary shell script
-          if (Zotero.isWin) {
-            // Windows - use cmd.exe
-            file.initWithPath('C:\\Windows\\System32\\cmd.exe');
-            // Prepend /c to run the command and exit
-            args = ['/c', command, ...args];
-            command = 'C:\\Windows\\System32\\cmd.exe';
-          } else {
-            // Unix - use /bin/sh
-            file.initWithPath('/bin/sh');
-            // Create command string with arguments
-            const cmdString = `${command} ${args.join(' ')}`;
-            args = ['-c', cmdString];
-            command = '/bin/sh';
-          }
-        } else {
-          // Normal case - direct command with path
-          file.initWithPath(command);
-        }
         
         process.init(file);
-
+        
         // Create pipes for stdout and stderr
         const stdout = Components.classes["@mozilla.org/pipe;1"]
           .createInstance(Components.interfaces.nsIPipe);
-        stdout.init(false, false, 0, 0, null);
-
+        stdout.init(false, false, 8192, 0, null);  // Use larger buffer
+        
         const stderr = Components.classes["@mozilla.org/pipe;1"]
           .createInstance(Components.interfaces.nsIPipe);
-        stderr.init(false, false, 0, 0, null);
-
-        // Run process and capture output
+        stderr.init(false, false, 8192, 0, null);  // Use larger buffer
+        
+        // Run process
         process.run(false, args, args.length, stdout.outputStream, stderr.outputStream);
-
-        // Read from pipes
-        const stdoutData = LibrarySearchModule.readFromPipe(stdout.inputStream);
-        const stderrData = LibrarySearchModule.readFromPipe(stderr.inputStream);
-
-        // Wait for process to complete
+        
+        // Read output with continuous polling
+        let stdoutData = "";
+        let stderrData = "";
+        let complete = false;
+        
+        // Function to read available data from streams
+        const readAvailableData = () => {
+          try {
+            // Read from stdout
+            if (stdout.inputStream.available() > 0) {
+              const scriptableInput = Components.classes["@mozilla.org/scriptableinputstream;1"]
+                .createInstance(Components.interfaces.nsIScriptableInputStream);
+              scriptableInput.init(stdout.inputStream);
+              
+              const available = stdout.inputStream.available();
+              const data = scriptableInput.read(available);
+              stdoutData += data;
+              
+              ztoolkit.log(`Read ${data.length} bytes from stdout pipe`);
+            }
+            
+            // Read from stderr
+            if (stderr.inputStream.available() > 0) {
+              const scriptableInput = Components.classes["@mozilla.org/scriptableinputstream;1"]
+                .createInstance(Components.interfaces.nsIScriptableInputStream);
+              scriptableInput.init(stderr.inputStream);
+              
+              const available = stderr.inputStream.available();
+              const data = scriptableInput.read(available);
+              stderrData += data;
+              
+              ztoolkit.log(`Read ${data.length} bytes from stderr pipe`);
+            }
+          } catch (e) {
+            ztoolkit.log(`Error reading from pipes: ${e}`);
+          }
+        };
+        
+        // Poll for completion
         const checkInterval = setInterval(() => {
+          if (complete) return;
+          
+          readAvailableData();
+          
           if (!process.isRunning) {
             clearInterval(checkInterval);
+            complete = true;
+            
+            // Read any remaining data
+            readAvailableData();
+            
+            ztoolkit.log(`Process completed with exit code ${process.exitValue}`);
+            ztoolkit.log(`Total stdout data: ${stdoutData.length} bytes`);
+            ztoolkit.log(`Total stderr data: ${stderrData.length} bytes`);
+            
+            // Resolve with the results
             resolve({
               exitCode: process.exitValue,
-              result: stdoutData.join(""),
-              stderr: stderrData.join("")
+              result: stdoutData,
+              stderr: stderrData
             });
           }
         }, 100);
+        
+        // Set timeout to avoid hanging forever
+        setTimeout(() => {
+          if (!complete) {
+            clearInterval(checkInterval);
+            complete = true;
+            
+            ztoolkit.log("Process execution timed out, killing process");
+            try {
+              if (process.isRunning) {
+                process.kill();
+              }
+            } catch (e) {
+              ztoolkit.log(`Error killing process: ${e}`);
+            }
+            
+            readAvailableData();
+            
+            resolve({
+              exitCode: -1,
+              result: stdoutData,
+              stderr: stderrData + "\n(Process timed out after 60 seconds)"
+            });
+          }
+        }, 60000);  // 60 second timeout
       } catch (e) {
+        ztoolkit.log(`Error executing command: ${e}`);
         reject(e);
       }
     });
   }
+  
+/**
+ * Helper method to write to a file - Fixed for TypeScript
+ */
+static async writeFile(path: string, content: string): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    try {
+      // Create file object
+      const file = Components.classes["@mozilla.org/file/local;1"]
+        .createInstance(Components.interfaces.nsIFile);
+      file.initWithPath(path);
+      
+      // Create output stream with an explicit any type to bypass TypeScript errors
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const outStream: any = Components.classes["@mozilla.org/network/file-output-stream;1"]
+        .createInstance(Components.interfaces.nsIFile);
+      
+      // Init with PR_WRONLY | PR_CREATE_FILE | PR_TRUNCATE, permissions 0o666
+      outStream.init(file, 0x02 | 0x08 | 0x20, 0o666, 0);
+      
+      // Write content directly as a string
+      outStream.write(content, content.length);
+      outStream.close();
+      
+      resolve();
+    } catch (e) {
+      ztoolkit.log(`Error writing file ${path}: ${String(e)}`);
+      reject(e);
+    }
+  });
+}
+
+/**
+ * Helper method to read from a file - Fixed for TypeScript
+ */
+static async readFile(path: string): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    try {
+      // Create file object
+      const file = Components.classes["@mozilla.org/file/local;1"]
+        .createInstance(Components.interfaces.nsIFile);
+      file.initWithPath(path);
+      
+      if (!file.exists()) {
+        reject(new Error(`File does not exist: ${path}`));
+        return;
+      }
+      
+      // Use explicit any types to bypass TypeScript interface limitations
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const inStream: any = Components.classes["@mozilla.org/network/file-input-stream;1"]
+        .createInstance(Components.interfaces.nsIFile);
+      
+      // Init with PR_RDONLY, permissions 0o444
+      inStream.init(file, 0x01, 0o444, 0);
+      
+      // Create scriptable stream for reading
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const scriptableStream: any = Components.classes["@mozilla.org/scriptableinputstream;1"]
+        .createInstance(Components.interfaces.nsIFile);
+      scriptableStream.init(inStream);
+      
+      // Read the content
+      const fileSize = file.fileSize;
+      const data = scriptableStream.read(fileSize);
+      
+      // Clean up
+      scriptableStream.close();
+      inStream.close();
+      
+      resolve(data);
+    } catch (e) {
+      ztoolkit.log(`Error reading file ${path}: ${String(e)}`);
+      reject(e);
+    }
+  });
+}
 
   /**
-   * Read data from a pipe
+   * Extract JSON objects from mixed text output
    */
-  static readFromPipe(inputStream: any): string[] {
-    const data = [];
-    const stream = Components.classes["@mozilla.org/scriptableinputstream;1"]
-      .createInstance(Components.interfaces.nsIScriptableInputStream);
-    stream.init(inputStream);
-
-    let available;
-    while ((available = inputStream.available()) > 0) {
-      data.push(stream.read(available));
+  static extractJsonObjects(text: string): any[] {
+    const objects = [];
+    let depth = 0;
+    let startIndex = -1;
+    
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      
+      if (char === '{') {
+        if (depth === 0) {
+          startIndex = i;
+        }
+        depth++;
+      } else if (char === '}') {
+        depth--;
+        if (depth === 0 && startIndex !== -1) {
+          const jsonStr = text.substring(startIndex, i + 1);
+          try {
+            const obj = JSON.parse(jsonStr);
+            objects.push(obj);
+          } catch (e) {
+            // Invalid JSON, skip
+          }
+          startIndex = -1;
+        }
+      }
     }
-
-    return data;
+    
+    return objects;
   }
 
+  /**
+   * Helper method to show debug info in a dialog
+   */
+  static showDebugDialog(title: string, message: string, debugInfo: string) {
+    try {
+      const dialogHelper = new ztoolkit.Dialog(12, 1)
+        .addCell(0, 0, {
+          tag: "h2",
+          properties: { innerHTML: title }
+        })
+        .addCell(1, 0, {
+          tag: "p",
+          properties: { innerHTML: message }
+        })
+        .addCell(2, 0, {
+          tag: "h3",
+          properties: { innerHTML: "Debug Information:" }
+        })
+        .addCell(3, 0, {
+          tag: "textarea",
+          namespace: "html",
+          attributes: { readonly: "true" },
+          properties: { 
+            value: debugInfo,
+            rows: 25,
+            cols: 80
+          },
+          styles: { 
+            width: "100%", 
+            fontFamily: "monospace", 
+            whiteSpace: "pre",
+            fontSize: "12px"
+          }
+        })
+        .addButton("Copy to Clipboard", "copy", {
+          callback: (e) => {
+            // Copy debug info to clipboard
+            const win = dialogHelper.window;
+            if (win) {
+              const textarea = win.document.querySelector("textarea");
+              if (textarea) {
+                textarea.select();
+                win.document.execCommand("copy");
+              }
+            }
+          },
+          noClose: true
+        })
+        .addButton("Close", "close");
+
+      dialogHelper.open(title, { width: 800, height: 600 });
+    } catch (e) {
+      // Fallback to a less intrusive method if dialog creation fails
+      if (typeof Zotero !== 'undefined' && Zotero.getMainWindow) {
+        const win = Zotero.getMainWindow();
+        if (win) {
+          win.confirm(`${title}\n\n${message}\n\nSee console for debug information.`);
+          console.error(debugInfo);
+        }
+      } else {
+        // Last resort
+        console.error(`${title}: ${message}`);
+        console.error(debugInfo);
+      }
+    }
+  }
 
   /**
    * Import search results into Zotero
    */
-  static async importResults(results: any[]): Promise<void> {
-    if (!results || results.length === 0) {
+  static async importResults(records: any[]): Promise<void> {
+    if (!records || records.length === 0) {
       throw new Error("No results to import");
     }
 
-    ztoolkit.log(`Importing ${results.length} results into Zotero`);
+    ztoolkit.log(`Importing ${records.length} records into Zotero`);
 
     // Convert results to Zotero items
-    const items = results.map(result => {
+    const items = records.map(record => {
       // Determine item type
-      const itemType = result.issn ? "journalArticle" : "book";
+      const itemType = record.issn ? "journalArticle" : "book";
 
       // Format creators
       const creators = [];
 
       // Add authors
-      if (result.authors && result.authors.length > 0) {
-        for (const author of result.authors) {
+      if (record.authors && record.authors.length > 0) {
+        for (const author of record.authors) {
           let firstName = "";
           let lastName = "";
 
@@ -1039,8 +1832,8 @@ static async openResultsDialog(results: any[]) {
       }
 
       // Add editors
-      if (result.editors && result.editors.length > 0) {
-        for (const editor of result.editors) {
+      if (record.editors && record.editors.length > 0) {
+        for (const editor of record.editors) {
           let firstName = "";
           let lastName = "";
 
@@ -1071,19 +1864,19 @@ static async openResultsDialog(results: any[]) {
       // Create Zotero item
       const item: any = {
         itemType,
-        title: result.title,
+        title: record.title,
         creators,
-        date: result.year,
-        publisher: result.publisher_name,
-        place: result.place_of_publication,
-        ISBN: result.isbn,
-        ISSN: result.issn,
-        series: result.series,
-        edition: result.edition,
-        language: result.language,
-        url: result.urls && result.urls.length > 0 ? result.urls[0] : "",
-        abstractNote: result.abstract,
-        tags: (result.subjects || []).map((subject: string) => ({ tag: subject }))
+        date: record.year,
+        publisher: record.publisher_name,
+        place: record.place_of_publication,
+        ISBN: record.isbn,
+        ISSN: record.issn,
+        series: record.series,
+        edition: record.edition,
+        language: record.language,
+        url: record.urls && record.urls.length > 0 ? record.urls[0] : "",
+        abstractNote: record.abstract,
+        tags: (record.subjects || []).map((subject: string) => ({ tag: subject }))
       };
 
       // Clean up undefined/null values
@@ -1127,53 +1920,35 @@ static async openResultsDialog(results: any[]) {
 
         // Set creators
         if (item.creators && item.creators.length > 0) {
-          for (const creator of item.creators) {
-            try {
+          try {
+            for (let i = 0; i < item.creators.length; i++) {
+              const creator = item.creators[i];
               // Getting creator type ID
               const creatorID = Zotero.CreatorTypes.getID(creator.creatorType);
               
               if (creatorID) {
-                // Use type assertions to bypass strict type checking
-                // Try to get existing creator data
-                const creatorObj = {
-                  firstName: creator.firstName,
-                  lastName: creator.lastName
-                };
+                // Create creator data
+                const creatorData = new (Zotero as any).CreatorData();
+                creatorData.firstName = creator.firstName;
+                creatorData.lastName = creator.lastName;
+                creatorData.fieldMode = 0;
                 
-                const creatorDataID = (Zotero.Creators as any).getDataID(creatorObj);
+                // Save creator data
+                const id = (Zotero.Creators as any).save(creatorData);
                 
-                if (creatorDataID) {
-                  // Use type assertion to bypass parameter type mismatch
-                  newItem.setCreator(0, creatorDataID as any, creatorID as any);
-                } else {
-                  // Fallback: create a new creator
-                  // Use type assertion for CreatorData constructor
-                  const creatorData = new (Zotero as any).CreatorData();
-                  creatorData.firstName = creator.firstName;
-                  creatorData.lastName = creator.lastName;
-                  creatorData.fieldMode = 0;
-                  
-                  // Use type assertion for save method
-                  const id = (Zotero.Creators as any).save(creatorData);
-                  
-                  if (id) {
-                    // Use type assertion to bypass parameter type mismatch
-                    newItem.setCreator(0, id as any, creatorID as any);
-                  }
-                }
+                // Set creator on item - using index i as position
+                newItem.setCreator(i, id as any, creatorID as any);
               }
-            } catch (e) {
-              ztoolkit.log("Error adding creator:", e);
-              // Fallback: use addCreator method which might be available in some Zotero versions
-              try {
-                (newItem as any).addCreator({
-                  firstName: creator.firstName,
-                  lastName: creator.lastName,
-                  creatorType: creator.creatorType
-                });
-              } catch (e2) {
-                ztoolkit.log("Fallback creator method also failed:", e2);
+            }
+          } catch (e) {
+            ztoolkit.log("Error adding creators:", e);
+            // Fallback method for creators if the above fails
+            try {
+              for (const creator of item.creators) {
+                (newItem as any).addCreator(creator);
               }
+            } catch (e2) {
+              ztoolkit.log("Fallback creator method also failed:", e2);
             }
           }
         }
@@ -1189,6 +1964,7 @@ static async openResultsDialog(results: any[]) {
         if (collection) {
           newItem.setCollections([collection.id]);
         }
+        
         // Save the item
         await newItem.saveTx();
         createdItems.push(newItem);
@@ -1196,7 +1972,7 @@ static async openResultsDialog(results: any[]) {
 
       ztoolkit.log(`Successfully imported ${createdItems.length} items`);
 
-      // Flash the items in the UI
+      // Select the items in the UI
       if (createdItems.length > 0) {
         Zotero.getActiveZoteroPane().selectItems(createdItems.map(item => item.id));
       }
