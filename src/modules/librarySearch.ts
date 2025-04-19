@@ -126,390 +126,473 @@ export class LibrarySearchModule {
   /**
    * Opens the search dialog to configure and run a library search
    */
-  static async openSearchDialog() {
-    // Get the existing dialog window if it exists
-    if (addon.data.dialog?.window) {
-      addon.data.dialog.window.focus();
-      return;
-    }
+  /**
+ * Opens the search dialog to configure and run a library search
+ */
+static async openSearchDialog() {
+  // Get the existing dialog window if it exists
+  if (addon.data.dialog?.window) {
+    addon.data.dialog.window.focus();
+    return;
+  }
 
-    // Get the Python path and script path from preferences
-    const pythonPath = getPref("pythonPath") || "";
-    const scriptPath = getPref("scriptPath") || "";
-    
-    // Log current values for debugging
-    ztoolkit.log("Initial paths from prefs:", { pythonPath, scriptPath });
+  // Get the Python path and script path from preferences
+  const pythonPath = getPref("pythonPath") || "";
+  const scriptPath = getPref("scriptPath") || "";
+  
+  // Log current values for debugging
+  ztoolkit.log("Initial paths from prefs:", { pythonPath, scriptPath });
 
-    // Create dialog data with default values
-    const dialogData: { [key: string | number]: any } = {
-      pythonPath: pythonPath,
-      scriptPath: scriptPath,
-      protocol: "sru",
-      endpoint: "dnb",
-      title: "",
-      author: "",
-      isbn: "",
-      issn: "",
-      year: "",
-      maxResults: 10,
-      loadCallback: (window: Window) => {
-        // Dialog opened callback
-        ztoolkit.log("Search dialog opened");
-        ThemeUtils.applyTheme(window);
+  // Create dialog data with default values
+  const dialogData: { [key: string | number]: any } = {
+    pythonPath: pythonPath,
+    scriptPath: scriptPath,
+    protocol: "sru",
+    endpoint: "dnb",
+    title: "",
+    author: "",
+    isbn: "",
+    issn: "",
+    year: "",
+    maxResults: 10,
+    loadCallback: (window: Window) => {
+      // Dialog opened callback
+      ztoolkit.log("Search dialog opened");
+      ThemeUtils.applyTheme(window);
+    },
+    unloadCallback: () => {
+      ztoolkit.log("Search dialog closed");
+      addon.data.dialog = undefined;
+    },
+    searchResults: [],
+    searching: false,
+    searchComplete: false,
+    errorMessage: "",
+  };
+
+  // Create the dialog helper
+  const dialogHelper = new ztoolkit.Dialog(12, 2)
+    // Dialog header
+    .addCell(0, 0, {
+      tag: "h1",
+      properties: { innerHTML: getString("search-dialog-title") },
+      styles: { gridColumn: "1 / span 2" }
+    })
+    .addCell(1, 0, {
+      tag: "div",
+      styles: { gridColumn: "1 / span 2" },
+      properties: {
+        innerHTML: getString("search-dialog-description")
+      }
+    })
+
+    // Configuration section
+    .addCell(2, 0, {
+      tag: "h3",
+      properties: { innerHTML: getString("search-dialog-config-section") },
+      styles: { gridColumn: "1 / span 2", marginBottom: "5px", marginTop: "15px" }
+    })
+
+    // Python Path
+    .addCell(3, 0, {
+      tag: "label",
+      namespace: "html",
+      attributes: { for: "pythonPath" },
+      properties: { innerHTML: getString("search-dialog-python-path") },
+    })
+    .addCell(3, 1, {
+      tag: "input",
+      namespace: "html",
+      id: "pythonPath",
+      attributes: {
+        type: "text",
+        "data-bind": "pythonPath",
+        "data-prop": "value"
       },
-      unloadCallback: () => {
-        ztoolkit.log("Search dialog closed");
-        addon.data.dialog = undefined;
+      styles: { width: "100%" },
+    })
+
+    // Script Path
+    .addCell(4, 0, {
+      tag: "label",
+      namespace: "html",
+      attributes: { for: "scriptPath" },
+      properties: { innerHTML: getString("search-dialog-script-path") },
+    })
+    .addCell(4, 1, {
+      tag: "input",
+      namespace: "html",
+      id: "scriptPath",
+      attributes: {
+        type: "text",
+        "data-bind": "scriptPath",
+        "data-prop": "value"
       },
-      searchResults: [],
-      searching: false,
-      searchComplete: false,
-      errorMessage: "",
-    };
+      styles: { width: "100%" },
+    })
 
-    // Create the dialog helper
-    const dialogHelper = new ztoolkit.Dialog(12, 2)
-      // Dialog header
-      .addCell(0, 0, {
-        tag: "h1",
-        properties: { innerHTML: getString("search-dialog-title") },
-        styles: { gridColumn: "1 / span 2" }
-      })
-      .addCell(1, 0, {
-        tag: "div",
-        styles: { gridColumn: "1 / span 2" },
-        properties: {
-          innerHTML: getString("search-dialog-description")
-        }
-      })
+    // Search section
+    .addCell(5, 0, {
+      tag: "h3",
+      properties: { innerHTML: getString("search-dialog-search-section") },
+      styles: { gridColumn: "1 / span 2", marginBottom: "5px", marginTop: "15px" }
+    })
 
-      // Configuration section
-      .addCell(2, 0, {
-        tag: "h3",
-        properties: { innerHTML: getString("search-dialog-config-section") },
-        styles: { gridColumn: "1 / span 2", marginBottom: "5px", marginTop: "15px" }
-      })
-
-      // Python Path
-      .addCell(3, 0, {
-        tag: "label",
-        namespace: "html",
-        attributes: { for: "pythonPath" },
-        properties: { innerHTML: getString("search-dialog-python-path") },
-      })
-      .addCell(3, 1, {
-        tag: "input",
-        namespace: "html",
-        id: "pythonPath",
-        attributes: {
-          type: "text",
-          "data-bind": "pythonPath",
-          "data-prop": "value"
-        },
-        styles: { width: "100%" },
-      })
-
-      // Script Path
-      .addCell(4, 0, {
-        tag: "label",
-        namespace: "html",
-        attributes: { for: "scriptPath" },
-        properties: { innerHTML: getString("search-dialog-script-path") },
-      })
-      .addCell(4, 1, {
-        tag: "input",
-        namespace: "html",
-        id: "scriptPath",
-        attributes: {
-          type: "text",
-          "data-bind": "scriptPath",
-          "data-prop": "value"
-        },
-        styles: { width: "100%" },
-      })
-
-      // Search section
-      .addCell(5, 0, {
-        tag: "h3",
-        properties: { innerHTML: getString("search-dialog-search-section") },
-        styles: { gridColumn: "1 / span 2", marginBottom: "5px", marginTop: "15px" }
-      })
-
-      // Protocol
-      .addCell(6, 0, {
-        tag: "label",
-        namespace: "html",
-        attributes: { for: "protocol" },
-        properties: { innerHTML: getString("search-dialog-protocol") },
-      })
-      .addCell(6, 1, {
-        tag: "select",
-        namespace: "html",
-        id: "protocol",
-        attributes: {
-          "data-bind": "protocol",
-          "data-prop": "value"
-        },
-        children: [
-          {
-            tag: "option",
-            attributes: { value: "sru" },
-            properties: { innerHTML: "SRU" }
-          },
-          {
-            tag: "option",
-            attributes: { value: "oai" },
-            properties: { innerHTML: "OAI-PMH" }
-          },
-          {
-            tag: "option",
-            attributes: { value: "ixtheo" },
-            properties: { innerHTML: "IxTheo" }
-          }
-        ]
-      })
-
-      // Endpoint
-      .addCell(7, 0, {
-        tag: "label",
-        namespace: "html",
-        attributes: { for: "endpoint" },
-        properties: { innerHTML: getString("search-dialog-endpoint") },
-      })
-      .addCell(7, 1, {
-        tag: "input",
-        namespace: "html",
-        id: "endpoint",
-        attributes: {
-          type: "text",
-          "data-bind": "endpoint",
-          "data-prop": "value"
-        },
-        styles: { width: "100%" },
-      })
-
-      // Search terms
-      // Title
-      .addCell(8, 0, {
-        tag: "label",
-        namespace: "html",
-        attributes: { for: "title" },
-        properties: { innerHTML: getString("search-dialog-title-field") },
-      })
-      .addCell(8, 1, {
-        tag: "input",
-        namespace: "html",
-        id: "title",
-        attributes: {
-          type: "text",
-          "data-bind": "title",
-          "data-prop": "value"
-        },
-        styles: { width: "100%" },
-        listeners: [
-          {
-            type: "input",
-            listener: (e) => {
-              dialogData.title = (e.target as HTMLInputElement).value;
-            }
-          }
-        ]
-      })
-
-      // Author
-      .addCell(9, 0, {
-        tag: "label",
-        namespace: "html",
-        attributes: { for: "author" },
-        properties: { innerHTML: getString("search-dialog-author") },
-      })
-      .addCell(9, 1, {
-        tag: "input",
-        namespace: "html",
-        id: "author",
-        attributes: {
-          type: "text",
-          "data-bind": "author",
-          "data-prop": "value"
-        },
-        styles: { width: "100%" },
-      })
-
-      // ISBN
-      .addCell(10, 0, {
-        tag: "label",
-        namespace: "html",
-        attributes: { for: "isbn" },
-        properties: { innerHTML: getString("search-dialog-isbn") },
-      })
-      .addCell(10, 1, {
-        tag: "input",
-        namespace: "html",
-        id: "isbn",
-        attributes: {
-          type: "text",
-          "data-bind": "isbn",
-          "data-prop": "value"
-        },
-        styles: { width: "100%" },
-        listeners: [
-          {
-            type: "input",
-            listener: (e) => {
-              dialogData.isbn = (e.target as HTMLInputElement).value;
-            }
-          }
-        ]
-      })
-
-      // Max Results
-      .addCell(11, 0, {
-        tag: "label",
-        namespace: "html",
-        attributes: { for: "maxResults" },
-        properties: { innerHTML: getString("search-dialog-max-results") },
-      })
-      .addCell(11, 1, {
-        tag: "input",
-        namespace: "html",
-        id: "maxResults",
-        attributes: {
-          type: "number",
-          min: "1",
-          max: "100",
-          "data-bind": "maxResults",
-          "data-prop": "value"
-        },
-        styles: { width: "100px" },
-        listeners: [
-          {
-            type: "input",
-            listener: (e) => {
-              dialogData.maxResults = (e.target as HTMLInputElement).value;
-            }
-          }
-        ]
-      })
-
-      // Add buttons
-      .addButton(getString("search-dialog-search-button"), "search", {
-        callback: async (e) => {
-          // Prevent multiple searches
-          if (dialogData.searching) {
-            return;
-          }
-        
-          // Save the Python and script paths to preferences
-          if (dialogData.pythonPath) {
-            setPref("pythonPath", dialogData.pythonPath.trim());
-          }
-          if (dialogData.scriptPath) {
-            setPref("scriptPath", dialogData.scriptPath.trim());
-          }
-        
-          // Update all input fields from the UI to dialogData
-          if (dialogHelper.window) {
-            const doc = dialogHelper.window.document;
-            if (doc) {
-              const fields = ['pythonPath', 'scriptPath', 'protocol', 'endpoint', 'title', 'author', 'isbn', 'maxResults'];
-              for (const field of fields) {
-                const elem = doc.getElementById(field) as HTMLInputElement | HTMLSelectElement;
-                if (elem) {
-                  dialogData[field] = elem.value;
-                  ztoolkit.log(`Updated ${field} from UI: ${elem.value}`);
+    // Protocol - Using radio buttons instead of select dropdown
+    .addCell(6, 0, {
+      tag: "label",
+      namespace: "html",
+      properties: { innerHTML: getString("search-dialog-protocol") },
+    })
+    .addCell(6, 1, {
+      tag: "div",
+      namespace: "html",
+      styles: { display: "flex", gap: "10px" },
+      children: [
+        {
+          tag: "div",
+          styles: { display: "flex", alignItems: "center", gap: "5px" },
+          children: [
+            {
+              tag: "input",
+              namespace: "html",
+              id: "protocol-sru",
+              attributes: {
+                type: "radio",
+                name: "protocol",
+                value: "sru",
+                checked: dialogData.protocol === "sru" ? "checked" : undefined
+              },
+              listeners: [{
+                type: "change",
+                listener: (e) => {
+                  if ((e.target as HTMLInputElement).checked) {
+                    dialogData.protocol = "sru";
+                  }
                 }
+              }]
+            },
+            {
+              tag: "label",
+              namespace: "html",
+              attributes: { for: "protocol-sru" },
+              properties: { innerHTML: "SRU" }
+            }
+          ]
+        },
+        {
+          tag: "div",
+          styles: { display: "flex", alignItems: "center", gap: "5px" },
+          children: [
+            {
+              tag: "input",
+              namespace: "html",
+              id: "protocol-oai",
+              attributes: {
+                type: "radio",
+                name: "protocol",
+                value: "oai"
+              },
+              listeners: [{
+                type: "change",
+                listener: (e) => {
+                  if ((e.target as HTMLInputElement).checked) {
+                    dialogData.protocol = "oai";
+                  }
+                }
+              }]
+            },
+            {
+              tag: "label",
+              namespace: "html",
+              attributes: { for: "protocol-oai" },
+              properties: { innerHTML: "OAI-PMH" }
+            }
+          ]
+        },
+        {
+          tag: "div",
+          styles: { display: "flex", alignItems: "center", gap: "5px" },
+          children: [
+            {
+              tag: "input",
+              namespace: "html",
+              id: "protocol-ixtheo",
+              attributes: {
+                type: "radio",
+                name: "protocol",
+                value: "ixtheo"
+              },
+              listeners: [{
+                type: "change",
+                listener: (e) => {
+                  if ((e.target as HTMLInputElement).checked) {
+                    dialogData.protocol = "ixtheo";
+                  }
+                }
+              }]
+            },
+            {
+              tag: "label",
+              namespace: "html",
+              attributes: { for: "protocol-ixtheo" },
+              properties: { innerHTML: "IxTheo" }
+            }
+          ]
+        }
+      ]
+    })
+
+    // Endpoint
+    .addCell(7, 0, {
+      tag: "label",
+      namespace: "html",
+      attributes: { for: "endpoint" },
+      properties: { innerHTML: getString("search-dialog-endpoint") },
+    })
+    .addCell(7, 1, {
+      tag: "input",
+      namespace: "html",
+      id: "endpoint",
+      attributes: {
+        type: "text",
+        "data-bind": "endpoint",
+        "data-prop": "value"
+      },
+      styles: { width: "100%" },
+    })
+
+    // Search terms
+    // Title
+    .addCell(8, 0, {
+      tag: "label",
+      namespace: "html",
+      attributes: { for: "title" },
+      properties: { innerHTML: getString("search-dialog-title-field") },
+    })
+    .addCell(8, 1, {
+      tag: "input",
+      namespace: "html",
+      id: "title",
+      attributes: {
+        type: "text",
+        "data-bind": "title",
+        "data-prop": "value"
+      },
+      styles: { width: "100%" },
+      listeners: [
+        {
+          type: "input",
+          listener: (e) => {
+            dialogData.title = (e.target as HTMLInputElement).value;
+          }
+        }
+      ]
+    })
+
+    // Author
+    .addCell(9, 0, {
+      tag: "label",
+      namespace: "html",
+      attributes: { for: "author" },
+      properties: { innerHTML: getString("search-dialog-author") },
+    })
+    .addCell(9, 1, {
+      tag: "input",
+      namespace: "html",
+      id: "author",
+      attributes: {
+        type: "text",
+        "data-bind": "author",
+        "data-prop": "value"
+      },
+      styles: { width: "100%" },
+    })
+
+    // ISBN
+    .addCell(10, 0, {
+      tag: "label",
+      namespace: "html",
+      attributes: { for: "isbn" },
+      properties: { innerHTML: getString("search-dialog-isbn") },
+    })
+    .addCell(10, 1, {
+      tag: "input",
+      namespace: "html",
+      id: "isbn",
+      attributes: {
+        type: "text",
+        "data-bind": "isbn",
+        "data-prop": "value"
+      },
+      styles: { width: "100%" },
+      listeners: [
+        {
+          type: "input",
+          listener: (e) => {
+            dialogData.isbn = (e.target as HTMLInputElement).value;
+          }
+        }
+      ]
+    })
+
+    // Max Results
+    .addCell(11, 0, {
+      tag: "label",
+      namespace: "html",
+      attributes: { for: "maxResults" },
+      properties: { innerHTML: getString("search-dialog-max-results") },
+    })
+    .addCell(11, 1, {
+      tag: "input",
+      namespace: "html",
+      id: "maxResults",
+      attributes: {
+        type: "number",
+        min: "1",
+        max: "100",
+        "data-bind": "maxResults",
+        "data-prop": "value"
+      },
+      styles: { width: "100px" },
+      listeners: [
+        {
+          type: "input",
+          listener: (e) => {
+            dialogData.maxResults = (e.target as HTMLInputElement).value;
+          }
+        }
+      ]
+    })
+
+    // Add buttons
+    .addButton(getString("search-dialog-search-button"), "search", {
+      callback: async (e) => {
+        // Prevent multiple searches
+        if (dialogData.searching) {
+          return;
+        }
+      
+        // Save the Python and script paths to preferences
+        if (dialogData.pythonPath) {
+          setPref("pythonPath", dialogData.pythonPath.trim());
+        }
+        if (dialogData.scriptPath) {
+          setPref("scriptPath", dialogData.scriptPath.trim());
+        }
+      
+        // Update all input fields from the UI to dialogData
+        if (dialogHelper.window) {
+          const doc = dialogHelper.window.document;
+          if (doc) {
+            // Update text fields
+            const textFields = ['pythonPath', 'scriptPath', 'endpoint', 'title', 'author', 'isbn', 'maxResults'];
+            for (const field of textFields) {
+              const elem = doc.getElementById(field) as HTMLInputElement;
+              if (elem) {
+                dialogData[field] = elem.value;
+                ztoolkit.log(`Updated ${field} from UI: ${elem.value}`);
               }
             }
+            
+            // Update radio button protocol value
+            const selectedProtocol = doc.querySelector('input[name="protocol"]:checked') as HTMLInputElement;
+            if (selectedProtocol) {
+              dialogData.protocol = selectedProtocol.value;
+              ztoolkit.log(`Updated protocol from UI: ${selectedProtocol.value}`);
+            }
           }
-        
-          // Reset search state
-          dialogData.searching = true;
-          dialogData.searchComplete = false;
-          dialogData.errorMessage = "";
-          dialogData.searchResults = [];
-        
-          // Update UI to show searching state
-          const searchButton = dialogHelper.window?.document?.querySelector("#search") as HTMLButtonElement | null;
+        }
+      
+        // Reset search state
+        dialogData.searching = true;
+        dialogData.searchComplete = false;
+        dialogData.errorMessage = "";
+        dialogData.searchResults = [];
+      
+        // Update UI to show searching state
+        const searchButton = dialogHelper.window?.document?.querySelector("#search") as HTMLButtonElement | null;
+        if (searchButton) {
+          searchButton.disabled = true;
+          searchButton.textContent = getString("search-dialog-searching");
+        }
+      
+        try {
+          // Get final values directly from input fields
+          const pythonPathInput = dialogHelper.window?.document?.getElementById('pythonPath') as HTMLInputElement;
+          const scriptPathInput = dialogHelper.window?.document?.getElementById('scriptPath') as HTMLInputElement;
+          
+          if (pythonPathInput && pythonPathInput.value.trim()) {
+            dialogData.pythonPath = pythonPathInput.value.trim();
+          }
+          
+          if (scriptPathInput && scriptPathInput.value.trim()) {
+            dialogData.scriptPath = scriptPathInput.value.trim();
+          }
+          
+          ztoolkit.log("Search parameters:", {
+            pythonPath: dialogData.pythonPath,
+            scriptPath: dialogData.scriptPath,
+            protocol: dialogData.protocol,
+            endpoint: dialogData.endpoint,
+            title: dialogData.title,
+            author: dialogData.author,
+            isbn: dialogData.isbn,
+            maxResults: dialogData.maxResults
+          });
+      
+          const searchParams = {
+            pythonPath: dialogData.pythonPath,
+            scriptPath: dialogData.scriptPath,
+            protocol: dialogData.protocol,
+            endpoint: dialogData.endpoint,
+            title: dialogData.title,
+            author: dialogData.author,
+            isbn: dialogData.isbn,
+            maxResults: dialogData.maxResults
+          };
+      
+          // Run the search
+          const results = await LibrarySearchModule.runSearch(searchParams);
+
+          // Store results
+          dialogData.searchResults = results;
+          dialogData.searchComplete = true;
+
+          // Open results dialog if we have results
+          if (results && results.length > 0) {
+            await LibrarySearchModule.openResultsDialog(results);
+          } else {
+            dialogData.errorMessage = getString("search-dialog-no-results");
+          }
+        } catch (error: any) {
+          ztoolkit.log("Search error:", error);
+          dialogData.errorMessage = error?.message || getString("search-dialog-error");
+        } finally {
+          // Reset search button
+          dialogData.searching = false;
           if (searchButton) {
-            searchButton.disabled = true;
-            searchButton.textContent = getString("search-dialog-searching");
+            searchButton.disabled = false;
+            searchButton.textContent = getString("search-dialog-search-button");
           }
-        
-          try {
-            // Get final values directly from input fields
-            const pythonPathInput = dialogHelper.window?.document?.getElementById('pythonPath') as HTMLInputElement;
-            const scriptPathInput = dialogHelper.window?.document?.getElementById('scriptPath') as HTMLInputElement;
-            
-            if (pythonPathInput && pythonPathInput.value.trim()) {
-              dialogData.pythonPath = pythonPathInput.value.trim();
-            }
-            
-            if (scriptPathInput && scriptPathInput.value.trim()) {
-              dialogData.scriptPath = scriptPathInput.value.trim();
-            }
-            
-            ztoolkit.log("Search parameters:", {
-              pythonPath: dialogData.pythonPath,
-              scriptPath: dialogData.scriptPath,
-              protocol: dialogData.protocol,
-              endpoint: dialogData.endpoint,
-              title: dialogData.title,
-              author: dialogData.author,
-              isbn: dialogData.isbn,
-              maxResults: dialogData.maxResults
-            });
-        
-            const searchParams = {
-              pythonPath: dialogData.pythonPath,
-              scriptPath: dialogData.scriptPath,
-              protocol: dialogData.protocol,
-              endpoint: dialogData.endpoint,
-              title: dialogData.title,
-              author: dialogData.author,
-              isbn: dialogData.isbn,
-              maxResults: dialogData.maxResults
-            };
-        
-            // Run the search
-            const results = await LibrarySearchModule.runSearch(searchParams);
 
-            // Store results
-            dialogData.searchResults = results;
-            dialogData.searchComplete = true;
-
-            // Open results dialog if we have results
-            if (results && results.length > 0) {
-              await LibrarySearchModule.openResultsDialog(results);
-            } else {
-              dialogData.errorMessage = getString("search-dialog-no-results");
-            }
-          } catch (error: any) {
-            ztoolkit.log("Search error:", error);
-            dialogData.errorMessage = error?.message || getString("search-dialog-error");
-          } finally {
-            // Reset search button
-            dialogData.searching = false;
-            if (searchButton) {
-              searchButton.disabled = false;
-              searchButton.textContent = getString("search-dialog-search-button");
-            }
-
-            // Show error message if any
-            if (dialogData.errorMessage && dialogHelper.window) {
-              dialogHelper.window.alert(dialogData.errorMessage);
-            }
+          // Show error message if any
+          if (dialogData.errorMessage && dialogHelper.window) {
+            dialogHelper.window.alert(dialogData.errorMessage);
           }
-        },
-        noClose: true
-      })
-      .addButton(getString("search-dialog-cancel-button"), "cancel")
-      .setDialogData(dialogData);
+        }
+      },
+      noClose: true
+    })
+    .addButton(getString("search-dialog-cancel-button"), "cancel")
+    .setDialogData(dialogData);
+
+  // Open the dialog
+  dialogHelper.open(getString("search-dialog-title"));
   
-    // Open the dialog
-    dialogHelper.open(getString("search-dialog-title"));
-    
-    addon.data.dialog = dialogHelper;
-  }
+  addon.data.dialog = dialogHelper;
+}
+  
 
   /**
    * Opens a dialog to display search results
@@ -1790,23 +1873,47 @@ static async readFile(path: string): Promise<string> {
     if (!records || records.length === 0) {
       throw new Error("No results to import");
     }
-
+  
     ztoolkit.log(`Importing ${records.length} records into Zotero`);
-
+  
     // Convert results to Zotero items
     const items = records.map(record => {
-      // Determine item type
-      const itemType = record.issn ? "journalArticle" : "book";
-
+      // Determine item type based on format or other indicators
+      let itemType = "book"; // Default
+      
+      if (record.format) {
+        // Use format field if available
+        if (record.format === "Journal Article") {
+          itemType = "journalArticle";
+        } else if (record.format === "Book Chapter") {
+          itemType = "bookSection";
+        } else if (record.format === "Book") {
+          itemType = "book";
+        } else if (record.format === "Thesis") {
+          itemType = "thesis";
+        } else if (record.format === "Conference Paper") {
+          itemType = "conferencePaper";
+        } else if (record.format === "Report") {
+          itemType = "report";
+        }
+      } else {
+        // Fallback determination
+        if (record.journal_title || record.issn) {
+          itemType = "journalArticle";
+        } else if (record.series && record.pages) {
+          itemType = "bookSection";
+        }
+      }
+  
       // Format creators
       const creators = [];
-
+  
       // Add authors
       if (record.authors && record.authors.length > 0) {
         for (const author of record.authors) {
           let firstName = "";
           let lastName = "";
-
+  
           if (author.includes(",")) {
             // Format: "Lastname, Firstname"
             const parts = author.split(",", 2);
@@ -1822,7 +1929,7 @@ static async readFile(path: string): Promise<string> {
               lastName = author;
             }
           }
-
+  
           creators.push({
             creatorType: "author",
             firstName,
@@ -1830,13 +1937,13 @@ static async readFile(path: string): Promise<string> {
           });
         }
       }
-
+  
       // Add editors
       if (record.editors && record.editors.length > 0) {
         for (const editor of record.editors) {
           let firstName = "";
           let lastName = "";
-
+  
           if (editor.includes(",")) {
             // Format: "Lastname, Firstname"
             const parts = editor.split(",", 2);
@@ -1852,7 +1959,7 @@ static async readFile(path: string): Promise<string> {
               lastName = editor;
             }
           }
-
+  
           creators.push({
             creatorType: "editor",
             firstName,
@@ -1860,54 +1967,96 @@ static async readFile(path: string): Promise<string> {
           });
         }
       }
-
-      // Create Zotero item
+  
+      // Add translators
+      if (record.translators && record.translators.length > 0) {
+        for (const translator of record.translators) {
+          let firstName = "";
+          let lastName = "";
+  
+          if (translator.includes(",")) {
+            const parts = translator.split(",", 2);
+            lastName = parts[0].trim();
+            firstName = parts[1] ? parts[1].trim() : "";
+          } else {
+            const parts = translator.split(" ");
+            if (parts.length > 1) {
+              lastName = parts[parts.length - 1];
+              firstName = parts.slice(0, parts.length - 1).join(" ");
+            } else {
+              lastName = translator;
+            }
+          }
+  
+          creators.push({
+            creatorType: "translator",
+            firstName,
+            lastName
+          });
+        }
+      }
+  
+      // Create base Zotero item
       const item: any = {
         itemType,
         title: record.title,
         creators,
         date: record.year,
-        publisher: record.publisher_name,
-        place: record.place_of_publication,
+        // Map publisher_name to publisher field for Zotero
+        publisher: record.publisher_name || record.publisher,
+        place: record.place_of_publication || record.place,
         ISBN: record.isbn,
         ISSN: record.issn,
-        series: record.series,
-        edition: record.edition,
         language: record.language,
         url: record.urls && record.urls.length > 0 ? record.urls[0] : "",
         abstractNote: record.abstract,
+        DOI: record.doi,
         tags: (record.subjects || []).map((subject: string) => ({ tag: subject }))
       };
-
-      // Clean up undefined/null values
+  
+      // Add itemType-specific fields
+      if (itemType === "journalArticle") {
+        item.publicationTitle = record.journal_title;
+        item.volume = record.volume;
+        item.issue = record.issue;
+        item.pages = record.pages;
+      } else if (itemType === "bookSection") {
+        item.bookTitle = record.series;
+        item.pages = record.pages;
+      } else if (itemType === "book") {
+        item.series = record.series;
+        item.edition = record.edition;
+      }
+  
+      // Clean up undefined/null/empty values
       Object.keys(item).forEach(key => {
-        if (item[key] === undefined || item[key] === null) {
+        if (item[key] === undefined || item[key] === null || item[key] === "") {
           delete item[key];
         }
       });
-
+  
       return item;
     });
-
+  
     // Create the items in Zotero
     try {
       const collection = Zotero.getActiveZoteroPane().getSelectedCollection();
       let libraryID;
-
+  
       if (collection) {
         libraryID = collection.libraryID;
       } else {
         // Use the currently viewed library
         libraryID = Zotero.getActiveZoteroPane().getSelectedLibraryID();
       }
-
+  
       // Import each item
       const createdItems = [];
-
+  
       for (const item of items) {
         // Create the item in the current library
         const newItem = new Zotero.Item(item.itemType);
-
+  
         // Set fields
         for (const field in item) {
           if (field === 'itemType' || field === 'creators' || field === 'tags') {
@@ -1917,49 +2066,27 @@ static async readFile(path: string): Promise<string> {
             newItem.setField(field, item[field]);
           }
         }
-
+  
         // Set creators
         if (item.creators && item.creators.length > 0) {
-          try {
-            for (let i = 0; i < item.creators.length; i++) {
-              const creator = item.creators[i];
-              // Getting creator type ID
-              const creatorID = Zotero.CreatorTypes.getID(creator.creatorType);
-              
-              if (creatorID) {
-                // Create creator data
-                const creatorData = new (Zotero as any).CreatorData();
-                creatorData.firstName = creator.firstName;
-                creatorData.lastName = creator.lastName;
-                creatorData.fieldMode = 0;
-                
-                // Save creator data
-                const id = (Zotero.Creators as any).save(creatorData);
-                
-                // Set creator on item - using index i as position
-                newItem.setCreator(i, id as any, creatorID as any);
-              }
-            }
-          } catch (e) {
-            ztoolkit.log("Error adding creators:", e);
-            // Fallback method for creators if the above fails
-            try {
-              for (const creator of item.creators) {
-                (newItem as any).addCreator(creator);
-              }
-            } catch (e2) {
-              ztoolkit.log("Fallback creator method also failed:", e2);
-            }
+          // Use simpler creator method that's less prone to errors
+          for (let i = 0; i < item.creators.length; i++) {
+            const creator = item.creators[i];
+            newItem.setCreator(i, {
+              firstName: creator.firstName,
+              lastName: creator.lastName,
+              creatorType: creator.creatorType
+            });
           }
         }
-
+  
         // Set tags
         if (item.tags && item.tags.length > 0) {
           for (const tag of item.tags) {
             newItem.addTag(tag.tag);
           }
         }
-
+  
         // Add to collection if one is selected
         if (collection) {
           newItem.setCollections([collection.id]);
@@ -1969,14 +2096,14 @@ static async readFile(path: string): Promise<string> {
         await newItem.saveTx();
         createdItems.push(newItem);
       }
-
+  
       ztoolkit.log(`Successfully imported ${createdItems.length} items`);
-
+  
       // Select the items in the UI
       if (createdItems.length > 0) {
         Zotero.getActiveZoteroPane().selectItems(createdItems.map(item => item.id));
       }
-
+  
       return;
     } catch (error) {
       ztoolkit.log("Error importing items:", error);
