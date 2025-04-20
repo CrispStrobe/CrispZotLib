@@ -234,233 +234,147 @@ static async openSearchDialog() {
       styles: { gridColumn: "1 / span 2", marginBottom: "5px", marginTop: "15px" }
     })
 
-    // Protocol - Using radio buttons
+    // Protocol - Using dropdown
     .addCell(6, 0, {
       tag: "label",
       namespace: "html",
+      attributes: { for: "protocol-select" },
       properties: { innerHTML: getString("search-dialog-protocol") },
     })
     .addCell(6, 1, {
-      tag: "div",
+      tag: "select",
       namespace: "html",
-      styles: { display: "flex", gap: "10px" },
+      id: "protocol-select",
+      styles: { width: "100%" },
       children: [
         {
-          tag: "div",
-          styles: { display: "flex", alignItems: "center", gap: "5px" },
-          children: [
-            {
-              tag: "input",
-              namespace: "html",
-              id: "protocol-sru",
-              attributes: {
-                type: "radio",
-                name: "protocol",
-                value: "sru",
-                checked: "checked"
-              },
-              listeners: [{
-                type: "change",
-                listener: (e: Event) => {
-                  if ((e.target as HTMLInputElement).checked) {
-                    dialogData.protocol = "sru";
-                    // Set default endpoint for SRU
-                    dialogData.endpoint = "dnb";
-                    
-                    // Update endpoint input field
-                    if (dialogHelper.window) {
-                      const endpointInput = dialogHelper.window.document.getElementById("endpoint-input") as HTMLInputElement;
-                      if (endpointInput) {
-                        endpointInput.value = "dnb";
-                      }
-                      
-                      // Show SRU helper text, hide others
-                      const sruHelperText = dialogHelper.window.document.getElementById("sru-helper-text");
-                      const oaiHelperText = dialogHelper.window.document.getElementById("oai-helper-text");
-                      const ixtheoHelperText = dialogHelper.window.document.getElementById("ixtheo-helper-text");
-                      
-                      if (sruHelperText && oaiHelperText && ixtheoHelperText) {
-                        sruHelperText.style.display = "block";
-                        oaiHelperText.style.display = "none";
-                        ixtheoHelperText.style.display = "none";
-                      }
-                    }
-                  }
-                }
-              }]
-            },
-            {
-              tag: "label",
-              namespace: "html",
-              attributes: { for: "protocol-sru" },
-              properties: { innerHTML: "SRU" }
-            }
-          ]
+          tag: "option",
+          properties: {
+            value: "sru",
+            textContent: "SRU",
+            selected: dialogData.protocol === "sru"
+          }
         },
         {
-          tag: "div",
-          styles: { display: "flex", alignItems: "center", gap: "5px" },
-          children: [
-            {
-              tag: "input",
-              namespace: "html",
-              id: "protocol-oai",
-              attributes: {
-                type: "radio",
-                name: "protocol",
-                value: "oai"
-              },
-              listeners: [{
-                type: "change",
-                listener: (e: Event) => {
-                  if ((e.target as HTMLInputElement).checked) {
-                    dialogData.protocol = "oai";
-                    // Set default endpoint for OAI
-                    dialogData.endpoint = "crossref";
-                    
-                    // Update endpoint input field
-                    if (dialogHelper.window) {
-                      const endpointInput = dialogHelper.window.document.getElementById("endpoint-input") as HTMLInputElement;
-                      if (endpointInput) {
-                        endpointInput.value = "crossref";
-                      }
-                      
-                      // Show OAI helper text, hide others
-                      const sruHelperText = dialogHelper.window.document.getElementById("sru-helper-text");
-                      const oaiHelperText = dialogHelper.window.document.getElementById("oai-helper-text");
-                      const ixtheoHelperText = dialogHelper.window.document.getElementById("ixtheo-helper-text");
-                      
-                      if (sruHelperText && oaiHelperText && ixtheoHelperText) {
-                        sruHelperText.style.display = "none";
-                        oaiHelperText.style.display = "block";
-                        ixtheoHelperText.style.display = "none";
-                      }
-                    }
-                  }
-                }
-              }]
-            },
-            {
-              tag: "label",
-              namespace: "html",
-              attributes: { for: "protocol-oai" },
-              properties: { innerHTML: "OAI-PMH" }
-            }
-          ]
+          tag: "option",
+          properties: {
+            value: "oai",
+            textContent: "OAI-PMH",
+            selected: dialogData.protocol === "oai"
+          }
         },
         {
-          tag: "div",
-          styles: { display: "flex", alignItems: "center", gap: "5px" },
-          children: [
-            {
-              tag: "input",
-              namespace: "html",
-              id: "protocol-ixtheo",
-              attributes: {
-                type: "radio",
-                name: "protocol",
-                value: "ixtheo"
-              },
-              listeners: [{
-                type: "change",
-                listener: (e: Event) => {
-                  if ((e.target as HTMLInputElement).checked) {
-                    dialogData.protocol = "ixtheo";
-                    // Set default endpoint for IxTheo
-                    dialogData.endpoint = "ris";
-                    
-                    // Update endpoint input field
-                    if (dialogHelper.window) {
-                      const endpointInput = dialogHelper.window.document.getElementById("endpoint-input") as HTMLInputElement;
-                      if (endpointInput) {
-                        endpointInput.value = "ris";
-                      }
-                      
-                      // Show IxTheo helper text, hide others
-                      const sruHelperText = dialogHelper.window.document.getElementById("sru-helper-text");
-                      const oaiHelperText = dialogHelper.window.document.getElementById("oai-helper-text");
-                      const ixtheoHelperText = dialogHelper.window.document.getElementById("ixtheo-helper-text");
-                      
-                      if (sruHelperText && oaiHelperText && ixtheoHelperText) {
-                        sruHelperText.style.display = "none";
-                        oaiHelperText.style.display = "none";
-                        ixtheoHelperText.style.display = "block";
-                      }
-                    }
-                  }
-                }
-              }]
-            },
-            {
-              tag: "label",
-              namespace: "html",
-              attributes: { for: "protocol-ixtheo" },
-              properties: { innerHTML: "IxTheo" }
-            }
-          ]
+          tag: "option",
+          properties: {
+            value: "ixtheo",
+            textContent: "IxTheo",
+            selected: dialogData.protocol === "ixtheo"
+          }
         }
-      ]
+      ],
+      listeners: [{
+        type: "change",
+        listener: (e: Event) => {
+          dialogData.protocol = (e.target as HTMLSelectElement).value;
+          
+          // Update endpoint dropdown options based on selected protocol
+          if (dialogHelper.window) {
+            const endpointSelect = dialogHelper.window.document.getElementById("endpoint-select") as HTMLSelectElement;
+            if (endpointSelect) {
+              // Clear existing options
+              while (endpointSelect.options.length > 0) {
+                endpointSelect.remove(0);
+              }
+              
+              // Add new options based on selected protocol
+              let options: string[] = []; // Explicitly type as string array
+              let defaultValue = "";
+              
+              switch (dialogData.protocol) {
+                case "sru":
+                  options = ["dnb", "bnf", "zdb", "loc", "trove", "kb", "bibsys"];
+                  defaultValue = "dnb";
+                  break;
+                case "oai":
+                  options = ["dnb", "dnb_digital", "loc", "europeana", "ddb", "harvard", "mit", "kitopen", "arxiv", "doaj"];
+                  defaultValue = "crossref";
+                  break;
+                case "ixtheo":
+                  options = ["ris", "marc", "html"];
+                  defaultValue = "ris";
+                  break;
+              }
+              
+              // Add options to select - use the window document, not global document
+              options.forEach(opt => {
+                const option = dialogHelper.window!.document.createElement("option");
+                option.value = opt;
+                option.textContent = opt;
+                endpointSelect.appendChild(option);
+              });
+              
+              // Set default value
+              endpointSelect.value = defaultValue;
+              dialogData.endpoint = defaultValue;
+            }
+          }
+        }
+      }]
     })
 
-    // Endpoint - Use input field with helper text instead of dropdown
+    // Endpoint - Using dropdown
     .addCell(7, 0, {
       tag: "label",
       namespace: "html",
-      attributes: { for: "endpoint-input" },
+      attributes: { for: "endpoint-select" },
       properties: { innerHTML: getString("search-dialog-endpoint") },
     })
     .addCell(7, 1, {
-      tag: "div",
+      tag: "select",
       namespace: "html",
+      id: "endpoint-select",
+      attributes: {
+        "data-bind": "endpoint",
+        "data-prop": "value",
+      },
+      styles: { width: "100%" },
       children: [
-        // Input field for endpoint
+        // Default options for SRU protocol (initial state)
         {
-          tag: "input",
-          namespace: "html",
-          id: "endpoint-input",
-          attributes: {
-            type: "text",
-            value: "dnb" // Default value
-          },
-          styles: { width: "100%", marginBottom: "5px" },
-          listeners: [{
-            type: "input",
-            listener: (e: Event) => {
-              dialogData.endpoint = (e.target as HTMLInputElement).value;
-            }
-          }]
+          tag: "option",
+          properties: { value: "dnb", textContent: "dnb", selected: true }
         },
-        // SRU helper text - Visible by default
         {
-          tag: "div",
-          namespace: "html",
-          id: "sru-helper-text",
-          styles: { fontSize: "12px", color: "#808080", marginTop: "2px" },
-          properties: { 
-            innerHTML: "SRU options: dnb, bnf, zdb, loc, trove, kb, bibsys" 
-          }
+          tag: "option",
+          properties: { value: "bnf", textContent: "bnf" }
         },
-        // OAI helper text - Hidden initially
         {
-          tag: "div",
-          namespace: "html",
-          id: "oai-helper-text",
-          styles: { fontSize: "12px", color: "#808080", marginTop: "2px", display: "none" },
-          properties: { 
-            innerHTML: "OAI options: dnb, dnb_digital, loc, europeana, ddb, harvard, mit, kitopen, arxiv, doaj" 
-          }
+          tag: "option",
+          properties: { value: "zdb", textContent: "zdb" }
         },
-        // IxTheo helper text - Hidden initially
         {
-          tag: "div",
-          namespace: "html",
-          id: "ixtheo-helper-text",
-          styles: { fontSize: "12px", color: "#808080", marginTop: "2px", display: "none" },
-          properties: { 
-            innerHTML: "IxTheo options: ris, marc, html" 
-          }
+          tag: "option",
+          properties: { value: "loc", textContent: "loc" }
+        },
+        {
+          tag: "option",
+          properties: { value: "trove", textContent: "trove" }
+        },
+        {
+          tag: "option",
+          properties: { value: "kb", textContent: "kb" }
+        },
+        {
+          tag: "option",
+          properties: { value: "bibsys", textContent: "bibsys" }
         }
-      ]
+      ],
+      listeners: [{
+        type: "change",
+        listener: (e: Event) => {
+          dialogData.endpoint = (e.target as HTMLSelectElement).value;
+        }
+      }]
     })
 
     // Title
@@ -589,16 +503,16 @@ static async openSearchDialog() {
         if (dialogHelper.window) {
           const doc = dialogHelper.window.document;
           
-          // Get protocol from radio buttons
-          const selectedProtocol = doc.querySelector('input[name="protocol"]:checked') as HTMLInputElement;
-          if (selectedProtocol) {
-            dialogData.protocol = selectedProtocol.value;
+          // Get protocol from dropdown
+          const protocolSelect = doc.getElementById('protocol-select') as HTMLSelectElement;
+          if (protocolSelect) {
+            dialogData.protocol = protocolSelect.value;
           }
-          
-          // Get endpoint from input field
-          const endpointInput = doc.getElementById('endpoint-input') as HTMLInputElement;
-          if (endpointInput) {
-            dialogData.endpoint = endpointInput.value;
+            
+          // Get endpoint from dropdown
+          const endpointSelect = doc.getElementById('endpoint-select') as HTMLSelectElement;
+          if (endpointSelect) {
+            dialogData.endpoint = endpointSelect.value;
           }
           
           // Get other fields
