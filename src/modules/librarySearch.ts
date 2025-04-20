@@ -177,16 +177,47 @@ function createStyledDialog(rows: number, cols: number): any {
  * and importing the results into Zotero.
  */
 export class LibrarySearchModule {
+
+  /**
+   * Initialize the module
+   */
+  static init() {
+    // Add an initialization check to clean up any stale dialog references
+    if (addon.data.dialog) {
+      try {
+        if (addon.data.dialog.window && !addon.data.dialog.window.closed) {
+          // Window still exists, keep it
+        } else {
+          // Window reference is stale, clear it
+          addon.data.dialog = undefined;
+        }
+      } catch (e) {
+        // Error accessing window, reference is invalid
+        addon.data.dialog = undefined;
+      }
+    }
+  }
   
   /**
  * Opens the search dialog to configure and run a library search
  */
-static async openSearchDialog() {
-  // Get the existing dialog window if it exists
-  if (addon.data.dialog?.window) {
-    addon.data.dialog.window.focus();
-    return;
-  }
+  static async openSearchDialog() {
+    // Get the existing dialog window if it exists
+    if (addon.data.dialog?.window) {
+      try {
+        // Check if the window is still valid
+        if (!addon.data.dialog.window.closed) {
+          addon.data.dialog.window.focus();
+          return;
+        }
+      } catch (e) {
+        // Window reference is invalid, continue creating a new dialog
+        ztoolkit.log("Previous dialog reference was invalid, creating new one");
+      }
+      
+      // Reset dialog reference
+      addon.data.dialog = undefined;
+    }
 
   // Get the Python path and script path from preferences
   const pythonPath = getPref("pythonPath") || "";
@@ -211,6 +242,7 @@ interface LibrarySearchDialogData {
   searchComplete: boolean;
   errorMessage: string;
   loadCallback?: Function; // Use Function type to match Zotero's expectations
+  unloadCallback?: Function; 
 }
 
 // Create dialog data with type
@@ -304,6 +336,12 @@ dialogData.loadCallback = function() {
     }
   }
 };
+
+dialogData.unloadCallback = function() {
+  // Clear the dialog reference when it's closed
+  addon.data.dialog = undefined;
+  ztoolkit.log("Dialog closed and reference cleared");
+}
 
   // Create the dialog helper
   const dialogHelper = createStyledDialog(12, 2)
@@ -895,6 +933,16 @@ dialogData.loadCallback = function() {
 
           // Open results dialog if we have results
           if (results && results.length > 0) {
+            // Clear the search dialog reference before opening the results dialog
+            const searchDialogRef = addon.data.dialog;
+            addon.data.dialog = undefined;
+            
+            // Close the search dialog
+            if (searchDialogRef && searchDialogRef.window && !searchDialogRef.window.closed) {
+              searchDialogRef.window.close();
+            }
+            
+            // Open results dialog
             await LibrarySearchModule.openResultsDialog(results);
           } else {
             dialogData.errorMessage = getString("search-dialog-no-results");
@@ -924,11 +972,9 @@ dialogData.loadCallback = function() {
 
   // Set dialog data
   dialogHelper.setDialogData(dialogData);
-
-  // Open the dialog
-  dialogHelper.open(getString("search-dialog-title"));
   
-  // Store the dialog reference
+  // Open the dialog and store reference
+  dialogHelper.open(getString("search-dialog-title"));
   addon.data.dialog = dialogHelper;
 }
 
@@ -949,6 +995,10 @@ dialogData.loadCallback = function() {
       },
       unloadCallback: () => {
         ztoolkit.log("Results dialog closed");
+        // Make sure we clear any dialog references
+        if (addon.data.dialog === dialogHelper) {
+          addon.data.dialog = undefined;
+        }
       }
     };
 
@@ -1076,6 +1126,12 @@ dialogData.loadCallback = function() {
             await LibrarySearchModule.importResults(selectedResults);
             if (dialogHelper.window) {
               dialogHelper.window.alert(getString("results-dialog-import-success"));
+              
+              // Clear reference before closing
+              if (addon.data.dialog === dialogHelper) {
+                addon.data.dialog = undefined;
+              }
+              
               dialogHelper.window.close();
             }
           } catch (error: any) {
@@ -1162,11 +1218,26 @@ dialogData.loadCallback = function() {
       '--max-records', maxResults.toString()
     ];
     
-    if (title) args.push('--title', title);
-    if (author) args.push('--author', author);
-    if (isbn) args.push('--isbn', isbn);
+    // Add arguments with proper quoting for multi-word values
+    if (title) {
+      const quotedTitle = title.includes(' ') ? `"${title}"` : title;
+      args.push('--title', quotedTitle);
+    }
+    if (author) {
+      const quotedAuthor = author.includes(' ') ? `"${author}"` : author;
+      args.push('--author', quotedAuthor);
+    }
+    if (isbn) {
+      const quotedISBN = isbn.includes(' ') ? `"${isbn}"` : isbn;
+      args.push('--isbn', quotedISBN);
+    }
     
-    const testCommand = `${pythonPath} ${args.join(' ')}`;
+    // Create a properly formatted test command string
+    const testCommand = `${pythonPath} ${scriptPath} --protocol ${protocol} --endpoint ${endpoint} --format json --max-records ${maxResults}` + 
+    (title ? ` --title "${title}"` : '') +
+    (author ? ` --author "${author}"` : '') +
+    (isbn ? ` --isbn "${isbn}"` : '');
+
     log("Test command: " + testCommand);
     
     // Use synchronous execution with system shell

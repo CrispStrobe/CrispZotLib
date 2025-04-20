@@ -19,6 +19,9 @@ async function onStartup() {
 
     ztoolkit.log('Plugin starting up');
     
+    // Initialize the LibrarySearchModule
+    LibrarySearchModule.init();
+    
     // Initialize locale
     initLocale();
 
