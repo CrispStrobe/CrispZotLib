@@ -123,9 +123,7 @@ function createStyledDialog(rows: number, cols: number): any {
  * and importing the results into Zotero.
  */
 export class LibrarySearchModule {
-  /**
-   * Opens the search dialog to configure and run a library search
-   */
+  
   /**
  * Opens the search dialog to configure and run a library search
  */
@@ -144,34 +142,22 @@ static async openSearchDialog() {
   ztoolkit.log("Initial paths from prefs:", { pythonPath, scriptPath });
 
   // Create dialog data with default values
-  const dialogData: { [key: string | number]: any } = {
+  const dialogData = {
     pythonPath: pythonPath,
     scriptPath: scriptPath,
     protocol: "sru",
-    endpoint: "dnb",
+    endpoint: "dnb", // Default endpoint
     title: "",
     author: "",
     isbn: "",
-    issn: "",
-    year: "",
     maxResults: 10,
-    loadCallback: (window: Window) => {
-      // Dialog opened callback
-      ztoolkit.log("Search dialog opened");
-      ThemeUtils.applyTheme(window);
-    },
-    unloadCallback: () => {
-      ztoolkit.log("Search dialog closed");
-      addon.data.dialog = undefined;
-    },
-    searchResults: [],
     searching: false,
     searchComplete: false,
-    errorMessage: "",
+    errorMessage: ""
   };
 
   // Create the dialog helper
-  const dialogHelper = new ztoolkit.Dialog(12, 2)
+  const dialogHelper = createStyledDialog(12, 2)
     // Dialog header
     .addCell(0, 0, {
       tag: "h1",
@@ -206,10 +192,15 @@ static async openSearchDialog() {
       id: "pythonPath",
       attributes: {
         type: "text",
-        "data-bind": "pythonPath",
-        "data-prop": "value"
+        value: dialogData.pythonPath
       },
       styles: { width: "100%" },
+      listeners: [{
+        type: "input",
+        listener: (e: Event) => {
+          dialogData.pythonPath = (e.target as HTMLInputElement).value;
+        }
+      }]
     })
 
     // Script Path
@@ -225,10 +216,15 @@ static async openSearchDialog() {
       id: "scriptPath",
       attributes: {
         type: "text",
-        "data-bind": "scriptPath",
-        "data-prop": "value"
+        value: dialogData.scriptPath
       },
       styles: { width: "100%" },
+      listeners: [{
+        type: "input",
+        listener: (e: Event) => {
+          dialogData.scriptPath = (e.target as HTMLInputElement).value;
+        }
+      }]
     })
 
     // Search section
@@ -238,7 +234,7 @@ static async openSearchDialog() {
       styles: { gridColumn: "1 / span 2", marginBottom: "5px", marginTop: "15px" }
     })
 
-    // Protocol - Using radio buttons instead of select dropdown
+    // Protocol - Using radio buttons
     .addCell(6, 0, {
       tag: "label",
       namespace: "html",
@@ -261,13 +257,34 @@ static async openSearchDialog() {
                 type: "radio",
                 name: "protocol",
                 value: "sru",
-                checked: dialogData.protocol === "sru" ? "checked" : undefined
+                checked: "checked"
               },
               listeners: [{
                 type: "change",
-                listener: (e) => {
+                listener: (e: Event) => {
                   if ((e.target as HTMLInputElement).checked) {
                     dialogData.protocol = "sru";
+                    // Set default endpoint for SRU
+                    dialogData.endpoint = "dnb";
+                    
+                    // Update endpoint input field
+                    if (dialogHelper.window) {
+                      const endpointInput = dialogHelper.window.document.getElementById("endpoint-input") as HTMLInputElement;
+                      if (endpointInput) {
+                        endpointInput.value = "dnb";
+                      }
+                      
+                      // Show SRU helper text, hide others
+                      const sruHelperText = dialogHelper.window.document.getElementById("sru-helper-text");
+                      const oaiHelperText = dialogHelper.window.document.getElementById("oai-helper-text");
+                      const ixtheoHelperText = dialogHelper.window.document.getElementById("ixtheo-helper-text");
+                      
+                      if (sruHelperText && oaiHelperText && ixtheoHelperText) {
+                        sruHelperText.style.display = "block";
+                        oaiHelperText.style.display = "none";
+                        ixtheoHelperText.style.display = "none";
+                      }
+                    }
                   }
                 }
               }]
@@ -295,9 +312,30 @@ static async openSearchDialog() {
               },
               listeners: [{
                 type: "change",
-                listener: (e) => {
+                listener: (e: Event) => {
                   if ((e.target as HTMLInputElement).checked) {
                     dialogData.protocol = "oai";
+                    // Set default endpoint for OAI
+                    dialogData.endpoint = "crossref";
+                    
+                    // Update endpoint input field
+                    if (dialogHelper.window) {
+                      const endpointInput = dialogHelper.window.document.getElementById("endpoint-input") as HTMLInputElement;
+                      if (endpointInput) {
+                        endpointInput.value = "crossref";
+                      }
+                      
+                      // Show OAI helper text, hide others
+                      const sruHelperText = dialogHelper.window.document.getElementById("sru-helper-text");
+                      const oaiHelperText = dialogHelper.window.document.getElementById("oai-helper-text");
+                      const ixtheoHelperText = dialogHelper.window.document.getElementById("ixtheo-helper-text");
+                      
+                      if (sruHelperText && oaiHelperText && ixtheoHelperText) {
+                        sruHelperText.style.display = "none";
+                        oaiHelperText.style.display = "block";
+                        ixtheoHelperText.style.display = "none";
+                      }
+                    }
                   }
                 }
               }]
@@ -325,9 +363,30 @@ static async openSearchDialog() {
               },
               listeners: [{
                 type: "change",
-                listener: (e) => {
+                listener: (e: Event) => {
                   if ((e.target as HTMLInputElement).checked) {
                     dialogData.protocol = "ixtheo";
+                    // Set default endpoint for IxTheo
+                    dialogData.endpoint = "ris";
+                    
+                    // Update endpoint input field
+                    if (dialogHelper.window) {
+                      const endpointInput = dialogHelper.window.document.getElementById("endpoint-input") as HTMLInputElement;
+                      if (endpointInput) {
+                        endpointInput.value = "ris";
+                      }
+                      
+                      // Show IxTheo helper text, hide others
+                      const sruHelperText = dialogHelper.window.document.getElementById("sru-helper-text");
+                      const oaiHelperText = dialogHelper.window.document.getElementById("oai-helper-text");
+                      const ixtheoHelperText = dialogHelper.window.document.getElementById("ixtheo-helper-text");
+                      
+                      if (sruHelperText && oaiHelperText && ixtheoHelperText) {
+                        sruHelperText.style.display = "none";
+                        oaiHelperText.style.display = "none";
+                        ixtheoHelperText.style.display = "block";
+                      }
+                    }
                   }
                 }
               }]
@@ -343,26 +402,67 @@ static async openSearchDialog() {
       ]
     })
 
-    // Endpoint
+    // Endpoint - Use input field with helper text instead of dropdown
     .addCell(7, 0, {
       tag: "label",
       namespace: "html",
-      attributes: { for: "endpoint" },
+      attributes: { for: "endpoint-input" },
       properties: { innerHTML: getString("search-dialog-endpoint") },
     })
     .addCell(7, 1, {
-      tag: "input",
+      tag: "div",
       namespace: "html",
-      id: "endpoint",
-      attributes: {
-        type: "text",
-        "data-bind": "endpoint",
-        "data-prop": "value"
-      },
-      styles: { width: "100%" },
+      children: [
+        // Input field for endpoint
+        {
+          tag: "input",
+          namespace: "html",
+          id: "endpoint-input",
+          attributes: {
+            type: "text",
+            value: "dnb" // Default value
+          },
+          styles: { width: "100%", marginBottom: "5px" },
+          listeners: [{
+            type: "input",
+            listener: (e: Event) => {
+              dialogData.endpoint = (e.target as HTMLInputElement).value;
+            }
+          }]
+        },
+        // SRU helper text - Visible by default
+        {
+          tag: "div",
+          namespace: "html",
+          id: "sru-helper-text",
+          styles: { fontSize: "12px", color: "#808080", marginTop: "2px" },
+          properties: { 
+            innerHTML: "SRU options: dnb, bnf, zdb, loc, trove, kb, bibsys" 
+          }
+        },
+        // OAI helper text - Hidden initially
+        {
+          tag: "div",
+          namespace: "html",
+          id: "oai-helper-text",
+          styles: { fontSize: "12px", color: "#808080", marginTop: "2px", display: "none" },
+          properties: { 
+            innerHTML: "OAI options: dnb, dnb_digital, loc, europeana, ddb, harvard, mit, kitopen, arxiv, doaj" 
+          }
+        },
+        // IxTheo helper text - Hidden initially
+        {
+          tag: "div",
+          namespace: "html",
+          id: "ixtheo-helper-text",
+          styles: { fontSize: "12px", color: "#808080", marginTop: "2px", display: "none" },
+          properties: { 
+            innerHTML: "IxTheo options: ris, marc, html" 
+          }
+        }
+      ]
     })
 
-    // Search terms
     // Title
     .addCell(8, 0, {
       tag: "label",
@@ -376,14 +476,13 @@ static async openSearchDialog() {
       id: "title",
       attributes: {
         type: "text",
-        "data-bind": "title",
-        "data-prop": "value"
+        value: dialogData.title
       },
       styles: { width: "100%" },
       listeners: [
         {
           type: "input",
-          listener: (e) => {
+          listener: (e: Event) => {
             dialogData.title = (e.target as HTMLInputElement).value;
           }
         }
@@ -403,10 +502,17 @@ static async openSearchDialog() {
       id: "author",
       attributes: {
         type: "text",
-        "data-bind": "author",
-        "data-prop": "value"
+        value: dialogData.author
       },
       styles: { width: "100%" },
+      listeners: [
+        {
+          type: "input",
+          listener: (e: Event) => {
+            dialogData.author = (e.target as HTMLInputElement).value;
+          }
+        }
+      ]
     })
 
     // ISBN
@@ -422,14 +528,13 @@ static async openSearchDialog() {
       id: "isbn",
       attributes: {
         type: "text",
-        "data-bind": "isbn",
-        "data-prop": "value"
+        value: dialogData.isbn
       },
       styles: { width: "100%" },
       listeners: [
         {
           type: "input",
-          listener: (e) => {
+          listener: (e: Event) => {
             dialogData.isbn = (e.target as HTMLInputElement).value;
           }
         }
@@ -451,15 +556,14 @@ static async openSearchDialog() {
         type: "number",
         min: "1",
         max: "100",
-        "data-bind": "maxResults",
-        "data-prop": "value"
+        value: dialogData.maxResults.toString()
       },
       styles: { width: "100px" },
       listeners: [
         {
           type: "input",
-          listener: (e) => {
-            dialogData.maxResults = (e.target as HTMLInputElement).value;
+          listener: (e: Event) => {
+            dialogData.maxResults = parseInt((e.target as HTMLInputElement).value, 10);
           }
         }
       ]
@@ -467,7 +571,7 @@ static async openSearchDialog() {
 
     // Add buttons
     .addButton(getString("search-dialog-search-button"), "search", {
-      callback: async (e) => {
+      callback: async (e: Event) => {
         // Prevent multiple searches
         if (dialogData.searching) {
           return;
@@ -480,35 +584,41 @@ static async openSearchDialog() {
         if (dialogData.scriptPath) {
           setPref("scriptPath", dialogData.scriptPath.trim());
         }
-      
-        // Update all input fields from the UI to dialogData
+        
+        // Get the current values from UI elements
         if (dialogHelper.window) {
           const doc = dialogHelper.window.document;
-          if (doc) {
-            // Update text fields
-            const textFields = ['pythonPath', 'scriptPath', 'endpoint', 'title', 'author', 'isbn', 'maxResults'];
-            for (const field of textFields) {
-              const elem = doc.getElementById(field) as HTMLInputElement;
-              if (elem) {
-                dialogData[field] = elem.value;
-                ztoolkit.log(`Updated ${field} from UI: ${elem.value}`);
-              }
-            }
-            
-            // Update radio button protocol value
-            const selectedProtocol = doc.querySelector('input[name="protocol"]:checked') as HTMLInputElement;
-            if (selectedProtocol) {
-              dialogData.protocol = selectedProtocol.value;
-              ztoolkit.log(`Updated protocol from UI: ${selectedProtocol.value}`);
-            }
+          
+          // Get protocol from radio buttons
+          const selectedProtocol = doc.querySelector('input[name="protocol"]:checked') as HTMLInputElement;
+          if (selectedProtocol) {
+            dialogData.protocol = selectedProtocol.value;
           }
+          
+          // Get endpoint from input field
+          const endpointInput = doc.getElementById('endpoint-input') as HTMLInputElement;
+          if (endpointInput) {
+            dialogData.endpoint = endpointInput.value;
+          }
+          
+          // Get other fields
+          const titleInput = doc.getElementById('title') as HTMLInputElement;
+          if (titleInput) dialogData.title = titleInput.value;
+          
+          const authorInput = doc.getElementById('author') as HTMLInputElement;
+          if (authorInput) dialogData.author = authorInput.value;
+          
+          const isbnInput = doc.getElementById('isbn') as HTMLInputElement;
+          if (isbnInput) dialogData.isbn = isbnInput.value;
+          
+          const maxResultsInput = doc.getElementById('maxResults') as HTMLInputElement;
+          if (maxResultsInput) dialogData.maxResults = parseInt(maxResultsInput.value, 10);
         }
       
         // Reset search state
         dialogData.searching = true;
         dialogData.searchComplete = false;
         dialogData.errorMessage = "";
-        dialogData.searchResults = [];
       
         // Update UI to show searching state
         const searchButton = dialogHelper.window?.document?.querySelector("#search") as HTMLButtonElement | null;
@@ -518,18 +628,6 @@ static async openSearchDialog() {
         }
       
         try {
-          // Get final values directly from input fields
-          const pythonPathInput = dialogHelper.window?.document?.getElementById('pythonPath') as HTMLInputElement;
-          const scriptPathInput = dialogHelper.window?.document?.getElementById('scriptPath') as HTMLInputElement;
-          
-          if (pythonPathInput && pythonPathInput.value.trim()) {
-            dialogData.pythonPath = pythonPathInput.value.trim();
-          }
-          
-          if (scriptPathInput && scriptPathInput.value.trim()) {
-            dialogData.scriptPath = scriptPathInput.value.trim();
-          }
-          
           ztoolkit.log("Search parameters:", {
             pythonPath: dialogData.pythonPath,
             scriptPath: dialogData.scriptPath,
@@ -555,19 +653,22 @@ static async openSearchDialog() {
           // Run the search
           const results = await LibrarySearchModule.runSearch(searchParams);
 
-          // Store results
-          dialogData.searchResults = results;
-          dialogData.searchComplete = true;
-
           // Open results dialog if we have results
           if (results && results.length > 0) {
             await LibrarySearchModule.openResultsDialog(results);
           } else {
             dialogData.errorMessage = getString("search-dialog-no-results");
+            if (dialogHelper.window) {
+              dialogHelper.window.alert(getString("search-dialog-no-results"));
+            }
           }
         } catch (error: any) {
           ztoolkit.log("Search error:", error);
           dialogData.errorMessage = error?.message || getString("search-dialog-error");
+          
+          if (dialogHelper.window) {
+            dialogHelper.window.alert(dialogData.errorMessage);
+          }
         } finally {
           // Reset search button
           dialogData.searching = false;
@@ -575,24 +676,22 @@ static async openSearchDialog() {
             searchButton.disabled = false;
             searchButton.textContent = getString("search-dialog-search-button");
           }
-
-          // Show error message if any
-          if (dialogData.errorMessage && dialogHelper.window) {
-            dialogHelper.window.alert(dialogData.errorMessage);
-          }
         }
       },
       noClose: true
     })
-    .addButton(getString("search-dialog-cancel-button"), "cancel")
-    .setDialogData(dialogData);
+    .addButton(getString("search-dialog-cancel-button"), "cancel");
+
+  // Set dialog data
+  dialogHelper.setDialogData(dialogData);
 
   // Open the dialog
   dialogHelper.open(getString("search-dialog-title"));
   
+  // Store the dialog reference
   addon.data.dialog = dialogHelper;
 }
-  
+   
 
   /**
    * Opens a dialog to display search results
