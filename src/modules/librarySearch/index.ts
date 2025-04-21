@@ -1,4 +1,5 @@
-// index.ts - Main export file for library search functionality
+// src/modules/librarySearch/index.ts
+// Main export file for library search functionality
 
 // Export data models
 export { BiblioRecord, SRUEndpoint, OAIEndpoint, IxTheoEndpoint } from './models';
@@ -17,6 +18,10 @@ export {
   formatRecordRis,
   generateCitationKey
 } from './formatters';
+
+// Export search functionality
+export { SearchService } from './searchService';
+export { openSearchDialog } from './searchDialog';
 
 // Export integration class
 export { LibrarySearchIntegration } from './integration';

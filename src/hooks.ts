@@ -1,8 +1,9 @@
 import { getString, initLocale } from "./utils/locale";
 import { registerPrefsScripts } from "./modules/preferenceScript";
 import { createZToolkit } from "./utils/ztoolkit";
-import { LibrarySearchModule } from "./modules/librarySearch";
+import { initializeLibrarySearch } from "./modules/librarySearch/index";
 import { ThemeUtils } from "./modules/themeUtils";
+import { NotificationService } from "./modules/librarySearch/notificationService";
 
 async function onStartup() {
   try {
@@ -19,8 +20,8 @@ async function onStartup() {
 
     ztoolkit.log('Plugin starting up');
     
-    // Initialize the LibrarySearchModule
-    LibrarySearchModule.init();
+    // Initialize the Library Search module
+    initializeLibrarySearch();
     
     // Initialize locale
     initLocale();
@@ -37,6 +38,9 @@ async function onStartup() {
     } else {
       ztoolkit.log('No main windows found during startup');
     }
+    
+    // Show notification about Python transition
+    NotificationService.showPythonTransitionNotice();
     
     ztoolkit.log('Plugin startup complete');
   } catch (e) {
@@ -155,7 +159,7 @@ function injectDarkModeCSS(win: Window) {
         --ls-result-border: #e0e0e0;
       }
       
-      /* Dark mode variables - will be applied when Zotero is in dark mode */
+      /* Dark mode variables */
       [data-theme="dark"] {
         --ls-background-color: #2a2a2e;
         --ls-text-color: #f9f9fa;
@@ -196,8 +200,8 @@ function registerLibrarySearchButton(win: _ZoteroTypes.MainWindow) {
       properties: {
         id: `${addon.data.config.addonRef}-toolbar-button`,
         class: "zotero-tb-button",
-        label: "Search Libraries", // Direct string instead of getString
-        tooltiptext: "Search library catalogs and repositories", // Direct string
+        label: getString("toolbar-button-label"),
+        tooltiptext: getString("toolbar-button-tooltip"),
         type: "button",
         hidden: false
       },
@@ -233,7 +237,7 @@ function registerToolsMenuItem(win: _ZoteroTypes.MainWindow) {
       namespace: "xul",
       properties: {
         id: `${addon.data.config.addonRef}-menu-item`,
-        label: "Library Search" // Direct string instead of getString
+        label: getString("menu-item-label")
       }
     });
     
@@ -291,7 +295,7 @@ function onShutdown(): void {
     // Remove addon object
     addon.data.alive = false;
     
-    // Clean up Zotero.<addonInstance> - use type assertion
+    // Clean up Zotero.<addonInstance>
     if ((Zotero as any).LibrarySearch) {
       delete (Zotero as any).LibrarySearch;
     }
@@ -318,25 +322,10 @@ async function onDialogEvents(type: string, data?: any) {
   try {
     switch (type) {
       case "openSearch":
-        await LibrarySearchModule.openSearchDialog();
+        // Import the search dialog module dynamically
+        const { openSearchDialog } = await import("./modules/librarySearch/searchDialog");
+        await openSearchDialog();
         break;
-      case "runSearch":
-        if (data) {
-          const results = await LibrarySearchModule.runSearch(data);
-          return results;
-        }
-        break;
-      case "importResults":
-        if (data) {
-          await LibrarySearchModule.importResults(data);
-        }
-        break;
-      /* case "executeCommand":
-        if (data && data.command) {
-          const result = await LibrarySearchModule.executeCommand(data.command, data.args || []);
-          return result;
-        }
-        break; */
       default:
         break;
     }

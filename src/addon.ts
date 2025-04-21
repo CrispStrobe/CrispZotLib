@@ -2,6 +2,7 @@ import { config } from "../package.json";
 import { ColumnOptions, DialogHelper } from "zotero-plugin-toolkit";
 import hooks from "./hooks";
 import { createZToolkit } from "./utils/ztoolkit";
+import { BiblioRecord } from "./modules/librarySearch/models";
 
 class Addon {
   public data: {
@@ -20,14 +21,11 @@ class Addon {
       rows: Array<{ [dataKey: string]: string }>;
     };
     dialog?: DialogHelper;
-    pythonPath?: string;
-    scriptPath?: string;
-    lastSearchResults?: any[];
-    // New fields for theme support
+    lastSearchResults?: BiblioRecord[];
+    
+    // Fields for theme support
     mainThemeObserver?: MutationObserver;
     themeObserver?: MutationObserver;
-    // For Python path detection
-    suggestedPythonPath?: string;
   };
 
   // Lifecycle hooks
@@ -42,8 +40,6 @@ class Addon {
       config,
       env: __env__,
       ztoolkit: createZToolkit(),
-      pythonPath: "",
-      scriptPath: "",
       lastSearchResults: []
     };
     this.hooks = hooks;

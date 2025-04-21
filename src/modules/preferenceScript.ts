@@ -1,7 +1,4 @@
-/**
-* preferenceScript.ts - Handles preference panel UI and functionality
-* (Updated for TypeScript-based Library Search implementation)
-*/
+// src/modules/preferenceScript.ts
 
 import { config } from "../../package.json";
 import { getString } from "../utils/locale";
@@ -30,6 +27,10 @@ export async function registerPrefsScripts(_window: Window) {
           setting: "Enabled",
           value: getPref("enable") ? "Yes" : "No"
         },
+        {
+          setting: "Debug Mode",
+          value: getPref("debugMode") ? "Enabled" : "Disabled"
+        }
         // You can add other plugin settings here
       ],
     };
@@ -66,16 +67,58 @@ async function updatePrefsUI() {
     const enableCheckbox = win.document.getElementById(
       "zotero-prefpane-__addonRef__-enable"
     ) as HTMLInputElement;
-    
+
     if (enableCheckbox) {
       enableCheckbox.checked = getPref("enable");
-      
+
       // Add event listener
       enableCheckbox.addEventListener("change", function() {
         setPref("enable", enableCheckbox.checked);
       });
     }
-    
+
+    // Add debug mode checkbox
+    const checkboxContainer = win.document.createElement("div");
+    checkboxContainer.style.margin = "10px 0";
+
+    const debugCheckbox = win.document.createElement("input");
+    debugCheckbox.type = "checkbox";
+    debugCheckbox.id = "zotero-prefpane-__addonRef__-debug";
+    debugCheckbox.checked = getPref("debugMode") || false;
+
+    const debugLabel = win.document.createElement("label");
+    debugLabel.htmlFor = "zotero-prefpane-__addonRef__-debug";
+    debugLabel.textContent = "Enable Debug Mode";
+    debugLabel.style.marginLeft = "5px";
+
+    // Add event listener
+    debugCheckbox.addEventListener("change", function() {
+      setPref("debugMode", debugCheckbox.checked);
+
+      // Update the table when changed
+      const tableContainer = win.document.getElementById("__addonRef__-table-container");
+      if (tableContainer) {
+        // Find the debug mode row and update it
+        const rows = tableContainer.querySelectorAll("tr");
+        for (const row of rows) {
+          const cells = row.querySelectorAll("td");
+          if (cells.length > 1 && cells[0].textContent === "Debug Mode") {
+            cells[1].textContent = debugCheckbox.checked ? "Enabled" : "Disabled";
+            break;
+          }
+        }
+      }
+    });
+
+    checkboxContainer.appendChild(debugCheckbox);
+    checkboxContainer.appendChild(debugLabel);
+
+    // Find the container to add the debug checkbox
+    const container = win.document.querySelector(".prefpane-container");
+    if (container) {
+      container.appendChild(checkboxContainer);
+    }
+
     // Display settings in a simple table instead of VirtualizedTable
     if (addon.data.prefs) {
       const container = win.document.getElementById("__addonRef__-table-container");
@@ -84,39 +127,39 @@ async function updatePrefsUI() {
         while (container.firstChild) {
           container.removeChild(container.firstChild);
         }
-        
+
         // Create a simple HTML table
         const table = win.document.createElement("table");
         table.style.width = "100%";
         table.style.borderCollapse = "collapse";
-        
+
         // Create header row
         const thead = win.document.createElement("thead");
         const headerRow = win.document.createElement("tr");
-        
+
         for (const column of addon.data.prefs.columns) {
           const th = win.document.createElement("th");
           th.textContent = column.label;
           th.style.textAlign = "left";
           th.style.padding = "8px";
           th.style.borderBottom = "1px solid #ccc";
-          
+
           if (column.fixedWidth) {
             th.style.width = `${column.width}px`;
           }
-          
+
           headerRow.appendChild(th);
         }
-        
+
         thead.appendChild(headerRow);
         table.appendChild(thead);
-        
+
         // Create body with rows
         const tbody = win.document.createElement("tbody");
-        
+
         for (const row of addon.data.prefs.rows) {
           const tr = win.document.createElement("tr");
-          
+
           for (const column of addon.data.prefs.columns) {
             const td = win.document.createElement("td");
             td.textContent = row[column.dataKey];
@@ -124,10 +167,10 @@ async function updatePrefsUI() {
             td.style.borderBottom = "1px solid #eee";
             tr.appendChild(td);
           }
-          
+
           tbody.appendChild(tr);
         }
-        
+
         table.appendChild(tbody);
         container.appendChild(table);
       }
@@ -146,7 +189,7 @@ function bindPrefEvents() {
     if (!win) return;
 
     // Add any additional event bindings here
-    
+
   } catch (e) {
     ztoolkit.log("Error binding preference events:", e);
   }
