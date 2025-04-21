@@ -1,68 +1,42 @@
-<linkset>
-  <html:link rel="localization" href="__addonRef__-preferences.ftl" />
-</linkset>
-<groupbox
-  onload="Zotero.__addonInstance__.hooks.onPrefsEvent('load', { window });"
->
-  <label><html:h2 data-l10n-id="prefs-title"></html:h2></label>
-  <checkbox
-    id="zotero-prefpane-__addonRef__-enable"
-    preference="enable"
-    data-l10n-id="prefs-enable"
-  />
-
-  <html:div style="display: flex; margin-top: 10px;">
-    <html:div style="flex: 1;">
-      <html:label
-        for="zotero-prefpane-__addonRef__-python-path"
-        data-l10n-id="prefs-python-path"
-        style="display: block; margin-bottom: 5px;"
-      ></html:label>
-      <html:div style="display: flex;">
-        <html:input
-          type="text"
-          id="zotero-prefpane-__addonRef__-python-path"
-          style="flex: 1; margin-right: 5px;"
-        ></html:input>
-        <button
-          id="zotero-prefpane-__addonRef__-browse-python"
-          data-l10n-id="prefs-browse"
-        ></button>
-      </html:div>
+<!-- Remove these sections -->
+<html:div style="display: flex; margin-top: 10px;">
+  <html:div style="flex: 1;">
+    <html:label
+      for="zotero-prefpane-__addonRef__-python-path"
+      data-l10n-id="prefs-python-path"
+      style="display: block; margin-bottom: 5px;"
+    ></html:label>
+    <html:div style="display: flex;">
+      <html:input
+        type="text"
+        id="zotero-prefpane-__addonRef__-python-path"
+        style="flex: 1; margin-right: 5px;"
+      ></html:input>
+      <button
+        id="zotero-prefpane-__addonRef__-browse-python"
+        data-l10n-id="prefs-browse"
+      ></button>
     </html:div>
   </html:div>
+</html:div>
 
-  <html:div style="display: flex; margin-top: 10px;">
-    <html:div style="flex: 1;">
-      <html:label
-        for="zotero-prefpane-__addonRef__-script-path"
-        data-l10n-id="prefs-script-path"
-        style="display: block; margin-bottom: 5px;"
-      ></html:label>
-      <html:div style="display: flex;">
-        <html:input
-          type="text"
-          id="zotero-prefpane-__addonRef__-script-path"
-          style="flex: 1; margin-right: 5px;"
-        ></html:input>
-        <button
-          id="zotero-prefpane-__addonRef__-browse-script"
-          data-l10n-id="prefs-browse"
-        ></button>
-      </html:div>
+<html:div style="display: flex; margin-top: 10px;">
+  <html:div style="flex: 1;">
+    <html:label
+      for="zotero-prefpane-__addonRef__-script-path"
+      data-l10n-id="prefs-script-path"
+      style="display: block; margin-bottom: 5px;"
+    ></html:label>
+    <html:div style="display: flex;">
+      <html:input
+        type="text"
+        id="zotero-prefpane-__addonRef__-script-path"
+        style="flex: 1; margin-right: 5px;"
+      ></html:input>
+      <button
+        id="zotero-prefpane-__addonRef__-browse-script"
+        data-l10n-id="prefs-browse"
+      ></button>
     </html:div>
   </html:div>
-
-  <html:div style="margin-top: 20px;">
-    <html:h3>Current Settings</html:h3>
-    <hbox class="virtualized-table-container" flex="1" height="200px">
-      <html:div id="__addonRef__-table-container" style="width: 100%;" />
-    </hbox>
-  </html:div>
-</groupbox>
-<vbox>
-  <html:label
-    data-l10n-id="prefs-help"
-    data-l10n-args='{"time": "__buildTime__","name": "__addonName__","version":"__buildVersion__"}'
-  ></html:label>
-</vbox>
+</html:div>

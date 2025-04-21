@@ -116,15 +116,7 @@ export class ThemeUtils {
  * Utilities for detecting and suggesting Python paths
  */
 export class PathUtils {
-    /**
-     * Default Python paths by platform
-     */
-    static readonly DEFAULT_PATHS = {
-      win: ['C:\\Python311\\python.exe', 'C:\\Python310\\python.exe', 'C:\\Python39\\python.exe', 'C:\\Users\\%USERNAME%\\miniconda3\\python.exe'],
-      mac: ['/usr/bin/python3', '/usr/local/bin/python3', '/opt/homebrew/bin/python3', '/Users/%USERNAME%/miniconda3/bin/python'],
-      linux: ['/usr/bin/python3', '/usr/local/bin/python3', '/home/%USERNAME%/miniconda3/bin/python']
-    };
-  
+    
     /**
      * Get the user's home directory
      * @returns Path to user's home directory
@@ -170,31 +162,6 @@ export class PathUtils {
     }
   
     /**
-     * Get platform-specific default Python paths
-     * @returns Array of possible Python paths for the current platform
-     */
-    static getDefaultPaths(): string[] {
-      try {
-        let paths: string[] = [];
-        const username = this.getUserHomeFolder();
-        
-        if (Zotero.isWin) {
-          paths = this.DEFAULT_PATHS.win.map(p => p.replace('%USERNAME%', username));
-        } else if (Zotero.isMac) {
-          paths = this.DEFAULT_PATHS.mac.map(p => p.replace('%USERNAME%', username));
-        } else {
-          // Assume Linux
-          paths = this.DEFAULT_PATHS.linux.map(p => p.replace('%USERNAME%', username));
-        }
-        
-        return paths;
-      } catch (e) {
-        ztoolkit.log('Error getting default paths:', e);
-        return [];
-      }
-    }
-  
-    /**
      * Get the user's home folder name
      * @returns The username part of the home path
      */
@@ -234,82 +201,6 @@ export class PathUtils {
       }
     }
   
-    /**
-     * Detect Python path using the "which" command (Unix) or "where" command (Windows)
-     * @returns Promise resolving to the detected Python path, or null if not found
-     */
-    static async detectPythonPath(): Promise<string | null> {
-      try {
-        // Try common paths first
-        for (const path of this.getDefaultPaths()) {
-          if (this.fileExists(path)) {
-            ztoolkit.log(`Found Python at default path: ${path}`);
-            return path;
-          }
-        }
-  
-        // Try using which/where command
-        const command = Zotero.isWin ? 'where' : 'which';
-        const args = [Zotero.isWin ? 'python.exe' : 'python3'];
-        
-        if (!Zotero.isWin) {
-          // Add extra options for Unix
-          args.unshift('-s'); // Silent mode for which
-        }
-  
-        ztoolkit.log(`Running command: ${command} ${args.join(' ')}`);
-        
-        // Use the executeCommand function from LibrarySearchModule via hooks
-        try {
-          const result = await addon.hooks.onDialogEvents("executeCommand", { 
-            command, 
-            args 
-          });
-          
-          if (result && typeof result === 'object' && 'exitCode' in result && 'result' in result) {
-            const typedResult = result as { exitCode: number, result: string, stderr: string };
-            if (typedResult.exitCode === 0 && typedResult.result) {
-              // Get the first line from the result
-              const path = typedResult.result.trim().split(/\r?\n/)[0];
-              if (path && this.fileExists(path)) {
-                ztoolkit.log(`Detected Python path: ${path}`);
-                return path;
-              }
-            }
-          }
-        } catch (e) {
-          ztoolkit.log('Error executing which/where command:', e);
-        }
-        
-        // Try python instead of python3 for Unix
-        if (!Zotero.isWin) {
-          try {
-            const pythonArgs = ['-s', 'python'];
-            const pythonResult = await addon.hooks.onDialogEvents("executeCommand", {
-              command: 'which',
-              args: pythonArgs
-            });
-            
-            if (pythonResult && typeof pythonResult === 'object' && 'exitCode' in pythonResult && 'result' in pythonResult) {
-              const typedResult = pythonResult as { exitCode: number, result: string, stderr: string };
-              if (typedResult.exitCode === 0 && typedResult.result) {
-                const path = typedResult.result.trim().split(/\r?\n/)[0];
-                if (path && this.fileExists(path)) {
-                  ztoolkit.log(`Detected Python path: ${path}`);
-                  return path;
-                }
-              }
-            }
-          } catch (e) {
-            ztoolkit.log('Error executing which python command:', e);
-          }
-        }
-        
-        // Return null if not found
-        return null;
-      } catch (e) {
-        ztoolkit.log('Error detecting Python path:', e);
-        return null;
-      }
-    }
+    
+    
   }

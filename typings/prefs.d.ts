@@ -8,8 +8,6 @@ declare namespace _ZoteroTypes {
   interface Prefs {
     PluginPrefsMap: {
       "enable": boolean;
-      "pythonPath": string;
-      "scriptPath": string;
     };
   }
 }

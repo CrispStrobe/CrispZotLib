@@ -331,12 +331,12 @@ async function onDialogEvents(type: string, data?: any) {
           await LibrarySearchModule.importResults(data);
         }
         break;
-      case "executeCommand":
+      /* case "executeCommand":
         if (data && data.command) {
           const result = await LibrarySearchModule.executeCommand(data.command, data.args || []);
           return result;
         }
-        break;
+        break; */
       default:
         break;
     }
