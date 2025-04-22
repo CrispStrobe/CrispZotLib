@@ -106,6 +106,31 @@ export class SRUClient {
   }
 
   /**
+     * Creates a namespace resolver function for document.evaluate.
+     * Safely handles potentially null documentElement.
+     */
+  private createNsResolver(doc: Document): XPathNSResolver {
+    const nsMap = this.namespaces; // Use the namespaces defined in the constructor
+
+    // Safely access namespaceURI using optional chaining (?.)
+    // and provide null as a fallback using nullish coalescing (??)
+    // if documentElement is null or namespaceURI is null/undefined.
+    const defaultNS = doc.documentElement?.namespaceURI ?? null;
+
+    return {
+        lookupNamespaceURI: function(prefix: string | null): string | null {
+            // Handle the default namespace if prefix is null or empty
+            if (!prefix) {
+                // Return the defaultNS we safely retrieved (which could be null)
+                return defaultNS;
+            }
+            // Look up the specific prefix in our map
+            return nsMap[prefix] || null; // Return from map or null if not found
+        }
+    };
+  }
+
+  /**
    * Execute an SRU search query and return parsed BiblioRecord objects
    */
   async search(
@@ -1620,127 +1645,75 @@ private parseRdfXml(
 
 
 /**
- * Helper method to find XML elements by XPath
- */
-/* 
-private findElement(element: Element, xpath: string): Element | null {
-// private findElement(doc: Document | Element, xpath: string): Element | null {
+     * Helper method to find a single XML element using XPath.
+     * Accesses Node and XPathResult constants via the window object.
+     */
+    private findElement(contextNode: Document | Element, xpath: string): Element | null {
+        try {
+            const doc = contextNode.ownerDocument || (contextNode as Document);
+            // Ensure the necessary properties exist on the window object
+            const win = _globalThis.window2 as any; // Assuming window2 points to the main window
+            if (!win || !win.Node || !win.XPathResult || !doc.evaluate) {
+                 console.error("Required DOM/XPath features not found on window or document.");
+                 return null;
+            }
 
-  try {
-    // Note: Real XPath operations would require a more sophisticated approach
-    // This is a simplified version
-    
-    // For SRU record data
-    if (xpath.startsWith('.//srw:')) {
-      const tagName = xpath.replace('.//srw:', '');
-      return element.querySelector(`*[srw|${tagName}]`) || element.querySelector(tagName);
+            const nsResolver = this.createNsResolver(doc);
+            const result = doc.evaluate(
+                xpath,
+                contextNode,
+                nsResolver,
+                win.XPathResult.FIRST_ORDERED_NODE_TYPE, // Use window.XPathResult
+                null
+            );
+            // Check nodeType before casting
+            if (result.singleNodeValue && result.singleNodeValue.nodeType === win.Node.ELEMENT_NODE) {
+                 return result.singleNodeValue as Element;
+            }
+            return null; // Return null if not an element or null
+        } catch (e) {
+            console.error(`Error evaluating XPath "${xpath}":`, e);
+            return null;
+        }
     }
-    
-    // For Dublin Core
-    if (xpath.startsWith('.//dc:')) {
-      const tagName = xpath.replace('.//dc:', '');
-      return element.querySelector(`*[dc|${tagName}]`) || element.querySelector(tagName);
-    }
-    
-    // For RDF
-    if (xpath.startsWith('.//rdf:')) {
-      const tagName = xpath.replace('.//rdf:', '');
-      return element.querySelector(`*[rdf|${tagName}]`) || element.querySelector(tagName);
-    }
-    
-    // For MARC
-    if (xpath.startsWith('.//marc:datafield')) {
-      const tag = xpath.match(/\[@tag="([^"]+)"\]/)?.[1];
-      if (tag) {
-        return element.querySelector(`datafield[tag="${tag}"]`);
-      }
-    }
-    
-    // Generic tag search
-    const parts = xpath.split(':');
-    if (parts.length > 1) {
-      const tagName = parts[1].replace(/^\/\//, '');
-      return element.querySelector(tagName);
-    }
-    
-    // Fallback: try direct selection
-    return element.querySelector(xpath) || null;
-  } catch (e) {
-    console.error('Error finding element with path:', xpath, e);
-    return null;
-  }
-}
-*/
 
-// Update the method signatures to accept both Document and Element types
-private findElement(parent: Document | Element, xpath: string): Element | null {
-  try {
-    // Implementation for finding elements in Document or Element
-    if (parent instanceof Document) {
-      return parent.querySelector(xpath.replace(/\.\//g, ''));
-    } else {
-      return parent.querySelector(xpath.replace(/\.\//g, ''));
-    }
-  } catch (e) {
-    console.error('Error finding element with path:', xpath, e);
-    return null;
-  }
-}
+    /**
+     * Helper method to find multiple XML elements using XPath.
+     * Accesses Node and XPathResult constants via the window object.
+     */
+    private findElements(contextNode: Document | Element, xpath: string): Element[] {
+        const elements: Element[] = [];
+        try {
+            const doc = contextNode.ownerDocument || (contextNode as Document);
+             // Ensure the necessary properties exist on the window object
+            const win = _globalThis.window2 as any; // Assuming window2 points to the main window
+            if (!win || !win.Node || !win.XPathResult || !doc.evaluate) {
+                 console.error("Required DOM/XPath features not found on window or document.");
+                 return [];
+            }
 
-private findElements(parent: Document | Element, xpath: string): Element[] {
-  try {
-    // Implementation for finding elements in Document or Element
-    if (parent instanceof Document) {
-      return Array.from(parent.querySelectorAll(xpath.replace(/\.\//g, '')));
-    } else {
-      return Array.from(parent.querySelectorAll(xpath.replace(/\.\//g, '')));
-    }
-  } catch (e) {
-    console.error('Error finding elements with path:', xpath, e);
-    return [];
-  }
-}
+            const nsResolver = this.createNsResolver(doc);
+            const iterator = doc.evaluate(
+                xpath,
+                contextNode,
+                nsResolver,
+                win.XPathResult.ORDERED_NODE_ITERATOR_TYPE, // Use window.XPathResult
+                null
+            );
 
-/**
- * Helper method to find multiple XML elements by XPath
- */
-/*
-private findElements(element: Element, xpath: string): Element[] {
-  try {
-    // Simplified version as with findElement
-    
-    // For Dublin Core
-    if (xpath.startsWith('.//dc:')) {
-      const tagName = xpath.replace('.//dc:', '');
-      const results = element.querySelectorAll(`*[dc|${tagName}], ${tagName}`);
-      return Array.from(results);
+            let node = iterator.iterateNext();
+            while (node) {
+                // Check nodeType before adding
+                if (node.nodeType === win.Node.ELEMENT_NODE) { // Use window.Node
+                    elements.push(node as Element);
+                }
+                node = iterator.iterateNext();
+            }
+        } catch (e) {
+            console.error(`Error evaluating XPath iterator "${xpath}":`, e);
+        }
+        return elements;
     }
-    
-    // For MARC
-    if (xpath.startsWith('.//marc:datafield')) {
-      const tag = xpath.match(/\[@tag="([^"]+)"\]/)?.[1];
-      if (tag) {
-        const results = element.querySelectorAll(`datafield[tag="${tag}"]`);
-        return Array.from(results);
-      }
-    }
-    
-    // Generic tag search
-    const parts = xpath.split(':');
-    if (parts.length > 1) {
-      const tagName = parts[1].replace(/^\/\//, '');
-      const results = element.querySelectorAll(tagName);
-      return Array.from(results);
-    }
-    
-    // Fallback: try direct selection
-    return Array.from(element.querySelectorAll(xpath));
-  } catch (e) {
-    console.error('Error finding elements with path:', xpath, e);
-    return [];
-  }
-}
-*/
 
 /**
  * Helper for finding MARC datafields
