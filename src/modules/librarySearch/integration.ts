@@ -2,9 +2,35 @@
 // Updated to use pure TypeScript search implementation
 
 import { BiblioRecord } from './models';
-import { openSearchDialog } from './searchDialog';
+import { openSearchDialog, createStyledDialog } from './searchDialog';
 import { SearchService } from './searchService';
 import { getString } from "../../utils/locale";
+import { config } from "../../../package.json";
+
+
+// Define a type for the search parameters needed for pagination
+export type SearchParams = {
+  protocol: string;
+  endpoint: string;
+  title?: string;
+  author?: string;
+  isbn?: string;
+  schema?: string; // Include schema if implementing schema selection
+  maxRecords: number;
+  startRecord?: number; // Optional, for pagination
+};
+
+// Define an interface for results dialog data
+export interface ResultsDialogData {
+  searchResults: BiblioRecord[];
+  selectedResults: number[];
+  totalRecords: number;
+  currentStartRecord: number;
+  searchParams: SearchParams; // Store original search parameters
+  isLoading: boolean; // To prevent multiple clicks
+  loadCallback?: (window: Window) => void;
+  unloadCallback?: () => void;
+}
 
 /**
  * LibrarySearchIntegration class - Handles integration with Zotero
@@ -20,14 +46,7 @@ export class LibrarySearchIntegration {
   /**
    * Execute a search with the given parameters
    */
-  static async executeSearch(params: {
-    protocol: string;
-    endpoint: string;
-    title?: string;
-    author?: string;
-    isbn?: string;
-    maxRecords?: number;
-  }): Promise<[boolean, BiblioRecord[]]> {
+  static async executeSearch(params: SearchParams): Promise<[boolean, BiblioRecord[], number]> {
     try {
       // Use our new SearchService
       return await SearchService.executeSearch(params);
@@ -47,21 +66,38 @@ export class LibrarySearchIntegration {
   /**
    * Open a dialog to display search results
    */
-  static async openResultsDialog(results: BiblioRecord[]): Promise<void> {
+  static async openResultsDialog(
+    results: BiblioRecord[],
+    totalRecords: number = results.length,
+    searchParams: SearchParams // Pass original search parameters
+  ): Promise<void> {
     if (!results || results.length === 0) {
-      console.error("No results to display");
+      ztoolkit.log("No results to display");
+      // Optionally show an alert here
+      const win = Zotero.getMainWindow();
+      win?.alert(getString("search-dialog-no-results"));
       return;
     }
-    
-    // Create dialog data
-    const dialogData: { [key: string]: any } = {
+
+    // Define dialogHelper FIRST
+    const dialogHelper = createStyledDialog(12, 4); // Increased columns for controls
+
+    // Create dialog data with type
+    const dialogData: ResultsDialogData = {
       searchResults: results,
       selectedResults: [],
+      totalRecords: totalRecords,
+      currentStartRecord: 1, // Initial page starts at 1
+      searchParams: searchParams,
+      isLoading: false,
       loadCallback: (window: Window) => {
         console.log("Results dialog opened");
         if (window.document && window.document.body) {
           window.document.body.classList.add('librarysearch-dialog');
         }
+        // Initial update of status/buttons
+        // Using window.document here
+        updatePaginationControls(window.document, dialogData);
       },
       unloadCallback: () => {
         console.log("Results dialog closed");
@@ -73,7 +109,7 @@ export class LibrarySearchIntegration {
     };
 
     // Function to generate HTML content for each result
-    const generateResultHTML = (result: BiblioRecord, index: number) => {
+    const generateResultHTML = (result: BiblioRecord, index: number, currentDialogData: ResultsDialogData): any => { // Renamed parameter
       const title = result.title || "Untitled";
       const authors = result.authors?.join(", ") || "Unknown";
       const year = result.year || "";
@@ -89,6 +125,7 @@ export class LibrarySearchIntegration {
         children: [
           {
             tag: "div",
+            namespace: "html", // Add namespace
             styles: {
               display: "flex",
               justifyContent: "space-between",
@@ -98,143 +135,234 @@ export class LibrarySearchIntegration {
             children: [
               {
                 tag: "h3",
+                namespace: "html", // Add namespace
                 styles: { margin: "0" },
                 properties: { innerHTML: title }
               },
               {
                 tag: "input",
-                attributes: {
+                namespace: "html", // Add namespace
+                attributes: { 
                   type: "checkbox",
                   "data-index": index.toString()
                 },
-                listeners: [
-                  {
-                    type: "change",
-                    listener: (e: Event) => {
-                      const checkbox = e.target as HTMLInputElement;
-                      const idx = parseInt(checkbox.getAttribute("data-index") || "0");
-
-                      if (checkbox.checked) {
-                        if (!dialogData.selectedResults.includes(idx)) {
-                          dialogData.selectedResults.push(idx);
-                        }
-                      } else {
-                        const pos = dialogData.selectedResults.indexOf(idx);
-                        if (pos >= 0) {
-                          dialogData.selectedResults.splice(pos, 1);
-                        }
+                listeners: [{
+                  type: "change",
+                  listener: (e: Event) => {
+                    const checkbox = e.target as HTMLInputElement;
+                    // Use itemIndex consistently
+                    const itemIndex = parseInt(checkbox.getAttribute("data-index") || "0");
+    
+                    // Now dialogData is available via the parameter
+                    if (checkbox.checked) {
+                      if (!currentDialogData.selectedResults.includes(itemIndex)) {
+                        currentDialogData.selectedResults.push(itemIndex);
                       }
+                    } else {
+                      // Explicitly type idx in the filter
+                      currentDialogData.selectedResults = currentDialogData.selectedResults.filter(
+                        (idx: number) => idx !== itemIndex
+                      );
                     }
+                    ztoolkit.log(`Selected indices: ${currentDialogData.selectedResults.join(', ')}`);
                   }
-                ]
+                }]
               }
             ]
           },
           {
             tag: "div",
+            namespace: "html", // Add namespace
             properties: { innerHTML: `<strong>Authors:</strong> ${authors}` }
           },
           {
             tag: "div",
+            namespace: "html", // Add namespace
             properties: { innerHTML: `<strong>Year:</strong> ${year}` }
           },
           {
             tag: "div",
+            namespace: "html", // Add namespace
             properties: { innerHTML: `<strong>Publisher:</strong> ${publisher}` }
           }
         ]
       };
     };
 
-    // Calculate dialog size based on number of results
-    const rows = Math.min(results.length * 2 + 3, 20);
+    // Calculate rows per page for pagination display
+    const rowsPerPage = searchParams.maxRecords;
 
-    // Create the dialog helper
-    const dialogHelper = new ztoolkit.Dialog(rows, 1)
-      .addCell(0, 0, {
-        tag: "h1",
-        properties: { innerHTML: getString("results-dialog-title") }
-      })
-      .addCell(1, 0, {
-        tag: "div",
-        properties: { innerHTML: `Found ${results.length} results. Select items to import:` }
-      });
+    // Header
+    dialogHelper.addCell(0, 0, {
+      tag: "h1",
+      properties: { innerHTML: getString("results-dialog-title") },
+      styles: { gridColumn: "1 / span 4" } // Span all columns
+    });
 
-    // Add results
-    const resultsContainer = {
+    // Status Label
+    dialogHelper.addCell(1, 0, {
+      tag: "div",
+      id: "pagination-status", // Add ID for easy update
+      properties: { innerHTML: `Showing results ${dialogData.currentStartRecord}-${Math.min(dialogData.currentStartRecord + rowsPerPage - 1, dialogData.totalRecords)} of ${dialogData.totalRecords}` },
+      styles: { gridColumn: "1 / span 4", textAlign: "center", margin: "5px 0" }
+    });
+
+    // Results Container
+    const resultsContainerSpec = {
       tag: "div",
       namespace: "html",
-      attributes: { 
-        class: "results-container" 
-      },
+      id: "results-container", // Add ID for easy update
+      attributes: { class: "results-container" },
       styles: {
+        gridColumn: "1 / span 4", // Span all columns
         maxHeight: "400px",
         overflowY: "auto",
         marginTop: "10px",
         marginBottom: "10px"
       },
-      children: results.map((result, index) => generateResultHTML(result, index))
+      children: results.map((result, index) => generateResultHTML(result, index, dialogData)) // Pass dialogData here
     };
+    dialogHelper.addCell(2, 0, resultsContainerSpec);
 
-    dialogHelper.addCell(2, 0, resultsContainer);
+    // --- Pagination Buttons ---
+    // Previous Button
+    dialogHelper.addCell(3, 0, { // Place in first column of a new row
+      tag: "button",
+      id: "prev-button",
+      properties: { innerHTML: "< Previous" },
+      listeners: [{
+        type: "click",
+        listener: async (e: Event) => {
+          if (dialogData.isLoading) return;
+          const newStartRecord = dialogData.currentStartRecord - dialogData.searchParams.maxRecords;
+          if (newStartRecord >= 1) {
+            await fetchAndDisplayPage(newStartRecord, dialogData, dialogHelper.window.document);
+          }
+        }
+      }]
+    });
 
-    // Add buttons
+    // Next Button
+    dialogHelper.addCell(3, 3, { // Place in last column
+      tag: "button",
+      id: "next-button",
+      properties: { innerHTML: "Next >" },
+      styles: { justifySelf: "end" }, // Align button to the right
+      listeners: [{
+        type: "click",
+        listener: async (e: Event) => {
+          if (dialogData.isLoading) return;
+          const newStartRecord = dialogData.currentStartRecord + dialogData.searchParams.maxRecords;
+          if (newStartRecord <= dialogData.totalRecords) {
+            // Pass the document object from dialogHelper.window
+            await fetchAndDisplayPage(newStartRecord, dialogData, dialogHelper.window.document);
+          }
+        }
+      }]
+    });
+    // --- End Pagination Buttons ---
+
+    // --- Import/Cancel Buttons (adjust row index) ---
     dialogHelper
-      .addButton(getString("results-dialog-import-selected"), "import", {
-        callback: async (e) => {
-          // Get selected results
-          const selectedResults = dialogData.selectedResults.map((index: number) => results[index]);
-
-          if (selectedResults.length === 0) {
-            if (dialogHelper.window) {
-              dialogHelper.window.alert(getString("results-dialog-no-selection"));
-            }
+      .addButton(getString("results-dialog-import-selected"), "import", { 
+        callback: async () => {
+          // Get selected items
+          const selectedItems = dialogData.selectedResults.map(idx => dialogData.searchResults[idx]);
+          if (selectedItems.length === 0) {
+            dialogHelper.window?.alert(getString("results-dialog-no-selection"));
             return;
           }
+          
+          try {
+            const count = await LibrarySearchIntegration.importToZotero(selectedItems);
+            dialogHelper.window?.alert(`Successfully imported ${count} items`);
+            dialogHelper.window?.close();
+          } catch (error) {
+            dialogHelper.window?.alert(`Error importing items: ${error}`);
+          }
+        }, 
+        noClose: true 
+      }, 4, 0) // Row 4, Col 0
+      .addButton(getString("results-dialog-import-all"), "importAll", { 
+        callback: async () => {
+          try {
+            const count = await LibrarySearchIntegration.importToZotero(dialogData.searchResults);
+            dialogHelper.window?.alert(`Successfully imported ${count} items`);
+            dialogHelper.window?.close();
+          } catch (error) {
+            dialogHelper.window?.alert(`Error importing items: ${error}`);
+          }
+        }, 
+        noClose: true 
+      }, 4, 1) // Row 4, Col 1
+      .addButton(getString("results-dialog-cancel"), "cancel", {}, 4, 3); // Row 4, Col 3 (align right)
+    // --- End Import/Cancel Buttons ---
 
-          try {
-            await LibrarySearchIntegration.importToZotero(selectedResults);
-            if (dialogHelper.window) {
-              dialogHelper.window.alert(getString("results-dialog-import-success"));
-              
-              // Clear reference before closing
-              if (addon.data.dialog === dialogHelper) {
-                addon.data.dialog = undefined;
-              }
-              
-              dialogHelper.window.close();
-            }
-          } catch (error: any) {
-            if (dialogHelper.window) {
-              dialogHelper.window.alert(getString("results-dialog-import-error") + ": " + error?.message);
-            }
-          }
-        },
-        noClose: true
-      })
-      .addButton(getString("results-dialog-import-all"), "importAll", {
-        callback: async (e) => {
-          try {
-            // Use 'results' instead of 'selectedResults'
-            await LibrarySearchIntegration.importToZotero(results);
-            if (dialogHelper.window) {
-              dialogHelper.window.alert(getString("results-dialog-import-success"));
-              dialogHelper.window.close();
-            }
-          } catch (error: any) {
-            if (dialogHelper.window) {
-              dialogHelper.window.alert(getString("results-dialog-import-error") + ": " + error?.message);
-            }
-          }
-        },
-        noClose: true
-      })
-      .addButton(getString("results-dialog-cancel"), "cancel")
-      .setDialogData(dialogData);
-  
-    // Open the dialog
-    dialogHelper.open(getString("results-dialog-title"));
+    dialogHelper.setDialogData(dialogData);
+
+    const dialogOptions = { width: 800, height: 600 };
+    dialogHelper.open(getString("results-dialog-title"), dialogOptions);
     addon.data.dialog = dialogHelper;
+
+    // --- Helper function for pagination ---
+    async function fetchAndDisplayPage(
+      startRecord: number,
+      dialogData: ResultsDialogData,
+      doc: Document
+    ): Promise<void> {
+      // Update UI: Disable buttons, show loading
+      dialogData.isLoading = true;
+      updatePaginationControls(doc, dialogData, "Loading...");
+
+      try {
+        const params = {
+          ...dialogData.searchParams,
+          startRecord: startRecord // Override startRecord
+        };
+
+        // Fetch new page data
+        const [success, newResults, totalRecords] = await LibrarySearchIntegration.executeSearch(params);
+
+        if (success && newResults) {
+          // Update dialog data
+          dialogData.searchResults = newResults;
+          dialogData.currentStartRecord = startRecord;
+          dialogData.totalRecords = totalRecords; // Update total just in case
+          dialogData.selectedResults = []; // Clear selection on page change
+
+          // Update results display
+          const resultsContainer = doc.getElementById("results-container");
+          if (resultsContainer) {
+            // Clear existing results
+            while (resultsContainer.firstChild) {
+              resultsContainer.removeChild(resultsContainer.firstChild);
+            }
+            // Add new results
+            const resultElements = newResults.map((res, idx) => generateResultHTML(res, idx, dialogData));
+            resultElements.forEach(spec => {
+              const elem = ztoolkit.UI.createElement(doc, spec.tag, spec);
+              resultsContainer.appendChild(elem);
+            });
+          }
+        } else {
+          // Handle error fetching new page
+          const statusEl = doc.getElementById("pagination-status");
+          if (statusEl) {
+            statusEl.textContent = "Error loading results.";
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching page:", error);
+        const statusEl = doc.getElementById("pagination-status");
+        if (statusEl) {
+          statusEl.textContent = "Error loading results.";
+        }
+      } finally {
+        dialogData.isLoading = false;
+        // Update UI: Re-enable buttons, update status
+        updatePaginationControls(doc, dialogData);
+      }
+    }
   }
 
   /**
@@ -427,5 +555,28 @@ export class LibrarySearchIntegration {
       console.error("Error importing items:", error);
       throw error;
     }
+  }
+}
+
+// Helper function to update pagination controls state
+function updatePaginationControls(doc: Document, dialogData: ResultsDialogData, statusText?: string): void {
+  const prevButton = doc.getElementById("prev-button") as HTMLButtonElement | null;
+  const nextButton = doc.getElementById("next-button") as HTMLButtonElement | null;
+  const statusLabel = doc.getElementById("pagination-status");
+
+  if (statusLabel) {
+    if (statusText) {
+      statusLabel.textContent = statusText;
+    } else {
+      const endRecord = Math.min(dialogData.currentStartRecord + dialogData.searchParams.maxRecords - 1, dialogData.totalRecords);
+      statusLabel.textContent = `Showing results ${dialogData.currentStartRecord}-${endRecord} of ${dialogData.totalRecords}`;
+    }
+  }
+
+  if (prevButton) {
+    prevButton.disabled = dialogData.isLoading || dialogData.currentStartRecord <= 1;
+  }
+  if (nextButton) {
+    nextButton.disabled = dialogData.isLoading || (dialogData.currentStartRecord + dialogData.searchParams.maxRecords > dialogData.totalRecords);
   }
 }

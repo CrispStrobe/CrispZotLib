@@ -12,7 +12,7 @@ import { LibrarySearchIntegration } from "./integration";
  * @param cols Number of columns
  * @returns Dialog helper with enhanced styling
  */
-function createStyledDialog(rows: number, cols: number): any {
+export function createStyledDialog(rows: number, cols: number): any {
   // Create the dialog helper using any type to avoid TypeScript errors
   const dialogHelper: any = new ztoolkit.Dialog(rows, cols);
 
@@ -127,6 +127,7 @@ export async function openSearchDialog(): Promise<void> {
   interface LibrarySearchDialogData {
     protocol: string;
     endpoint: string;
+    schema: string;
     title: string;
     author: string;
     isbn: string;
@@ -142,6 +143,7 @@ export async function openSearchDialog(): Promise<void> {
   const dialogData: LibrarySearchDialogData = {
     protocol: "sru",
     endpoint: "dnb", // Default endpoint
+    schema: "", // Empty schema means use endpoint default
     title: "",
     author: "",
     isbn: "",
@@ -164,13 +166,75 @@ export async function openSearchDialog(): Promise<void> {
           const target = e.target as HTMLInputElement;
           if (target.checked) {
             dialogData.protocol = target.value;
-            updateEndpointDropdown(target.value, doc);
+            
+            // Show/hide relevant endpoint selects
+            if (doc) {
+              // Hide all endpoint selects
+              const sruSelect = doc.getElementById("endpoint-sru");
+              const oaiSelect = doc.getElementById("endpoint-oai");
+              const ixtheoSelect = doc.getElementById("endpoint-ixtheo");
+              
+              if (sruSelect) sruSelect.style.display = "block";
+              if (oaiSelect) oaiSelect.style.display = "none";
+              if (ixtheoSelect) ixtheoSelect.style.display = "none";
+              
+              if (target.value === "sru") {
+                if (sruSelect) {
+                  sruSelect.style.display = "block";
+                  dialogData.endpoint = (sruSelect as HTMLSelectElement).value;
+                }
+                if (oaiSelect) oaiSelect.style.display = "none";
+                if (ixtheoSelect) ixtheoSelect.style.display = "none";
+                
+                // Show schema options for SRU only
+                const schemaRow = doc.getElementById("schema-row");
+                if (schemaRow) schemaRow.style.display = "block";
+              } 
+              else if (target.value === "oai") {
+                if (sruSelect) sruSelect.style.display = "none";
+                if (oaiSelect) {
+                  oaiSelect.style.display = "block";
+                  dialogData.endpoint = (oaiSelect as HTMLSelectElement).value;
+                }
+                if (ixtheoSelect) ixtheoSelect.style.display = "none";
+                
+                // Hide schema options for non-SRU
+                const schemaRow = doc.getElementById("schema-row");
+                if (schemaRow) schemaRow.style.display = "none";
+                dialogData.schema = ""; // Clear schema for non-SRU
+              }
+              else if (target.value === "ixtheo") {
+                if (sruSelect) sruSelect.style.display = "none";
+                if (oaiSelect) oaiSelect.style.display = "none";
+                if (ixtheoSelect) {
+                  ixtheoSelect.style.display = "block";
+                  dialogData.endpoint = (ixtheoSelect as HTMLSelectElement).value;
+                }
+                
+                // Hide schema options for non-SRU
+                const schemaRow = doc.getElementById("schema-row");
+                if (schemaRow) schemaRow.style.display = "none";
+                dialogData.schema = ""; // Clear schema for non-SRU
+              }
+            }
           }
         });
       }
 
-      // Initial endpoint setup based on default protocol
-      updateEndpointDropdown(dialogData.protocol, doc);
+      // Set initial visibility based on default protocol
+      const schemaRow = doc.getElementById("schema-row");
+      if (schemaRow) {
+        schemaRow.style.display = dialogData.protocol === "sru" ? "block" : "none";
+      }
+      
+      // Show the correct endpoint select based on protocol
+      const sruSelect = doc.getElementById("endpoint-sru");
+      const oaiSelect = doc.getElementById("endpoint-oai");
+      const ixtheoSelect = doc.getElementById("endpoint-ixtheo");
+      
+      if (sruSelect) sruSelect.style.display = dialogData.protocol === "sru" ? "block" : "none";
+      if (oaiSelect) oaiSelect.style.display = dialogData.protocol === "oai" ? "block" : "none";
+      if (ixtheoSelect) ixtheoSelect.style.display = dialogData.protocol === "ixtheo" ? "block" : "none";
     }
   };
 
@@ -181,8 +245,8 @@ export async function openSearchDialog(): Promise<void> {
     ztoolkit.log("Dialog closed and reference cleared");
   };
 
-  // Create the dialog helper
-  const dialogHelper = createStyledDialog(10, 2)
+  // Create the dialog helper - adding an extra row for schema options
+  const dialogHelper = createStyledDialog(11, 2)
     // Dialog header
     .addCell(0, 0, {
       tag: "h1",
@@ -222,7 +286,7 @@ export async function openSearchDialog(): Promise<void> {
                 type: "radio",
                 name: "protocol",
                 value: "sru",
-                checked: "checked"
+                checked: dialogData.protocol === "sru" ? "checked" : undefined
               }
             },
             {
@@ -244,7 +308,8 @@ export async function openSearchDialog(): Promise<void> {
               attributes: {
                 type: "radio",
                 name: "protocol",
-                value: "oai"
+                value: "oai",
+                checked: dialogData.protocol === "oai" ? "checked" : undefined
               }
             },
             {
@@ -266,7 +331,8 @@ export async function openSearchDialog(): Promise<void> {
               attributes: {
                 type: "radio",
                 name: "protocol",
-                value: "ixtheo"
+                value: "ixtheo",
+                checked: dialogData.protocol === "ixtheo" ? "checked" : undefined
               }
             },
             {
@@ -280,7 +346,7 @@ export async function openSearchDialog(): Promise<void> {
       ]
     })
 
-    // Endpoint selection
+    // Endpoint selection - using three different selects
     .addCell(3, 0, {
       tag: "label",
       namespace: "html",
@@ -289,26 +355,343 @@ export async function openSearchDialog(): Promise<void> {
       },
     })
     .addCell(3, 1, {
-      tag: "select",
+      tag: "div",
       namespace: "html",
-      id: "endpoint-select",
-      styles: { width: "100%" },
-      listeners: [{
-        type: "change",
-        listener: function(e: Event) {
-          dialogData.endpoint = (e.target as HTMLSelectElement).value;
+      children: [
+        // SRU Endpoints
+        {
+          tag: "select",
+          namespace: "html",
+          id: "endpoint-sru",
+          styles: { 
+            width: "100%", 
+            display: dialogData.protocol === "sru" ? "block" : "none" 
+          },
+          listeners: [{
+            type: "change",
+            listener: function(e: Event) {
+              dialogData.endpoint = (e.target as HTMLSelectElement).value;
+            }
+          }],
+          children: [
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "dnb", innerHTML: "dnb", selected: dialogData.endpoint === "dnb" }
+            },
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "bnf", innerHTML: "bnf", selected: dialogData.endpoint === "bnf" }
+            },
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "zdb", innerHTML: "zdb", selected: dialogData.endpoint === "zdb" }
+            },
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "loc", innerHTML: "loc", selected: dialogData.endpoint === "loc" }
+            },
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "trove", innerHTML: "trove", selected: dialogData.endpoint === "trove" }
+            },
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "kb", innerHTML: "kb", selected: dialogData.endpoint === "kb" }
+            },
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "bibsys", innerHTML: "bibsys", selected: dialogData.endpoint === "bibsys" }
+            }
+          ]
+        },
+        // OAI Endpoints
+        {
+          tag: "select",
+          namespace: "html",
+          id: "endpoint-oai",
+          styles: { 
+            width: "100%", 
+            display: dialogData.protocol === "oai" ? "block" : "none" 
+          },
+          listeners: [{
+            type: "change",
+            listener: function(e: Event) {
+              dialogData.endpoint = (e.target as HTMLSelectElement).value;
+            }
+          }],
+          children: [
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "crossref", innerHTML: "crossref", selected: true }
+            },
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "dnb", innerHTML: "dnb" }
+            },
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "dnb_digital", innerHTML: "dnb_digital" }
+            },
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "loc", innerHTML: "loc" }
+            },
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "europeana", innerHTML: "europeana" }
+            },
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "ddb", innerHTML: "ddb" }
+            },
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "harvard", innerHTML: "harvard" }
+            },
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "mit", innerHTML: "mit" }
+            },
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "kitopen", innerHTML: "kitopen" }
+            },
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "arxiv", innerHTML: "arxiv" }
+            },
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "doaj", innerHTML: "doaj" }
+            }
+          ]
+        },
+        // IxTheo Endpoints
+        {
+          tag: "select",
+          namespace: "html",
+          id: "endpoint-ixtheo",
+          styles: { 
+            width: "100%", 
+            display: dialogData.protocol === "ixtheo" ? "block" : "none" 
+          },
+          listeners: [{
+            type: "change",
+            listener: function(e: Event) {
+              dialogData.endpoint = (e.target as HTMLSelectElement).value;
+            }
+          }],
+          children: [
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "ris", innerHTML: "ris", selected: true }
+            },
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "marc", innerHTML: "marc" }
+            },
+            {
+              tag: "option",
+              namespace: "html",
+              properties: { value: "html", innerHTML: "html" }
+            }
+          ]
         }
-      }]
+      ]
+    })
+    
+    // Schema selection (radio buttons, only visible for SRU)
+    .addCell(4, 0, {
+      tag: "div",
+      id: "schema-row",
+      styles: { 
+        gridColumn: "1 / span 2", 
+        display: dialogData.protocol === "sru" ? "block" : "none" 
+      },
+      children: [
+        {
+          tag: "div",
+          styles: { marginBottom: "10px" },
+          children: [
+            {
+              tag: "label",
+              namespace: "html",
+              styles: { display: "block", marginBottom: "5px" },
+              properties: { textContent: "Schema Format:" }
+            },
+            {
+              tag: "div",
+              namespace: "html",
+              styles: { display: "flex", flexWrap: "wrap", gap: "10px" },
+              children: [
+                // Default (empty) schema option
+                {
+                  tag: "div",
+                  styles: { display: "flex", alignItems: "center", gap: "5px" },
+                  children: [
+                    {
+                      tag: "input",
+                      namespace: "html",
+                      id: "schema-default",
+                      attributes: {
+                        type: "radio",
+                        name: "schema",
+                        value: "",
+                        checked: "checked"
+                      },
+                      listeners: [
+                        {
+                          type: "change",
+                          listener: (e: Event) => {
+                            if ((e.target as HTMLInputElement).checked) {
+                              dialogData.schema = "";
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      tag: "label",
+                      namespace: "html",
+                      attributes: { for: "schema-default" },
+                      properties: { innerHTML: "Endpoint Default" }
+                    }
+                  ]
+                },
+                // MARCXML schema option
+                {
+                  tag: "div",
+                  styles: { display: "flex", alignItems: "center", gap: "5px" },
+                  children: [
+                    {
+                      tag: "input",
+                      namespace: "html",
+                      id: "schema-marcxml",
+                      attributes: {
+                        type: "radio",
+                        name: "schema",
+                        value: "marcxml"
+                      },
+                      listeners: [
+                        {
+                          type: "change",
+                          listener: (e: Event) => {
+                            if ((e.target as HTMLInputElement).checked) {
+                              dialogData.schema = "marcxml";
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      tag: "label",
+                      namespace: "html",
+                      attributes: { for: "schema-marcxml" },
+                      properties: { innerHTML: "MARCXML" }
+                    }
+                  ]
+                },
+                // DC schema option
+                {
+                  tag: "div",
+                  styles: { display: "flex", alignItems: "center", gap: "5px" },
+                  children: [
+                    {
+                      tag: "input",
+                      namespace: "html",
+                      id: "schema-dc",
+                      attributes: {
+                        type: "radio",
+                        name: "schema",
+                        value: "dc"
+                      },
+                      listeners: [
+                        {
+                          type: "change",
+                          listener: (e: Event) => {
+                            if ((e.target as HTMLInputElement).checked) {
+                              dialogData.schema = "dc";
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      tag: "label",
+                      namespace: "html",
+                      attributes: { for: "schema-dc" },
+                      properties: { innerHTML: "Dublin Core" }
+                    }
+                  ]
+                },
+                // RDF/XML schema option
+                {
+                  tag: "div",
+                  styles: { display: "flex", alignItems: "center", gap: "5px" },
+                  children: [
+                    {
+                      tag: "input",
+                      namespace: "html",
+                      id: "schema-rdfxml",
+                      attributes: {
+                        type: "radio",
+                        name: "schema",
+                        value: "RDFxml"
+                      },
+                      listeners: [
+                        {
+                          type: "change",
+                          listener: (e: Event) => {
+                            if ((e.target as HTMLInputElement).checked) {
+                              dialogData.schema = "RDFxml";
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      tag: "label",
+                      namespace: "html",
+                      attributes: { for: "schema-rdfxml" },
+                      properties: { innerHTML: "RDF/XML" }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     })
 
     // Title
-    .addCell(4, 0, {
+    .addCell(5, 0, {
       tag: "label",
       namespace: "html",
       attributes: { for: "title" },
       properties: { innerHTML: getString("search-dialog-title-field") },
     })
-    .addCell(4, 1, {
+    .addCell(5, 1, {
       tag: "input",
       namespace: "html",
       id: "title",
@@ -328,13 +711,13 @@ export async function openSearchDialog(): Promise<void> {
     })
 
     // Author
-    .addCell(5, 0, {
+    .addCell(6, 0, {
       tag: "label",
       namespace: "html",
       attributes: { for: "author" },
       properties: { innerHTML: getString("search-dialog-author") },
     })
-    .addCell(5, 1, {
+    .addCell(6, 1, {
       tag: "input",
       namespace: "html",
       id: "author",
@@ -354,13 +737,13 @@ export async function openSearchDialog(): Promise<void> {
     })
 
     // ISBN
-    .addCell(6, 0, {
+    .addCell(7, 0, {
       tag: "label",
       namespace: "html",
       attributes: { for: "isbn" },
       properties: { innerHTML: getString("search-dialog-isbn") },
     })
-    .addCell(6, 1, {
+    .addCell(7, 1, {
       tag: "input",
       namespace: "html",
       id: "isbn",
@@ -380,13 +763,13 @@ export async function openSearchDialog(): Promise<void> {
     })
 
     // Max Results
-    .addCell(7, 0, {
+    .addCell(8, 0, {
       tag: "label",
       namespace: "html",
       attributes: { for: "maxResults" },
       properties: { innerHTML: getString("search-dialog-max-results") },
     })
-    .addCell(7, 1, {
+    .addCell(8, 1, {
       tag: "input",
       namespace: "html",
       id: "maxResults",
@@ -408,7 +791,7 @@ export async function openSearchDialog(): Promise<void> {
     })
 
     // Debug option
-    .addCell(8, 0, {
+    .addCell(9, 0, {
       tag: "div",
       styles: { gridColumn: "1 / span 2" },
       children: [
@@ -456,16 +839,27 @@ export async function openSearchDialog(): Promise<void> {
         if (dialogHelper.window) {
           const doc = dialogHelper.window.document;
 
-          // Get protocol
+          // Get protocol from radio buttons
           const selectedProtocolEl = doc.querySelector('input[name="protocol"]:checked') as HTMLInputElement;
           if (selectedProtocolEl) {
             dialogData.protocol = selectedProtocolEl.value;
+            
+            // Get endpoint from the corresponding select
+            const endpointSelect = doc.getElementById(`endpoint-${dialogData.protocol}`) as HTMLSelectElement;
+            if (endpointSelect) {
+              dialogData.endpoint = endpointSelect.value;
+            }
           }
 
-          // Get endpoint
-          const endpointSelect = doc.getElementById('endpoint-select') as HTMLSelectElement;
-          if (endpointSelect) {
-            dialogData.endpoint = endpointSelect.value;
+          // Get schema if SRU protocol
+          if (dialogData.protocol === 'sru') {
+            const selectedSchemaEl = doc.querySelector('input[name="schema"]:checked') as HTMLInputElement;
+            if (selectedSchemaEl) {
+              dialogData.schema = selectedSchemaEl.value;
+            }
+          } else {
+            // Clear schema for non-SRU protocols
+            dialogData.schema = "";
           }
 
           // Get other fields
@@ -498,6 +892,7 @@ export async function openSearchDialog(): Promise<void> {
           ztoolkit.log("Search parameters:", {
             protocol: dialogData.protocol,
             endpoint: dialogData.endpoint,
+            schema: dialogData.schema,
             title: dialogData.title,
             author: dialogData.author,
             isbn: dialogData.isbn,
@@ -507,6 +902,7 @@ export async function openSearchDialog(): Promise<void> {
           const searchParams = {
             protocol: dialogData.protocol,
             endpoint: dialogData.endpoint,
+            schema: dialogData.schema,
             title: dialogData.title,
             author: dialogData.author,
             isbn: dialogData.isbn,
@@ -514,7 +910,7 @@ export async function openSearchDialog(): Promise<void> {
           };
 
           // Run the search
-          const [success, results] = await LibrarySearchIntegration.executeSearch(searchParams);
+          const [success, results, totalRecords] = await LibrarySearchIntegration.executeSearch(searchParams);
 
           // Open results dialog if we have results
           if (success && results && results.length > 0) {
@@ -530,8 +926,8 @@ export async function openSearchDialog(): Promise<void> {
               searchDialogRef.window.close();
             }
 
-            // Open results dialog
-            await LibrarySearchIntegration.openResultsDialog(results);
+            // Open results dialog with needed parameters for pagination
+            await LibrarySearchIntegration.openResultsDialog(results, totalRecords, searchParams);
           } else {
             dialogData.errorMessage = getString("search-dialog-no-results");
             if (dialogHelper.window) {
@@ -564,59 +960,4 @@ export async function openSearchDialog(): Promise<void> {
   // Open the dialog and store reference
   dialogHelper.open(getString("search-dialog-title"));
   addon.data.dialog = dialogHelper;
-}
-
-/**
- * Updates the endpoint dropdown based on the selected protocol
- */
-function updateEndpointDropdown(protocol: string, doc: Document): void {
-  try {
-    const endpointSelect = doc.getElementById("endpoint-select") as HTMLSelectElement;
-    if (!endpointSelect) {
-      ztoolkit.log("Could not find endpoint select element");
-      return;
-    }
-
-    // Clear existing options
-    while (endpointSelect.firstChild) {
-      endpointSelect.removeChild(endpointSelect.firstChild);
-    }
-
-    // Add options based on protocol
-    let endpoints: Record<string, any> = {};
-    let defaultValue = "";
-
-    switch(protocol) {
-      case "sru":
-        endpoints = SRU_ENDPOINTS;
-        defaultValue = "dnb";
-        break;
-      case "oai":
-        endpoints = OAI_ENDPOINTS;
-        defaultValue = "crossref";
-        break;
-      case "ixtheo":
-        endpoints = IXTHEO_ENDPOINTS;
-        defaultValue = "ris";
-        break;
-      default:
-        endpoints = SRU_ENDPOINTS;
-        defaultValue = "dnb";
-    }
-
-    // Add options
-    for (const [key, value] of Object.entries(endpoints)) {
-      const option = doc.createElement('option');
-      option.value = key;
-      option.textContent = value.name || key;
-      endpointSelect.appendChild(option);
-    }
-
-    // Set default value
-    endpointSelect.value = defaultValue;
-
-    ztoolkit.log(`Updated endpoint dropdown for protocol ${protocol} with ${Object.keys(endpoints).length} options`);
-  } catch (e) {
-    ztoolkit.log(`Error updating endpoint dropdown: ${e}`);
-  }
 }

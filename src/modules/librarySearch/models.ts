@@ -39,6 +39,7 @@ export interface SRUEndpoint {
   version?: string;
   description?: string;
   examples?: Record<string, any>;
+  availableSchemas?: Record<string, string>; // Maps schema key (e.g., 'RDFxml') to display name (e.g., 'RDF/XML')
 }
 
 export interface OAIEndpoint {
@@ -46,7 +47,7 @@ export interface OAIEndpoint {
   url: string;
   defaultMetadataPrefix?: string;
   description?: string;
-  sets?: Record<string, string>;
+  sets?: Record<string, string>;  // Maps setSpec to setName
 }
 
 export interface IxTheoEndpoint {

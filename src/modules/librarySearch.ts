@@ -5,6 +5,7 @@ import {
   LibrarySearchIntegration, 
   initializeLibrarySearch 
 } from './librarySearch/index';
+import { SearchParams } from "./librarySearch/integration";
 
 // Main module class exposed to Zotero
 export class LibrarySearchModule {
@@ -41,9 +42,15 @@ export class LibrarySearchModule {
   
   /**
    * Opens a dialog to display search results
+   * Requires the results, the total number of records found, and the original search parameters.
    */
-  static async openResultsDialog(results: BiblioRecord[]): Promise<void> {
-    await LibrarySearchIntegration.openResultsDialog(results);
+  static async openResultsDialog(
+    results: BiblioRecord[],
+    totalRecords: number,    
+    searchParams: SearchParams 
+  ): Promise<void> {
+    // Pass all three arguments to the integration function
+    await LibrarySearchIntegration.openResultsDialog(results, totalRecords, searchParams);
   }
   
   /**
