@@ -587,18 +587,20 @@ private static async executeOaiSearch(
         results.push({ id: recordId, basicInfo });
       });
 
-       // If totalCount wasn't found, estimate based on parsed items and page (less reliable)
-       if (totalCount === 0 && results.length > 0) {
-           totalCount = results.length; // Fallback for the current page
-           log(`Total count not found in HTML, using parsed count for this page: ${totalCount}`, 'warn');
-       }
+       // Final check if count is still zero
+      if (totalCount === 0 && results.length > 0) {
+        log(`Total count remains 0 after parsing. Using parsed count (${results.length}) as a minimum estimate.`, 'warn');
+        totalCount = results.length;
+   } else if (totalCount === 0 && results.length === 0) {
+       log('No results found on page and total count is 0.', 'log');
+   }
 
-    } catch (error: any) {
-      log(`Error parsing IxTheo HTML results page: ${error.message}`, 'error');
-      return [[], 0]; // Return empty on error
-    }
-    return [results, totalCount];
-  }
+ } catch (error: any) {
+   log(`Error parsing IxTheo HTML results page: ${error.message}`, 'error');
+   return [[], 0];
+ }
+ return [results, totalCount];
+}
 
   /**
    * Fetches and parses detailed data for a single IxTheo record.
