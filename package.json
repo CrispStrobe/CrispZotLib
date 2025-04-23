@@ -1,7 +1,7 @@
 {
   "name": "zotero-library-search",
   "type": "module",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Search library catalogs and repositories directly from Zotero",
   "homepage": "https://github.com/CrispStrobe/CrispZotLib",
   "config": {
