@@ -23,16 +23,7 @@ export class SearchService {
    * Execute a search with the specified parameters
    */
   static async executeSearch(
-    params: {
-      protocol: string;
-      endpoint: string;
-      title?: string;
-      author?: string;
-      isbn?: string; // ISN for IxTheo
-      schema?: string; // For SRU
-      maxRecords?: number;
-      startRecord?: number; // For SRU/OAI pagination (IxTheo uses 'page')
-    },
+    params: import('./integration').SearchParams,
     log: (message: string, level?: 'log' | 'warn' | 'error') => void = ztoolkit.log // Default logger
   ): Promise<[boolean, BiblioRecord[], number]> { // Return total records count
     log(`Executing search with params: ${JSON.stringify(params)}`);
@@ -63,15 +54,7 @@ export class SearchService {
   }
 
   private static async executeSruSearch(
-    params: {
-      endpoint: string;
-      title?: string;
-      author?: string;
-      isbn?: string;
-      schema?: string;
-      maxRecords?: number;
-      startRecord?: number;
-    },
+    params: import('./integration').SearchParams,
     log: (message: string, level?: 'log' | 'warn' | 'error') => void
   ): Promise<[boolean, BiblioRecord[], number]> {
     try {
@@ -123,13 +106,7 @@ export class SearchService {
  * Execute an OAI-PMH protocol search using the NEW OAIClient logic
  */
 private static async executeOaiSearch(
-  params: {
-    endpoint: string;
-    title?: string;
-    author?: string;
-    isbn?: string;
-    maxRecords?: number;
-  },
+  params: import('./integration').SearchParams,
   log: (message: string, level?: 'log' | 'warn' | 'error') => void
 ): Promise<[boolean, BiblioRecord[], number]> {
   try {
@@ -267,16 +244,10 @@ private static async executeOaiSearch(
    * Execute an IxTheo search
    */
   private static async executeIxTheoSearch(
-    params: {
-      format: string; // User's choice: 'ris', 'marc', 'html'
-      title?: string;
-      author?: string;
-      isbn?: string; // ISN (ISBN or ISSN)
-      maxRecords?: number;
-      page?: number; // Calculated page number
-    },
+    // Use imported SearchParams type & add page/format if needed
+    params: import('./integration').SearchParams & { page: number, format: string },
     log: (message: string, level?: 'log' | 'warn' | 'error') => void
-  ): Promise<[boolean, BiblioRecord[], number]> { // Return total count
+  ): Promise<[boolean, BiblioRecord[], number]> {
 
     const formatId = params.format; // User's desired *detail* format
     if (!(formatId in IXTHEO_ENDPOINTS)) {
@@ -389,40 +360,47 @@ private static async executeOaiSearch(
 
   /** Helper to build IxTheo Search URL */
   private static buildIxTheoSearchUrl(
-      params: { title?: string; author?: string; isbn?: string; maxRecords?: number; page?: number; },
-      baseUrl: string // Pass the base search URL (e.g., https://ixtheo.de/Search/Results)
-  ): string {
-      // Use global URLSearchParams
-      const queryParams = new URLSearchParams();
-      const searchTerms: string[] = [];
+    // Use imported SearchParams type & add page if needed
+    params: import('./integration').SearchParams & { page?: number },
+    baseUrl: string
+): string {
+    const queryParams = new URLSearchParams();
 
-      // Combine search terms - IxTheo uses specific prefixes like title:, author:, isn:
-      if (params.title) searchTerms.push(`title:(${params.title})`); // Use parentheses for phrase?
-      if (params.author) searchTerms.push(`author:(${params.author})`);
-      if (params.isbn) searchTerms.push(`isn:(${params.isbn})`); // isn covers ISBN/ISSN
+    // --- ADDED: Prioritize allFieldsTerm ---
+    if (params.allFieldsTerm) {
+        queryParams.append('lookfor', params.allFieldsTerm);
+        queryParams.append('type', 'AllFields');
+    }
+    // --- END ADDED ---
+    else { // --- ADDED: else block ---
+        // Combine specific fields if allFieldsTerm is not provided
+        const searchTerms: string[] = [];
+        if (params.title) searchTerms.push(`title:(${params.title})`);
+        if (params.author) searchTerms.push(`author:(${params.author})`);
+        if (params.isbn) searchTerms.push(`isn:(${params.isbn})`); // Use isn for IxTheo ISBN/ISSN
 
-      if (searchTerms.length > 0) {
-          queryParams.append('lookfor', searchTerms.join(' ')); // Combine with space
-          queryParams.append('type', 'AllFields'); // Use AllFields when combining prefixes
-      } else {
-          // Handle case with no search terms if needed, maybe default query?
-          queryParams.append('lookfor', '*'); // Example: search everything
-          queryParams.append('type', 'AllFields');
-      }
+        if (searchTerms.length > 0) {
+            queryParams.append('lookfor', searchTerms.join(' '));
+            // Still use AllFields when combining prefixes for IxTheo web search
+            queryParams.append('type', 'AllFields');
+        } else {
+            // Default if no terms provided at all (e.g., '*')
+            // IxTheo might handle empty 'lookfor' or you might send '*'
+            queryParams.append('lookfor', '*');
+            queryParams.append('type', 'AllFields');
+        }
+    } // --- END ADDED: else block ---
 
-      queryParams.append('limit', String(params.maxRecords || 10));
-      queryParams.append('sort', 'relevance'); // Or 'year desc' etc.
-      // queryParams.append('view', 'list'); // This seems default
 
-      if (params.page && params.page > 1) {
-          queryParams.append('page', String(params.page));
-      }
+    queryParams.append('limit', String(params.maxRecords || 10));
+    queryParams.append('sort', 'relevance'); // Or another default sort
+    if (params.page && params.page > 1) {
+        queryParams.append('page', String(params.page));
+    }
+    queryParams.append('botprotect', ''); // Keep bot protection parameter
 
-      // Add bot protection parameter if needed (seems required based on Python)
-      queryParams.append('botprotect', '');
-
-      return `${baseUrl}?${queryParams.toString()}`;
-  }
+    return `${baseUrl}?${queryParams.toString()}`;
+}
 
   /**
    * Parse IxTheo HTML search results page
@@ -1216,19 +1194,35 @@ private static async executeOaiSearch(
 
 
   private static buildSruQuery(
-    params: {
-      title?: string;
-      author?: string;
-      isbn?: string;
-    },
+    // Accept the full SearchParams object
+    params: import('./integration').SearchParams,
     endpointId: string
   ): string {
-     const endpointInfo = SRU_ENDPOINTS[endpointId];
+    // --- NEW: Prioritize allFieldsTerm ---
+    if (params.allFieldsTerm && params.allFieldsTerm.trim() !== '') {
+        const searchTerm = params.allFieldsTerm.trim();
+        // Use specific 'woe' index for DNB and ZDB "Word Or Expression" search
+        if (endpointId === 'dnb' || endpointId === 'zdb') {
+            // Note: DNB/ZDB 'woe' typically doesn't require quotes around the value
+            return `woe=${searchTerm}`;
+        } else {
+            // Use standard CQL 'anywhere' index for other SRU endpoints
+            // Quote the value to handle spaces and special characters correctly in CQL
+            return `cql.anywhere all "${searchTerm}"`;
+        }
+        // If allFieldsTerm is present, we don't use the specific fields below
+    }
+    // --- END NEW ---
+
+    // --- EXISTING LOGIC (Fallback if allFieldsTerm is empty) ---
+    const endpointInfo = SRU_ENDPOINTS[endpointId];
     const examples = endpointInfo?.examples || {};
     const queryParts: string[] = [];
 
+    // Helper function remains unchanged
     const formatPart = (key: 'title' | 'author' | 'isbn', value: string | undefined): string | null => {
-        if (!value) return null;
+        if (!value || value.trim() === '') return null; // Also check for empty/whitespace-only strings
+        const trimmedValue = value.trim(); // Use trimmed value
 
         const example = examples[key];
         if (example) {
@@ -1238,13 +1232,13 @@ private static async executeOaiSearch(
                     const parts = example.split('=');
                     const prefix = parts[0].trim();
                     const isQuoted = parts[1].trim().startsWith('"');
-                    return isQuoted ? `${prefix}="${value}"` : `${prefix}=${value}`;
+                    return isQuoted ? `${prefix}="${trimmedValue}"` : `${prefix}=${trimmedValue}`;
                 } else if (example.includes(' any ')) {
                     const parts = example.split(' any ');
-                    return `${parts[0]} any "${value}"`;
+                    return `${parts[0]} any "${trimmedValue}"`;
                 } else if (example.includes(' all ')) {
                      const parts = example.split(' all ');
-                     return `${parts[0]} all "${value}"`;
+                     return `${parts[0]} all "${trimmedValue}"`;
                 }
             } else if (typeof example === 'object') {
                  // Handle advanced example structure if needed (e.g., DNB)
@@ -1252,40 +1246,40 @@ private static async executeOaiSearch(
                  ztoolkit.log(`Using advanced example structure for ${key} - needs specific handling`, 'warn');
                  // Example fallback for DNB-like structure
                  const prefix = Object.keys(example)[0]; // e.g., TIT
-                 return `${prefix}=${value}`;
+                 return `${prefix}=${trimmedValue}`;
             }
         }
         // Fallback formats if no example matches
         switch (key) {
             case 'isbn':
                 switch (endpointId) {
-                    case 'dnb': return `ISBN=${value}`;
-                    case 'bnf': return `bib.isbn any "${value}"`;
-                    case 'zdb': return `ISS=${value}`; // ZDB uses ISS for ISSN/ISBN
-                    default: return `isbn=${value}`; // Common default
+                    case 'dnb': return `ISBN=${trimmedValue}`;
+                    case 'bnf': return `bib.isbn any "${trimmedValue}"`;
+                    case 'zdb': return `ISS=${trimmedValue}`; // ZDB uses ISS for ISSN/ISBN
+                    default: return `isbn=${trimmedValue}`; // Common default
                 }
             case 'author':
                  switch (endpointId) {
-                    case 'dnb': return `PER=${value}`;
-                    case 'bnf': return `bib.author any "${value}"`;
-                    default: return `author="${value}"`; // Common default
+                    case 'dnb': return `PER=${trimmedValue}`;
+                    case 'bnf': return `bib.author any "${trimmedValue}"`;
+                    default: return `author="${trimmedValue}"`; // Common default
                 }
             case 'title':
                  switch (endpointId) {
-                    case 'dnb': return `TIT=${value}`;
-                    case 'bnf': return `bib.title any "${value}"`;
-                    default: return `title="${value}"`; // Common default
+                    case 'dnb': return `TIT=${trimmedValue}`;
+                    case 'bnf': return `bib.title any "${trimmedValue}"`;
+                    default: return `title="${trimmedValue}"`; // Common default
                 }
         }
         return null;
     };
 
 
-    // Prioritize ISBN
+    // Prioritize ISBN (using the potentially updated params object)
     const isbnQuery = formatPart('isbn', params.isbn);
     if (isbnQuery) return isbnQuery;
 
-    // Combine Title and Author
+    // Combine Title and Author (using the potentially updated params object)
     const titleQuery = formatPart('title', params.title);
     const authorQuery = formatPart('author', params.author);
 
@@ -1293,12 +1287,14 @@ private static async executeOaiSearch(
     if (authorQuery) queryParts.push(authorQuery);
 
     if (queryParts.length === 0) {
-        return ''; // Or handle error/default query
+        // Return empty string if no terms provided (neither allFields nor specific fields)
+        return '';
     }
 
     // Join with appropriate operator (AND is common, BNF uses 'and')
     const joinOperator = (endpointId === 'bnf') ? ' and ' : ' AND ';
     return queryParts.join(joinOperator);
+    // --- END EXISTING LOGIC ---
   }
 
    private static showDebugDialog(title: string, message: string, debugInfo: string): void {

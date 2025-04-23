@@ -14,6 +14,7 @@ export type SearchParams = {
   title?: string;
   author?: string;
   isbn?: string;
+  allFieldsTerm?: string; 
   schema?: string; // Include schema if implementing schema selection
   maxRecords: number;
   startRecord?: number; // Optional, for pagination

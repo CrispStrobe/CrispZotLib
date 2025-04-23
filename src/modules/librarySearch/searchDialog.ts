@@ -4,7 +4,7 @@ import { getString } from "../../utils/locale";
 import { getPref, setPref } from "../../utils/prefs";
 import { ThemeUtils } from "../themeUtils";
 import { SRU_ENDPOINTS, OAI_ENDPOINTS, IXTHEO_ENDPOINTS } from "./endpoints";
-import { LibrarySearchIntegration } from "./integration";
+import { LibrarySearchIntegration, SearchParams } from "./integration";
 
 /**
  * Enhanced dialog creation with proper styling
@@ -131,6 +131,7 @@ export async function openSearchDialog(): Promise<void> {
     title: string;
     author: string;
     isbn: string;
+    allFieldsTerm: string; 
     maxResults: number;
     searching: boolean;
     searchComplete: boolean;
@@ -147,6 +148,7 @@ export async function openSearchDialog(): Promise<void> {
     title: "",
     author: "",
     isbn: "",
+    allFieldsTerm: "",
     maxResults: 10,
     searching: false,
     searchComplete: false,
@@ -159,82 +161,103 @@ export async function openSearchDialog(): Promise<void> {
       // Get the document
       const doc = dialogHelper.window.document;
 
+      // --- Helper function to enable/disable All Fields input ---
+      // (Defined once to avoid repetition)
+      const updateAllFieldsInputState = (protocol: string, documentContext: Document) => {
+          const allFieldsInput = documentContext.getElementById("all-fields-term") as HTMLInputElement | null;
+          const allFieldsLabel = documentContext.querySelector('label[for="all-fields-term"]') as HTMLLabelElement | null;
+          const allFieldsRow = documentContext.getElementById("all-fields-row") as HTMLElement | null; // Cast
+
+          if (allFieldsInput && allFieldsLabel && allFieldsRow) {
+              if (protocol === "oai") {
+                  allFieldsInput.disabled = true;
+                  allFieldsInput.value = ""; // Clear value when disabled
+                  dialogData.allFieldsTerm = ""; // Clear data model value
+                  allFieldsRow.setAttribute('title', getString("search-dialog-allfields-disabled-oai-tooltip")); // Add tooltip
+                  if (allFieldsLabel) allFieldsLabel.style.opacity = '0.5';
+              } else {
+                  allFieldsInput.disabled = false;
+                  allFieldsRow.removeAttribute('title'); // Remove tooltip
+                  if (allFieldsLabel) allFieldsLabel.style.opacity = '1';
+              }
+          }
+      };
+      // --- End Helper ---
+
+
       // Set up protocol radios
       const protocolRadios = doc.querySelectorAll('input[name="protocol"]');
       for (const radio of protocolRadios) {
         radio.addEventListener('change', function(e: Event) {
           const target = e.target as HTMLInputElement;
           if (target.checked) {
-            dialogData.protocol = target.value;
-            
-            // Show/hide relevant endpoint selects
+            const newProtocol = target.value; // Store the new protocol
+            dialogData.protocol = newProtocol;
+
+            // Show/hide relevant endpoint selects (with casting)
             if (doc) {
-              // Hide all endpoint selects
-              const sruSelect = doc.getElementById("endpoint-sru");
-              const oaiSelect = doc.getElementById("endpoint-oai");
-              const ixtheoSelect = doc.getElementById("endpoint-ixtheo");
-              
-              if (sruSelect) sruSelect.style.display = "block";
+              const sruSelect = doc.getElementById("endpoint-sru") as HTMLElement | null; // Cast
+              const oaiSelect = doc.getElementById("endpoint-oai") as HTMLElement | null; // Cast
+              const ixtheoSelect = doc.getElementById("endpoint-ixtheo") as HTMLElement | null; // Cast
+
+              // Default state (adjust based on newProtocol)
+              if (sruSelect) sruSelect.style.display = "none";
               if (oaiSelect) oaiSelect.style.display = "none";
               if (ixtheoSelect) ixtheoSelect.style.display = "none";
-              
-              if (target.value === "sru") {
+
+              // Show/hide schema options (with casting)
+              const schemaRow = doc.getElementById("schema-row") as HTMLElement | null; // Cast
+
+              if (newProtocol === "sru") {
                 if (sruSelect) {
                   sruSelect.style.display = "block";
                   dialogData.endpoint = (sruSelect as HTMLSelectElement).value;
                 }
-                if (oaiSelect) oaiSelect.style.display = "none";
-                if (ixtheoSelect) ixtheoSelect.style.display = "none";
-                
-                // Show schema options for SRU only
-                const schemaRow = doc.getElementById("schema-row");
                 if (schemaRow) schemaRow.style.display = "block";
-              } 
-              else if (target.value === "oai") {
-                if (sruSelect) sruSelect.style.display = "none";
+              }
+              else if (newProtocol === "oai") {
                 if (oaiSelect) {
                   oaiSelect.style.display = "block";
                   dialogData.endpoint = (oaiSelect as HTMLSelectElement).value;
                 }
-                if (ixtheoSelect) ixtheoSelect.style.display = "none";
-                
-                // Hide schema options for non-SRU
-                const schemaRow = doc.getElementById("schema-row");
                 if (schemaRow) schemaRow.style.display = "none";
                 dialogData.schema = ""; // Clear schema for non-SRU
               }
-              else if (target.value === "ixtheo") {
-                if (sruSelect) sruSelect.style.display = "none";
-                if (oaiSelect) oaiSelect.style.display = "none";
+              else if (newProtocol === "ixtheo") {
                 if (ixtheoSelect) {
                   ixtheoSelect.style.display = "block";
                   dialogData.endpoint = (ixtheoSelect as HTMLSelectElement).value;
                 }
-                
-                // Hide schema options for non-SRU
-                const schemaRow = doc.getElementById("schema-row");
                 if (schemaRow) schemaRow.style.display = "none";
                 dialogData.schema = ""; // Clear schema for non-SRU
               }
+
+              // --- ADDED: Update All Fields input state on change ---
+              updateAllFieldsInputState(newProtocol, doc);
+              // --- END ADDED ---
             }
           }
         });
       }
 
-      // Set initial visibility based on default protocol
-      const schemaRow = doc.getElementById("schema-row");
+      // Set initial visibility based on default protocol (with casting)
+      const schemaRow = doc.getElementById("schema-row") as HTMLElement | null; // Cast
       if (schemaRow) {
         schemaRow.style.display = dialogData.protocol === "sru" ? "block" : "none";
       }
-      
-      // Show the correct endpoint select based on protocol
-      const sruSelect = doc.getElementById("endpoint-sru");
-      const oaiSelect = doc.getElementById("endpoint-oai");
-      const ixtheoSelect = doc.getElementById("endpoint-ixtheo");
-      
+
+      // Show the correct endpoint select based on protocol (with casting)
+      const sruSelect = doc.getElementById("endpoint-sru") as HTMLElement | null; // Cast
+      const oaiSelect = doc.getElementById("endpoint-oai") as HTMLElement | null; // Cast
+      const ixtheoSelect = doc.getElementById("endpoint-ixtheo") as HTMLElement | null; // Cast
+
       if (sruSelect) sruSelect.style.display = dialogData.protocol === "sru" ? "block" : "none";
       if (oaiSelect) oaiSelect.style.display = dialogData.protocol === "oai" ? "block" : "none";
       if (ixtheoSelect) ixtheoSelect.style.display = dialogData.protocol === "ixtheo" ? "block" : "none";
+
+      // --- ADDED: Set initial state for All Fields input ---
+      updateAllFieldsInputState(dialogData.protocol, doc);
+      // --- END ADDED ---
     }
   };
 
@@ -246,7 +269,7 @@ export async function openSearchDialog(): Promise<void> {
   };
 
   // Create the dialog helper - adding an extra row for schema options
-  const dialogHelper = createStyledDialog(11, 2)
+  const dialogHelper = createStyledDialog(12, 2)
     // Dialog header
     .addCell(0, 0, {
       tag: "h1",
@@ -684,14 +707,34 @@ export async function openSearchDialog(): Promise<void> {
       ]
     })
 
-    // Title
+    // --- ADDED: All Fields Input (Row 5) ---
     .addCell(5, 0, {
+      tag: "div", // Wrap label and input for tooltip positioning
+      id: "all-fields-row",
+      styles: { gridColumn: "1 / span 2", display: 'flex', alignItems: 'center' }, // Use flex for alignment
+      children: [
+          {
+              tag: "label", namespace: "html", attributes: { for: "all-fields-term" },
+              properties: { innerHTML: getString("search-dialog-allfields") },
+              styles: { marginRight: '5px', width: '100px' } // Adjust width as needed
+          },
+          {
+              tag: "input", namespace: "html", id: "all-fields-term",
+              attributes: { type: "text", value: dialogData.allFieldsTerm },
+              styles: { flexGrow: 1 }, // Allow input to take remaining space
+              listeners: [ { type: "input", listener: (e: Event) => { dialogData.allFieldsTerm = (e.target as HTMLInputElement).value; } } ]
+          }
+      ]
+  })
+
+    // Title
+    .addCell(6, 0, {
       tag: "label",
       namespace: "html",
       attributes: { for: "title" },
       properties: { innerHTML: getString("search-dialog-title-field") },
     })
-    .addCell(5, 1, {
+    .addCell(6, 1, {
       tag: "input",
       namespace: "html",
       id: "title",
@@ -711,13 +754,13 @@ export async function openSearchDialog(): Promise<void> {
     })
 
     // Author
-    .addCell(6, 0, {
+    .addCell(7, 0, {
       tag: "label",
       namespace: "html",
       attributes: { for: "author" },
       properties: { innerHTML: getString("search-dialog-author") },
     })
-    .addCell(6, 1, {
+    .addCell(7, 1, {
       tag: "input",
       namespace: "html",
       id: "author",
@@ -737,13 +780,13 @@ export async function openSearchDialog(): Promise<void> {
     })
 
     // ISBN
-    .addCell(7, 0, {
+    .addCell(8, 0, {
       tag: "label",
       namespace: "html",
       attributes: { for: "isbn" },
       properties: { innerHTML: getString("search-dialog-isbn") },
     })
-    .addCell(7, 1, {
+    .addCell(8, 1, {
       tag: "input",
       namespace: "html",
       id: "isbn",
@@ -763,13 +806,13 @@ export async function openSearchDialog(): Promise<void> {
     })
 
     // Max Results
-    .addCell(8, 0, {
+    .addCell(9, 0, {
       tag: "label",
       namespace: "html",
       attributes: { for: "maxResults" },
       properties: { innerHTML: getString("search-dialog-max-results") },
     })
-    .addCell(8, 1, {
+    .addCell(9, 1, {
       tag: "input",
       namespace: "html",
       id: "maxResults",
@@ -781,17 +824,22 @@ export async function openSearchDialog(): Promise<void> {
       },
       styles: { width: "100px" },
       listeners: [
-        {
-          type: "input",
-          listener: (e: Event) => {
-            dialogData.maxResults = parseInt((e.target as HTMLInputElement).value, 10);
-          }
-        }
+        { type: "input", listener: (e: Event) => {
+            const input = e.target as HTMLInputElement;
+            const value = parseInt(input.value, 10);
+            // Update data only if it's a valid positive number, otherwise keep previous valid value or default
+            if (!isNaN(value) && value > 0) {
+                dialogData.maxResults = value;
+            } else {
+                // Optionally reset input value to the last valid data model value if input is invalid
+                // input.value = String(dialogData.maxResults);
+            }
+        }}
       ]
     })
 
     // Debug option
-    .addCell(9, 0, {
+    .addCell(10, 0, {
       tag: "div",
       styles: { gridColumn: "1 / span 2" },
       children: [
@@ -872,8 +920,18 @@ export async function openSearchDialog(): Promise<void> {
           const isbnInput = doc.getElementById('isbn') as HTMLInputElement;
           if (isbnInput) dialogData.isbn = isbnInput.value;
 
-          const maxResultsInput = doc.getElementById('maxResults') as HTMLInputElement;
-          if (maxResultsInput) dialogData.maxResults = parseInt(maxResultsInput.value, 10);
+          // --- Ensure maxResults is read and validated ---
+          const maxResultsInput = doc.getElementById('maxResults') as HTMLInputElement | null;
+          let parsedMaxResults = dialogData.maxResults; // Start with current data model value (which has a default)
+          if (maxResultsInput) {
+              const parsed = parseInt(maxResultsInput.value, 10);
+              if (!isNaN(parsed) && parsed > 0) {
+                  parsedMaxResults = parsed; // Use valid parsed value
+              }
+              // If invalid, parsedMaxResults retains the previous valid value from dialogData
+          }
+          dialogData.maxResults = parsedMaxResults; // Update data model definitively
+          // --- End Ensure ---
         }
 
         // Reset search state
@@ -896,16 +954,18 @@ export async function openSearchDialog(): Promise<void> {
             title: dialogData.title,
             author: dialogData.author,
             isbn: dialogData.isbn,
+            allFieldsTerm: dialogData.allFieldsTerm,
             maxResults: dialogData.maxResults
           });
 
-          const searchParams = {
+          const searchParams: import('./integration').SearchParams = {
             protocol: dialogData.protocol,
             endpoint: dialogData.endpoint,
             schema: dialogData.schema,
             title: dialogData.title,
             author: dialogData.author,
             isbn: dialogData.isbn,
+            allFieldsTerm: dialogData.allFieldsTerm,
             maxRecords: dialogData.maxResults
           };
 
