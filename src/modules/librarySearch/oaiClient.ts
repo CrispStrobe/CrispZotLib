@@ -1,4 +1,5 @@
-// oaiClient.ts - OAI-PMH protocol client implementation
+// src/modules/librarySearch/oaiClient.ts
+// OAI-PMH protocol client implementation - Fixed version
 
 import { BiblioRecord } from './models';
 
@@ -19,22 +20,9 @@ export class OAIClient {
     private readonly _timeout: number = 30000
   ) {
     this.parser = new DOMParser();
-    // this.baseUrl = _baseUrl;
     this.defaultMetadataPrefix = _defaultMetadataPrefix;
     this.timeout = _timeout;
   }
-  /*
-  constructor(
-    baseUrl: string,
-    defaultMetadataPrefix: string = 'oai_dc',
-    timeout: number = 30000
-  ) {
-    this.baseUrl = baseUrl;
-    this.defaultMetadataPrefix = defaultMetadataPrefix;
-    this.timeout = timeout;
-    this.parser = new DOMParser();
-  }
-  */
   
   /**
    * Build OAI-PMH request URL
@@ -57,653 +45,730 @@ export class OAIClient {
   }
   
   /**
-   * Identify the repository
-   */
-  async identify(): Promise<Record<string, string>> {
-    try {
-      const url = this.buildUrl('Identify');
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/xml'
-        },
-        signal: AbortSignal.timeout(this.timeout)
-      });
-      
-      if (!response.ok) {
-        throw new Error(`OAI request failed: ${response.status} ${response.statusText}`);
-      }
-      
-      const xmlText = await response.text();
-      const xmlDoc = this.parser.parseFromString(xmlText, 'application/xml');
-      
-      // Check for errors
-      const error = this.checkForErrors(xmlDoc);
-      if (error) {
-        return { error };
-      }
-      
-      // Extract identification information
-      const info: Record<string, string> = {};
-      
-      // Repository name
-      const nameElem = xmlDoc.querySelector('repositoryName');
-      if (nameElem?.textContent) {
-        info.repositoryName = nameElem.textContent.trim();
-      }
-      
-      // Base URL
-      const baseUrlElem = xmlDoc.querySelector('baseURL');
-      if (baseUrlElem?.textContent) {
-        info.baseURL = baseUrlElem.textContent.trim();
-      }
-      
-      // Protocol version
-      const protoElem = xmlDoc.querySelector('protocolVersion');
-      if (protoElem?.textContent) {
-        info.protocolVersion = protoElem.textContent.trim();
-      }
-      
-      // Admin email
-      const emailElem = xmlDoc.querySelector('adminEmail');
-      if (emailElem?.textContent) {
-        info.adminEmail = emailElem.textContent.trim();
-      }
-      
-      // Earliest datestamp
-      const datestampElem = xmlDoc.querySelector('earliestDatestamp');
-      if (datestampElem?.textContent) {
-        info.earliestDatestamp = datestampElem.textContent.trim();
-      }
-      
-      // Deletion mode
-      const deletionElem = xmlDoc.querySelector('deletedRecord');
-      if (deletionElem?.textContent) {
-        info.deletedRecord = deletionElem.textContent.trim();
-      }
-      
-      // Granularity
-      const granularityElem = xmlDoc.querySelector('granularity');
-      if (granularityElem?.textContent) {
-        info.granularity = granularityElem.textContent.trim();
-      }
-      
-      return info;
-    } catch (e) {
-      console.error('Error in OAI identify:', e);
-      return { error: String(e) };
-    }
-  }
-  
-  /**
-   * List metadata formats supported by the repository
-   */
-  async listMetadataFormats(): Promise<Array<Record<string, string>> | { error: string }> {
-    try {
-      const url = this.buildUrl('ListMetadataFormats');
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/xml'
-        },
-        signal: AbortSignal.timeout(this.timeout)
-      });
-      
-      if (!response.ok) {
-        throw new Error(`OAI request failed: ${response.status} ${response.statusText}`);
-      }
-      
-      const xmlText = await response.text();
-      const xmlDoc = this.parser.parseFromString(xmlText, 'application/xml');
-      
-      // Check for errors
-      const error = this.checkForErrors(xmlDoc);
-      if (error) {
-        return { error };
-      }
-      
-      // Extract metadata format information
-      const formats: Array<Record<string, string>> = [];
-      const formatElements = xmlDoc.querySelectorAll('metadataFormat');
-      
-      for (const formatElem of formatElements) {
-        const format: Record<string, string> = {};
-        
-        // Metadata prefix
-        const prefixElem = formatElem.querySelector('metadataPrefix');
-        if (prefixElem?.textContent) {
-          format.metadataPrefix = prefixElem.textContent.trim();
-        }
-        
-        // Schema
-        const schemaElem = formatElem.querySelector('schema');
-        if (schemaElem?.textContent) {
-          format.schema = schemaElem.textContent.trim();
-        }
-        
-        // Metadata namespace
-        const nsElem = formatElem.querySelector('metadataNamespace');
-        if (nsElem?.textContent) {
-          format.metadataNamespace = nsElem.textContent.trim();
-        }
-        
-        formats.push(format);
-      }
-      
-      return formats;
-    } catch (e) {
-      console.error('Error in OAI listMetadataFormats:', e);
-      return { error: String(e) };
-    }
-  }
-  
-  /**
-   * List sets in the repository
-   */
-  async listSets(): Promise<Array<Record<string, string>> | { error: string } | { error: { code: string, message: string } }> {
-    try {
-      const url = this.buildUrl('ListSets');
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/xml'
-        },
-        signal: AbortSignal.timeout(this.timeout)
-      });
-      
-      if (!response.ok) {
-        throw new Error(`OAI request failed: ${response.status} ${response.statusText}`);
-      }
-      
-      const xmlText = await response.text();
-      const xmlDoc = this.parser.parseFromString(xmlText, 'application/xml');
-      
-      // Check for errors
-      const error = this.checkForErrors(xmlDoc);
-      if (error) {
-        // Special handling for noSetHierarchy error
-        if (error.includes('noSetHierarchy')) {
-          return { error: { code: 'noSetHierarchy', message: 'This repository does not support sets' } };
-        }
-        return { error };
-      }
-      
-      // Extract set information
-      const sets: Array<Record<string, string>> = [];
-      const setElements = xmlDoc.querySelectorAll('set');
-      
-      for (const setElem of setElements) {
-        const setInfo: Record<string, string> = {};
-        
-        // Set spec
-        const specElem = setElem.querySelector('setSpec');
-        if (specElem?.textContent) {
-          setInfo.setSpec = specElem.textContent.trim();
-        }
-        
-        // Set name
-        const nameElem = setElem.querySelector('setName');
-        if (nameElem?.textContent) {
-          setInfo.setName = nameElem.textContent.trim();
-        }
-        
-        sets.push(setInfo);
-      }
-      
-      return sets;
-    } catch (e) {
-      console.error('Error in OAI listSets:', e);
-      return { error: String(e) };
-    }
-  }
-  
-  /**
- * LibrarySearch TypeScript Implementation (Part 4)
- * 
- * Continuation of the OAI client and integration into the Zotero plugin
- */
-
-// Continuing from the previous files...
-
-  /**
-   * Search the OAI-PMH repository
+   * Search for records with the given criteria
+   * 
+   * @param query Search terms for filtering (title, author, etc.)
+   * @param metadataPrefix Metadata format to request
+   * @param set_spec Optional set for filtering
+   * @param from_date Optional start date (YYYY-MM-DD)
+   * @param until_date Optional end date (YYYY-MM-DD)
+   * @param max_results Maximum number of results to return
+   * @returns Tuple of [total count, records]
    */
   async search(
     query: Record<string, string> = {},
-    metadataPrefix?: string,
-    setSpec?: string,
-    fromDate?: string,
-    untilDate?: string,
-    maxResults: number = 10
+    metadataPrefix: string = '',
+    set_spec: string = '',
+    from_date: string = '',
+    until_date: string = '',
+    max_results: number = 10
   ): Promise<[number, BiblioRecord[]]> {
     try {
-      const actualMetadataPrefix = metadataPrefix || this.defaultMetadataPrefix;
+      metadataPrefix = metadataPrefix || this.defaultMetadataPrefix;
       
-      // Build parameters
-      const params: Record<string, string> = {
-        'metadataPrefix': actualMetadataPrefix
-      };
+      // For DNB and similar repositories that work better with date ranges and smaller chunks
+      const is_dnb = this.baseUrl.toLowerCase().includes('dnb');
       
-      // Add set if specified
-      if (setSpec) {
-        params['set'] = setSpec;
+      // Handle repositories that require both from and until dates
+      if (is_dnb) {
+        // If searching DNB, we need both dates and small enough date ranges
+        if (!until_date) {
+          until_date = new Date().toISOString().split('T')[0]; // Today
+          console.log(`Added missing until date for DNB search: ${until_date}`);
+        }
+        if (!from_date) {
+          // Set from_date to a more limited period - 3 months is safer for DNB
+          const untilDateObj = new Date(until_date);
+          untilDateObj.setMonth(untilDateObj.getMonth() - 3);
+          from_date = untilDateObj.toISOString().split('T')[0];
+          console.log(`Added missing from date for DNB search: ${from_date}`);
+        }
+        
+        // For DNB, try using a set when possible - this helps reduce result size
+        if (!set_spec) {
+          // Try using dnb:reiheA (new publications) as default
+          set_spec = "dnb:reiheA";
+          console.log(`Setting default DNB set: ${set_spec}`);
+        }
+        
+        // IMPORTANT: For DNB, always use ListIdentifiers instead of ListRecords
+        // then fetch individual records - this avoids 413 errors
+        return await this.searchWithIdentifiers(
+          query,
+          metadataPrefix,
+          set_spec,
+          from_date,
+          until_date,
+          max_results
+        );
       }
       
-      // Add date range if specified
-      if (fromDate) {
-        params['from'] = fromDate;
-      }
-      
-      if (untilDate) {
-        params['until'] = untilDate;
-      }
-      
-      // Collect results
-      let allRecords: BiblioRecord[] = [];
-      let resumptionToken: string | null = null;
-      let totalRecords = 0;
-      let batchSize = Math.min(100, maxResults);
-      
-      do {
-        // For the first request, use ListRecords with our parameters
-        // For subsequent requests, use resumptionToken
-        let url: string;
-        if (resumptionToken) {
-          url = this.buildUrl('ListRecords', { resumptionToken });
-        } else {
-          url = this.buildUrl('ListRecords', params);
-        }
-        
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/xml'
-          },
-          signal: AbortSignal.timeout(this.timeout)
-        });
-        
-        if (!response.ok) {
-          throw new Error(`OAI request failed: ${response.status} ${response.statusText}`);
-        }
-        
-        const xmlText = await response.text();
-        const xmlDoc = this.parser.parseFromString(xmlText, 'application/xml');
-        
-        // Check for errors
-        const error = this.checkForErrors(xmlDoc);
-        if (error) {
-          console.error(`OAI error: ${error}`);
-          break;
-        }
-        
-        // Process records
-        const recordElements = xmlDoc.querySelectorAll('record');
-        let batchRecords: BiblioRecord[] = [];
-        
-        for (const recordElem of recordElements) {
-          // Skip records marked as deleted
-          const statusAttr = recordElem.getAttribute('status');
-          if (statusAttr === 'deleted') {
-            continue;
-          }
-          
-          // Get header information
-          const headerElem = recordElem.querySelector('header');
-          const identifierElem = headerElem?.querySelector('identifier');
-          const identifier = identifierElem?.textContent?.trim() || `record-${allRecords.length + batchRecords.length + 1}`;
-          
-          // Get metadata
-          const metadataElem = recordElem.querySelector('metadata');
-          if (!metadataElem) {
-            continue;
-          }
-          
-          // Parse record based on metadata prefix
-          let record: BiblioRecord | null = null;
-          
-          // Get DC content if it exists
-          const dcElem = metadataElem.querySelector('dc') || 
-                         metadataElem.querySelector('oai_dc\\:dc') ||
-                         metadataElem.querySelector('*|dc');
-          
-          if (dcElem) {
-            record = this.parseDublinCore(dcElem, identifier);
-          } else {
-            // Generic parsing
-            record = this.parseGeneric(metadataElem, identifier);
-          }
-          
-          if (record) {
-            // Filter results based on query if provided
-            if (Object.keys(query).length > 0) {
-              const matches = this.recordMatchesQuery(record, query);
-              if (matches) {
-                batchRecords.push(record);
-              }
-            } else {
-              batchRecords.push(record);
-            }
-          }
-          
-          // Check if we've reached the desired number of results
-          if (allRecords.length + batchRecords.length >= maxResults) {
-            batchRecords = batchRecords.slice(0, maxResults - allRecords.length);
-            break;
-          }
-        }
-        
-        // Add batch to overall results
-        allRecords = [...allRecords, ...batchRecords];
-        
-        // Get resumption token for next batch
-        const tokenElem = xmlDoc.querySelector('resumptionToken');
-        resumptionToken = tokenElem?.textContent?.trim() || null;
-        
-        // Get completeListSize attribute if available
-        if (tokenElem && tokenElem.getAttribute('completeListSize')) {
-          totalRecords = parseInt(tokenElem.getAttribute('completeListSize') || '0', 10);
-        } else if (totalRecords === 0) {
-          // If we don't have a total yet, use what we've found so far
-          totalRecords = allRecords.length;
-        }
-        
-        // Stop if we've reached the max results or there's no resumption token
-        if (allRecords.length >= maxResults || !resumptionToken) {
-          break;
-        }
-      } while (resumptionToken);
-      
-      return [totalRecords || allRecords.length, allRecords];
+      // For other repositories, use normal approach
+      return await this.searchWithRecords(
+        query,
+        metadataPrefix,
+        set_spec,
+        from_date,
+        until_date,
+        max_results
+      );
     } catch (e) {
       console.error('Error in OAI search:', e);
       return [0, []];
     }
   }
+  
+  /**
+   * Search using ListIdentifiers then GetRecord (for repositories like DNB)
+   * This avoids 413 errors by using a 2-step process
+   */
+  private async searchWithIdentifiers(
+    query: Record<string, string>,
+    metadataPrefix: string,
+    set_spec: string,
+    from_date: string,
+    until_date: string, 
+    max_results: number
+  ): Promise<[number, BiblioRecord[]]> {
+    try {
+      // Step 1: Get identifiers
+      console.log("Using searchWithIdentifiers for DNB");
+      const identifiers = await this.listIdentifiers(
+        metadataPrefix,
+        set_spec,
+        from_date,
+        until_date,
+        100 // Get more identifiers than needed for filtering
+      );
+      
+      console.log(`Found ${identifiers.length} identifiers`);
+      
+      if (identifiers.length === 0) {
+        return [0, []];
+      }
+      
+      // Step 2: Fetch individual records
+      const records: BiblioRecord[] = [];
+      const promises: Promise<BiblioRecord | null>[] = [];
+      
+      // Only fetch up to max_results records
+      const toFetch = identifiers.slice(0, Math.min(identifiers.length, max_results * 3));
+      
+      for (const identifier of toFetch) {
+        if (typeof identifier === 'string') {
+          // Handle case where we just have the identifier string
+          promises.push(this.getRecord(identifier, metadataPrefix));
+        } else {
+          // Handle case where we have an object with identifier property
+          promises.push(this.getRecord(identifier.identifier, metadataPrefix));
+        }
+      }
+      
+      // Wait for all promises to resolve
+      const fetchedRecords = await Promise.all(promises);
+      
+      // Filter out null records
+      const validRecords = fetchedRecords.filter(record => record !== null) as BiblioRecord[];
+      
+      // Filter based on query
+      const filteredRecords = validRecords.filter(record => this.record_matches_query(record, query));
+      
+      // Limit to max_results
+      const finalRecords = filteredRecords.slice(0, max_results);
+      
+      return [validRecords.length, finalRecords];
+    } catch (e) {
+      console.error('Error in searchWithIdentifiers:', e);
+      return [0, []];
+    }
+  }
+  
+  /**
+   * Regular search approach using ListRecords
+   */
+  private async searchWithRecords(
+    query: Record<string, string>,
+    metadataPrefix: string,
+    set_spec: string,
+    from_date: string,
+    until_date: string,
+    max_results: number
+  ): Promise<[number, BiblioRecord[]]> {
+    try {
+      // Get records with list_records
+      const [totalCount, allRecords] = await this.list_records(
+        metadataPrefix,
+        set_spec,
+        from_date,
+        until_date,
+        max_results
+      );
+      
+      // Filter records if query parameters are provided
+      let filteredRecords: BiblioRecord[] = [];
+      
+      if (Object.keys(query).length > 0) {
+        for (const record of allRecords) {
+          if (this.record_matches_query(record, query)) {
+            filteredRecords.push(record);
+            
+            // Stop once we have enough matches
+            if (filteredRecords.length >= max_results) {
+              break;
+            }
+          }
+        }
+      } else {
+        // No filtering needed
+        filteredRecords = allRecords;
+      }
+      
+      return [filteredRecords.length, filteredRecords];
+    } catch (e) {
+      console.error('Error in searchWithRecords:', e);
+      return [0, []];
+    }
+  }
 
   /**
-   * Check if a record matches search criteria
+   * List record identifiers with optional filtering.
    */
-  private recordMatchesQuery(record: BiblioRecord, query: Record<string, string>): boolean {
-    for (const [field, value] of Object.entries(query)) {
-      if (!value) continue;
+  async listIdentifiers(
+    metadata_prefix: string = '',
+    set_spec: string = '',
+    from_date: string = '',
+    until_date: string = '',
+    max_results: number = 100
+  ): Promise<Array<any>> {
+    try {
+      metadata_prefix = metadata_prefix || this.defaultMetadataPrefix;
       
-      const lowerValue = value.toLowerCase();
+      // Build parameters
+      const params: Record<string, string> = {
+        'metadataPrefix': metadata_prefix
+      };
       
-      switch (field) {
-        case 'title':
-          if (!record.title || !record.title.toLowerCase().includes(lowerValue)) {
-            return false;
-          }
-          break;
-        
-        case 'author':
-          if (!record.authors || !record.authors.some(a => a.toLowerCase().includes(lowerValue))) {
-            return false;
-          }
-          break;
-        
-        case 'isbn':
-          if (!record.isbn || !record.isbn.replace(/-/g, '').includes(value.replace(/-/g, ''))) {
-            return false;
-          }
-          break;
-        
-        case 'issn':
-          if (!record.issn || !record.issn.replace(/-/g, '').includes(value.replace(/-/g, ''))) {
-            return false;
-          }
-          break;
-        
-        case 'year':
-          if (!record.year || record.year !== value) {
-            return false;
-          }
-          break;
-        
-        default:
-          // Unknown field, ignore
-          break;
+      if (set_spec) {
+        params['set'] = set_spec;
       }
+      if (from_date) {
+        params['from'] = from_date;
+      }
+      if (until_date) {
+        params['until'] = until_date;
+      }
+      
+      const url = this.buildUrl('ListIdentifiers', params);
+      console.log(`Executing ListIdentifiers: ${url}`);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/xml'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`OAI request failed: ${response.status} ${response.statusText}`);
+      }
+      
+      const xmlText = await response.text();
+      const xmlDoc = this.parser.parseFromString(xmlText, 'application/xml');
+      
+      // Check for error
+      const error = this.checkForErrors(xmlDoc);
+      if (error) {
+        console.error(`OAI-PMH error: ${error}`);
+        if (error.includes('noRecordsMatch')) {
+          return [];
+        }
+        return [{ error }];
+      }
+      
+      // Extract identifiers
+      const identifiers: Array<any> = [];
+      const header_elements = xmlDoc.querySelectorAll('header');
+      
+      for (let i = 0; i < header_elements.length; i++) {
+        if (max_results && i >= max_results) {
+          break;
+        }
+        
+        const header = header_elements[i];
+        
+        // Skip deleted records
+        if (header.getAttribute('status') === 'deleted') {
+          continue;
+        }
+        
+        const identifier = header.querySelector('identifier')?.textContent;
+        const datestamp = header.querySelector('datestamp')?.textContent;
+        
+        // Get setSpec elements (can be multiple)
+        const sets: string[] = [];
+        const setSpecs = header.querySelectorAll('setSpec');
+        for (const setSpec of setSpecs) {
+          if (setSpec.textContent) {
+            sets.push(setSpec.textContent);
+          }
+        }
+        
+        if (identifier) {
+          identifiers.push({
+            identifier,
+            datestamp: datestamp || '',
+            setSpec: sets
+          });
+        }
+      }
+      
+      // Check for resumption token for handling resumption
+      const resumptionToken = xmlDoc.querySelector('resumptionToken')?.textContent;
+      if (resumptionToken) {
+        console.log(`More results available with resumptionToken: ${resumptionToken}`);
+        
+        // To fully implement resumption token handling, you would make additional
+        // requests here using the token. For simplicity, we're just noting it for now.
+      }
+      
+      return identifiers;
+    } catch (e) {
+      console.error('Error in ListIdentifiers:', e);
+      return [];
+    }
+  }
+  
+  /**
+   * Get a specific record by identifier
+   */
+  async getRecord(identifier: string, metadataPrefix: string = ''): Promise<BiblioRecord | null> {
+    try {
+      metadataPrefix = metadataPrefix || this.defaultMetadataPrefix;
+      
+      const params = {
+        'identifier': identifier,
+        'metadataPrefix': metadataPrefix
+      };
+      
+      const url = this.buildUrl('GetRecord', params);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/xml'
+        }
+      });
+      
+      if (!response.ok) {
+        console.error(`GetRecord request failed: ${response.status} ${response.statusText}`);
+        return null;
+      }
+      
+      const xmlText = await response.text();
+      const xmlDoc = this.parser.parseFromString(xmlText, 'application/xml');
+      
+      // Check for error
+      const error = this.checkForErrors(xmlDoc);
+      if (error) {
+        console.error(`OAI-PMH error in GetRecord: ${error}`);
+        return null;
+      }
+      
+      // Extract record
+      const recordElement = xmlDoc.querySelector('record');
+      if (!recordElement) {
+        console.warn(`No record found for identifier ${identifier}`);
+        return null;
+      }
+      
+      return this.process_record_element(recordElement, metadataPrefix);
+    } catch (e) {
+      console.error(`Error in GetRecord for ${identifier}:`, e);
+      return null;
+    }
+  }
+
+  /**
+   * List records with optional filtering
+   */
+  async list_records(
+    metadata_prefix: string = '',
+    set_spec: string = '',
+    from_date: string = '',
+    until_date: string = '',
+    max_results: number = 10
+  ): Promise<[number, BiblioRecord[]]> {
+    try {
+      metadata_prefix = metadata_prefix || this.defaultMetadataPrefix;
+      
+      // Build parameters
+      const params: Record<string, string> = {
+        'metadataPrefix': metadata_prefix
+      };
+      
+      if (set_spec) {
+        params['set'] = set_spec;
+      }
+      if (from_date) {
+        params['from'] = from_date;
+      }
+      if (until_date) {
+        params['until'] = until_date;
+      }
+      
+      const url = this.buildUrl('ListRecords', params);
+      console.log(`Executing ListRecords: ${url}`);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/xml'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`OAI request failed: ${response.status} ${response.statusText}`);
+      }
+      
+      const xmlText = await response.text();
+      const xmlDoc = this.parser.parseFromString(xmlText, 'application/xml');
+      
+      // Check for error
+      const error = this.checkForErrors(xmlDoc);
+      if (error) {
+        console.error(`OAI-PMH error: ${error}`);
+        if (error.includes('noRecordsMatch')) {
+          return [0, []];
+        }
+        return [0, []];
+      }
+      
+      // Extract total count if available
+      let totalCount = 0;
+      const resumptionToken = xmlDoc.querySelector('resumptionToken');
+      if (resumptionToken && resumptionToken.getAttribute('completeListSize')) {
+        totalCount = parseInt(resumptionToken.getAttribute('completeListSize') || '0', 10);
+      }
+      
+      // Extract records
+      const records: BiblioRecord[] = [];
+      const recordElements = xmlDoc.querySelectorAll('record');
+      
+      for (let i = 0; i < recordElements.length && records.length < max_results; i++) {
+        const recordElement = recordElements[i];
+        
+        // Skip deleted records
+        const header = recordElement.querySelector('header');
+        if (header?.getAttribute('status') === 'deleted') {
+          continue;
+        }
+        
+        const record = this.process_record_element(recordElement, metadata_prefix);
+        
+        if (record) {
+          records.push(record);
+        }
+      }
+      
+      // If no total count was found, use the number of records
+      if (totalCount === 0) {
+        totalCount = records.length;
+      }
+      
+      return [totalCount, records];
+    } catch (e) {
+      console.error('Error in list_records:', e);
+      return [0, []];
+    }
+  }
+  
+  /**
+   * Process a record XML element into a BiblioRecord
+   */
+  private process_record_element(recordElement: Element, metadataPrefix: string): BiblioRecord {
+    try {
+      // Extract header information
+      const header = recordElement.querySelector('header');
+      const identifierElement = header?.querySelector('identifier');
+      const datestampElement = header?.querySelector('datestamp');
+      
+      const identifier = identifierElement?.textContent || 'unknown';
+      
+      // Check if record is deleted
+      if (header?.getAttribute('status') === 'deleted') {
+        return {
+          id: identifier,
+          title: `Deleted record: ${identifier}`,
+          authors: [],
+          editors: [],
+          translators: [],
+          contributors: [],
+          urls: [],
+          subjects: []
+        };
+      }
+      
+      // Extract metadata
+      const metadataElement = recordElement.querySelector('metadata');
+      if (!metadataElement) {
+        return {
+          id: identifier,
+          title: `Record without metadata: ${identifier}`,
+          authors: [],
+          editors: [],
+          translators: [],
+          contributors: [],
+          urls: [],
+          subjects: []
+        };
+      }
+      
+      // Parse based on metadata prefix
+      if (metadataPrefix === 'oai_dc' || metadataPrefix === 'dc') {
+        return this.parse_dublin_core(metadataElement, identifier);
+      } else {
+        // Generic parsing for unknown formats
+        return this.parse_generic(metadataElement, identifier);
+      }
+    } catch (e) {
+      console.error('Error processing record element:', e);
+      return {
+        id: 'error',
+        title: `Error processing record: ${e}`,
+        authors: [],
+        editors: [],
+        translators: [],
+        contributors: [],
+        urls: [],
+        subjects: []
+      };
+    }
+  }
+  
+  /**
+   * Parse Dublin Core metadata
+   */
+  private parse_dublin_core(metadataElement: Element, identifier: string): BiblioRecord {
+    // Find the DC metadata
+    const dcElement = metadataElement.querySelector('dc') || 
+                      metadataElement.querySelector('oai_dc\\:dc') ||
+                      metadataElement.querySelector('*|dc');
+    
+    if (!dcElement) {
+      return {
+        id: identifier,
+        title: `Record without DC metadata: ${identifier}`,
+        authors: [],
+        editors: [],
+        translators: [],
+        contributors: [],
+        urls: [],
+        subjects: []
+      };
     }
     
-    return true;
-  }
-
-  /**
-   * Check for errors in OAI response
-   */
-  private checkForErrors(xmlDoc: Document): string | null {
-    const errorElem = xmlDoc.querySelector('error');
-    if (errorElem) {
-      const code = errorElem.getAttribute('code') || 'unknown';
-      const message = errorElem.textContent?.trim() || 'Unknown error';
-      return `${code}: ${message}`;
-    }
-    return null;
-  }
-
-  /**
-   * Parse Dublin Core record from OAI
-   */
-  private parseDublinCore(element: Element, recordId: string): BiblioRecord {
-    // Initialize record with default values
+    // Initialize the record
     const record: BiblioRecord = {
-      id: recordId,
+      id: identifier,
       title: "Untitled",
       authors: [],
       editors: [],
       translators: [],
       contributors: [],
       urls: [],
-      subjects: [],
-      schema: 'oai_dc'
+      subjects: []
     };
     
-    // Get title
-    const titleElements = element.querySelectorAll('title, dc\\:title, *|title');
-    if (titleElements.length > 0 && titleElements[0].textContent) {
-      record.title = titleElements[0].textContent.trim();
+    // Extract title
+    const titleElement = dcElement.querySelector('title') || 
+                         dcElement.querySelector('dc\\:title') ||
+                         dcElement.querySelector('*|title');
+    if (titleElement?.textContent) {
+      record.title = titleElement.textContent.trim();
+      
+      // Clean up title - remove author info at the end
+      record.title = record.title.replace(/\s*\/\s*[^\/]+$/, '');
     }
     
-    // Process creators (authors, editors, translators)
+    // Track seen names to avoid duplicates
     const seenNames = new Set<string>();
     
-    // Process creators
-    const creatorElements = element.querySelectorAll('creator, dc\\:creator, *|creator');
-    for (const elem of creatorElements) {
-      if (!elem.textContent) continue;
-      
-      const name = elem.textContent.trim();
-      if (!name) continue;
-      
-      // Check if it's an editor
-      if (/\b(?:ed(?:itor)?|hrsg|hg)\b/i.test(name) || 
-          /\(ed/i.test(name) || 
-          /\(hg/i.test(name) || 
-          /\(hg\.\)/i.test(name)) {
+    // Extract creators (authors)
+    const creatorElements = dcElement.querySelectorAll('creator, dc\\:creator, *|creator');
+    for (const creatorElem of creatorElements) {
+      if (creatorElem.textContent) {
+        const name = creatorElem.textContent.trim();
+        
+        // Check for editor roles
+        if (/\[\s*(?:Herausgeber|Hrsg\.?|Editor|Ed\.?)\s*\]/.test(name)) {
+          const cleanName = name.replace(/\s*\[\s*(?:Herausgeber|Hrsg\.?|Editor|Ed\.?)\s*\]/, '').trim();
+          if (cleanName && !seenNames.has(cleanName)) {
+            record.editors.push(cleanName);
+            seenNames.add(cleanName);
+          }
+        }
+        // Check for translator roles
+        else if (/\[\s*Übersetzer\s*\]/.test(name)) {
+          const cleanName = name.replace(/\s*\[\s*Übersetzer\s*\]/, '').trim();
+          if (cleanName && !seenNames.has(cleanName)) {
+            record.translators.push(cleanName);
+            seenNames.add(cleanName);
+          }
+        }
+        // Regular author
+        else {
+          // Clean up author text - remove role indicators in brackets
+          const cleanName = name.replace(/\s*\[[^\]]*\]/, '').trim();
+          if (cleanName && !seenNames.has(cleanName)) {
+            record.authors.push(cleanName);
+            seenNames.add(cleanName);
+          }
+        }
+      }
+    }
+    
+    // Extract contributors
+    const contributorElements = dcElement.querySelectorAll('contributor, dc\\:contributor, *|contributor');
+    for (const contribElem of contributorElements) {
+      if (contribElem.textContent) {
+        const name = contribElem.textContent.trim();
+        
+        // Check for editor roles
+        if (/\b(editor|ed\.|hrsg|hg\.)\b/i.test(name) || name.toLowerCase().includes('(ed')) {
+          const cleanName = name
+            .replace(/\s*[\(\[][^)]*(?:ed|hrsg|edit|hg)[^)]*[\)\]]/, '')
+            .replace(/\s*(?:ed|hrsg|edit|hg)\.?(?:\s+|$)/, '')
+            .trim();
           
-        // Clean editor name
-        let cleanName = name.replace(/\s*[\(\[][^)]*(?:ed|hrsg|edit|hg)[^)]*[\)\]]/g, '')
-                          .replace(/\s*(?:ed|hrsg|edit|hg)\.?(?:\s+|$)/g, '')
-                          .trim();
-        
-        if (cleanName && !seenNames.has(cleanName)) {
-          record.editors.push(cleanName);
-          seenNames.add(cleanName);
+          if (cleanName && !seenNames.has(cleanName)) {
+            record.editors.push(cleanName);
+            seenNames.add(cleanName);
+          }
         }
-        continue;
-      }
-      
-      // Check if it's a translator
-      if (/\b(?:trans|transl|translator|übersetz|übers)\b/i.test(name)) {
-        // Clean translator name
-        let cleanName = name.replace(/\s*[\(\[][^)]*(?:trans|übersetz)[^)]*[\)\]]/g, '')
-                          .replace(/\s*(?:trans|transl|translator|übersetz|übers)\.?(?:\s+|$)/g, '')
-                          .trim();
-        
-        if (cleanName && !seenNames.has(cleanName)) {
-          record.translators.push(cleanName);
-          seenNames.add(cleanName);
-        }
-        continue;
-      }
-      
-      // Regular author
-      if (!seenNames.has(name)) {
-        record.authors.push(name);
-        seenNames.add(name);
-      }
-    }
-    
-    // Process contributors
-    const contributorElements = element.querySelectorAll('contributor, dc\\:contributor, *|contributor');
-    for (const elem of contributorElements) {
-      if (!elem.textContent) continue;
-      
-      const name = elem.textContent.trim();
-      if (!name) continue;
-      
-      // Check if it's an editor
-      if (/\b(?:ed(?:itor)?|hrsg|hg)\b/i.test(name) || 
-          /\(ed/i.test(name) || 
-          /\(hg/i.test(name)) {
+        // Check for translator roles
+        else if (/\b(translator|trans\.|übers)\b/i.test(name) || name.toLowerCase().includes('(trans')) {
+          const cleanName = name
+            .replace(/\s*[\(\[][^)]*(?:trans|übers)[^)]*[\)\]]/, '')
+            .replace(/\s*(?:trans|transl|translator|übers)\.?(?:\s+|$)/, '')
+            .trim();
           
-        // Clean editor name
-        let cleanName = name.replace(/\s*[\(\[][^)]*(?:ed|hrsg|edit|hg)[^)]*[\)\]]/g, '')
-                          .replace(/\s*(?:ed|hrsg|edit|hg)\.?(?:\s+|$)/g, '')
-                          .trim();
+          if (cleanName && !seenNames.has(cleanName)) {
+            record.translators.push(cleanName);
+            seenNames.add(cleanName);
+          }
+        }
+        // Regular contributor
+        else if (!seenNames.has(name)) {
+          record.contributors.push({ name, role: 'contributor' });
+          seenNames.add(name);
+        }
+      }
+    }
+    
+    // Extract date/year
+    const dateElements = dcElement.querySelectorAll('date, dc\\:date, *|date');
+    for (const dateElem of dateElements) {
+      if (dateElem.textContent) {
+        const dateText = dateElem.textContent.trim();
+        const yearMatch = /\b(1\d{3}|20\d{2})\b/.exec(dateText);
+        if (yearMatch) {
+          record.year = yearMatch[1];
+          break;
+        }
+      }
+    }
+    
+    // Extract publisher
+    const publisherElement = dcElement.querySelector('publisher, dc\\:publisher, *|publisher');
+    if (publisherElement?.textContent) {
+      const publisherText = publisherElement.textContent.trim();
+      
+      // Split place and publisher if separated by " : "
+      if (publisherText.includes(' : ')) {
+        const parts = publisherText.split(' : ', 2);
+        record.place_of_publication = parts[0].trim();
+        record.publisher_name = parts[1].trim();
+      } else {
+        record.publisher_name = publisherText;
+      }
+    }
+    
+    // Extract format
+    const formatElement = dcElement.querySelector('format, dc\\:format, *|format');
+    if (formatElement?.textContent) {
+      record.format = formatElement.textContent.trim();
+    }
+    
+    // Extract language
+    const languageElement = dcElement.querySelector('language, dc\\:language, *|language');
+    if (languageElement?.textContent) {
+      record.language = languageElement.textContent.trim();
+    }
+    
+    // Extract subjects
+    const subjectElements = dcElement.querySelectorAll('subject, dc\\:subject, *|subject');
+    for (const subjectElem of subjectElements) {
+      if (subjectElem.textContent?.trim()) {
+        record.subjects.push(subjectElem.textContent.trim());
+      }
+    }
+    
+    // Extract identifiers (ISBN, ISSN, URL)
+    const identifierElements = dcElement.querySelectorAll('identifier, dc\\:identifier, *|identifier');
+    for (const idElem of identifierElements) {
+      if (idElem.textContent) {
+        const idText = idElem.textContent.trim().toLowerCase();
         
-        if (cleanName && !seenNames.has(cleanName)) {
-          record.editors.push(cleanName);
-          seenNames.add(cleanName);
+        // Extract URL
+        if (idText.startsWith('http')) {
+          record.urls.push(idText);
         }
-        continue;
-      }
-      
-      // Check if it's a translator
-      if (/\b(?:trans|transl|translator|übersetz|übers)\b/i.test(name)) {
-        // Clean translator name
-        let cleanName = name.replace(/\s*[\(\[][^)]*(?:trans|übersetz)[^)]*[\)\]]/g, '')
-                          .replace(/\s*(?:trans|transl|translator|übersetz|übers)\.?(?:\s+|$)/g, '')
-                          .trim();
-        
-        if (cleanName && !seenNames.has(cleanName)) {
-          record.translators.push(cleanName);
-          seenNames.add(cleanName);
+        // Extract ISBN
+        else if (idText.includes('isbn')) {
+          const isbnMatch = /(?:isbn[:\s]*)?(\d[\d\-X]+)/i.exec(idText);
+          if (isbnMatch) {
+            record.isbn = isbnMatch[1];
+          }
         }
-        continue;
-      }
-      
-      // Regular contributor
-      if (!seenNames.has(name)) {
-        record.contributors.push({ name, role: 'contributor' });
-        seenNames.add(name);
-      }
-    }
-    
-    // Find date/year
-    const dateElements = element.querySelectorAll('date, dc\\:date, *|date');
-    if (dateElements.length > 0 && dateElements[0].textContent) {
-      const dateText = dateElements[0].textContent.trim();
-      // Extract year using regex
-      const yearMatch = /\b(1\d{3}|20\d{2})\b/.exec(dateText);
-      if (yearMatch) {
-        record.year = yearMatch[1];
-      }
-    }
-    
-    // Find publisher
-    const publisherElements = element.querySelectorAll('publisher, dc\\:publisher, *|publisher');
-    if (publisherElements.length > 0 && publisherElements[0].textContent) {
-      record.publisher_name = publisherElements[0].textContent.trim();
-    }
-    
-    // Find identifiers (ISBN, ISSN, DOI)
-    const identifierElements = element.querySelectorAll('identifier, dc\\:identifier, *|identifier');
-    for (const elem of identifierElements) {
-      if (!elem.textContent) continue;
-      
-      const idText = elem.textContent.trim().toLowerCase();
-      
-      // Extract ISBN
-      if (idText.includes('isbn')) {
-        const isbnMatch = /(?:isbn[:\s]*)?(\d[\d\-X]+)/.exec(idText);
-        if (isbnMatch) {
-          record.isbn = isbnMatch[1];
+        // Extract ISSN
+        else if (idText.includes('issn')) {
+          const issnMatch = /(?:issn[:\s]*)?(\d{4}-\d{3}[\dX])/i.exec(idText);
+          if (issnMatch) {
+            record.issn = issnMatch[1];
+          }
         }
       }
-      // Extract ISSN
-      else if (idText.includes('issn')) {
-        const issnMatch = /(?:issn[:\s]*)?(\d{4}-\d{3}[\dX])/.exec(idText);
-        if (issnMatch) {
-          record.issn = issnMatch[1];
-        }
-      }
-      // Extract DOI
-      else if (idText.includes('doi') || idText.includes('doi.org')) {
-        const doiMatch = /(?:doi[:\s]*)?(?:https?:\/\/doi\.org\/)?(\d+\.\d+\/[^\s]+)/.exec(idText);
-        if (doiMatch) {
-          record.doi = doiMatch[1];
-        }
-      }
-      // Extract URL
-      else if (idText.startsWith('http')) {
-        record.urls.push(idText);
-      }
     }
     
-    // Find subjects
-    const subjectElements = element.querySelectorAll('subject, dc\\:subject, *|subject');
-    for (const elem of subjectElements) {
-      if (elem.textContent?.trim()) {
-        record.subjects.push(elem.textContent.trim());
-      }
+    // Extract description/abstract
+    const descriptionElement = dcElement.querySelector('description, dc\\:description, *|description');
+    if (descriptionElement?.textContent) {
+      record.abstract = descriptionElement.textContent.trim();
     }
     
-    // Find description (abstract)
-    const descriptionElements = element.querySelectorAll('description, dc\\:description, *|description');
-    if (descriptionElements.length > 0 && descriptionElements[0].textContent) {
-      record.abstract = descriptionElements[0].textContent.trim();
-    }
-    
-    // Find language
-    const languageElements = element.querySelectorAll('language, dc\\:language, *|language');
-    if (languageElements.length > 0 && languageElements[0].textContent) {
-      record.language = languageElements[0].textContent.trim();
-    }
-    
-    // Find format
-    const formatElements = element.querySelectorAll('format, dc\\:format, *|format');
-    if (formatElements.length > 0 && formatElements[0].textContent) {
-      record.format = formatElements[0].textContent.trim();
-    }
-    
-    // Find source (could contain journal or book info)
-    const sourceElements = element.querySelectorAll('source, dc\\:source, *|source');
-    if (sourceElements.length > 0 && sourceElements[0].textContent) {
-      const source = sourceElements[0].textContent.trim();
+    // Extract source info that might contain journal title or series
+    const sourceElement = dcElement.querySelector('source, dc\\:source, *|source');
+    if (sourceElement?.textContent) {
+      const sourceText = sourceElement.textContent.trim();
       
-      // Check for journal pattern
-      const journalMatch = /([^,]+),\s*(?:Vol(?:ume)?\.?\s*(\d+))?,?\s*(?:No\.?\s*(\d+))?,?\s*(?:pp\.?\s*(\d+(?:-\d+)?))?/.exec(source);
+      // Check for journal pattern with volume/issue
+      const journalMatch = /([^,]+),\s*(?:Vol(?:ume)?\.?\s*(\d+))?,?\s*(?:No\.?\s*(\d+))?,?\s*(?:pp\.?\s*(\d+(?:-\d+)?))?/.exec(sourceText);
       if (journalMatch) {
         record.journal_title = journalMatch[1]?.trim();
         record.volume = journalMatch[2];
         record.issue = journalMatch[3];
         record.pages = journalMatch[4];
       }
-      // If not journal, might be a book chapter or series
-      else if (/in:/.test(source.toLowerCase()) || /in /.test(source.toLowerCase())) {
-        const bookMatch = /(?:in:?|In:?)\s*([^,]+)/.exec(source);
+      // Check for book chapter pattern
+      else if (/in:/.test(sourceText.toLowerCase()) || /in /.test(sourceText.toLowerCase())) {
+        const bookMatch = /(?:in:?|In:?)\s*([^,]+)/.exec(sourceText);
         if (bookMatch) {
           record.series = bookMatch[1]?.trim();
         }
       }
     }
     
-    // Determine document type from available info
+    // Determine document type
     if (record.journal_title && (record.volume || record.issue)) {
       record.document_type = "Journal Article";
     } else if (record.series) {
@@ -712,63 +777,256 @@ export class OAIClient {
       record.document_type = "Book";
     }
     
+    // Store the raw XML if needed for debugging
+    try {
+      record.raw_data = new XMLSerializer().serializeToString(metadataElement);
+    } catch (e) {
+      console.error('Error serializing raw XML:', e);
+    }
+    
     return record;
   }
-
+  
   /**
-   * Generic record parser for OAI records
+   * Parse generic metadata (fallback for unknown formats)
    */
-  private parseGeneric(element: Element, recordId: string): BiblioRecord {
-    // Initialize with minimal data
+  private parse_generic(metadataElement: Element, identifier: string): BiblioRecord {
+    // Initialize record
     const record: BiblioRecord = {
-      id: recordId,
-      title: `Record ${recordId}`,
+      id: identifier,
+      title: `Record ${identifier}`,
       authors: [],
       editors: [],
       translators: [],
       contributors: [],
       urls: [],
-      subjects: [],
-      schema: 'generic'
+      subjects: []
     };
     
-    // Serialize element for raw data
-    const serializer = new XMLSerializer();
-    record.raw_data = serializer.serializeToString(element);
-    
-    // Try to extract title using various possible elements
-    const titleElements = element.querySelectorAll('title, *|title');
+    // Look for title elements with various possible names
+    const titleElements = metadataElement.querySelectorAll('title, *|title');
     if (titleElements.length > 0 && titleElements[0].textContent) {
       record.title = titleElements[0].textContent.trim();
     }
     
-    // Try to extract creators/authors
-    const creatorElements = element.querySelectorAll('creator, author, *|creator, *|author');
-    for (const elem of creatorElements) {
-      if (elem.textContent?.trim()) {
-        record.authors.push(elem.textContent.trim());
+    // Look for author/creator elements
+    const authorElements = metadataElement.querySelectorAll('creator, author, *|creator, *|author');
+    for (const authorElem of authorElements) {
+      if (authorElem.textContent?.trim()) {
+        record.authors.push(authorElem.textContent.trim());
       }
     }
     
-    // Try to extract date/year
-    const dateElements = element.querySelectorAll('date, year, *|date, *|year');
+    // Look for date/year elements
+    const dateElements = metadataElement.querySelectorAll('date, year, *|date, *|year, dateIssued');
     if (dateElements.length > 0 && dateElements[0].textContent) {
       const dateText = dateElements[0].textContent.trim();
-      // Extract year using regex
+      // Extract year
       const yearMatch = /\b(1\d{3}|20\d{2})\b/.exec(dateText);
       if (yearMatch) {
         record.year = yearMatch[1];
       }
     }
     
-    // URLs - look for elements with http in text content
-    const allElements = element.querySelectorAll('*');
-    for (const elem of allElements) {
-      if (elem.textContent?.trim().startsWith('http')) {
-        record.urls.push(elem.textContent.trim());
+    // Look for publisher elements
+    const publisherElements = metadataElement.querySelectorAll('publisher, *|publisher');
+    if (publisherElements.length > 0 && publisherElements[0].textContent) {
+      record.publisher_name = publisherElements[0].textContent.trim();
+    }
+    
+    // Look for subject elements
+    const subjectElements = metadataElement.querySelectorAll('subject, *|subject, topic, *|topic');
+    for (const subjectElem of subjectElements) {
+      if (subjectElem.textContent?.trim()) {
+        record.subjects.push(subjectElem.textContent.trim());
       }
     }
     
+    // Look for identifier elements - check for ISBN/ISSN/URLs
+    const identifierElements = metadataElement.querySelectorAll('identifier, *|identifier');
+    for (const idElem of identifierElements) {
+      if (idElem.textContent?.trim()) {
+        const idText = idElem.textContent.trim();
+        
+        // Check if it's a URL
+        if (idText.startsWith('http')) {
+          record.urls.push(idText);
+        }
+        // Check type attribute if exists
+        const idType = idElem.getAttribute('type')?.toLowerCase();
+        if (idType === 'isbn') {
+          record.isbn = idText;
+        } else if (idType === 'issn') {
+          record.issn = idText;
+        }
+      }
+    }
+    
+    // Look for URL elements
+    const urlElements = metadataElement.querySelectorAll('url, *|url');
+    for (const urlElem of urlElements) {
+      if (urlElem.textContent?.trim() && urlElem.textContent.trim().startsWith('http')) {
+        record.urls.push(urlElem.textContent.trim());
+      }
+    }
+    
+    // Store raw XML data for debugging
+    try {
+      record.raw_data = new XMLSerializer().serializeToString(metadataElement);
+    } catch (e) {
+      console.error('Error serializing raw XML:', e);
+    }
+    
     return record;
+  }
+  
+  /**
+   * Make the record_matches_query method public so it can be used by SearchService
+   * This change allows the SearchService to use the filter logic in various contexts
+   */
+  public record_matches_query(record: BiblioRecord, query: Record<string, string>): boolean {
+    // Check each search term
+    for (const [field, term] of Object.entries(query)) {
+      if (!term) continue; // Skip empty terms
+      
+      const termLower = term.toLowerCase();
+      const termWords = termLower.split(/\s+/);
+      
+      // Title search
+      if (field.toLowerCase() === 'title' && record.title) {
+        const titleLower = record.title.toLowerCase();
+        
+        // Try both exact match and word-by-word match
+        if (termLower && !titleLower.includes(termLower)) {
+          // Check if all words in the term appear in the title
+          const wordMatch = termWords.every(word => titleLower.includes(word));
+          if (!wordMatch) {
+            return false;
+          }
+        }
+      }
+      
+      // Author search
+      else if (field.toLowerCase() === 'author') {
+        // Check authors
+        let authorMatch = false;
+        if (record.authors && record.authors.length > 0) {
+          for (const author of record.authors) {
+            const authorLower = author.toLowerCase();
+            
+            // Check for exact substring match
+            if (termLower && authorLower.includes(termLower)) {
+              authorMatch = true;
+              break;
+            }
+            
+            // Try word-by-word match
+            if (termWords.every(word => authorLower.includes(word))) {
+              authorMatch = true;
+              break;
+            }
+          }
+        }
+        
+        // Check editors if no author match
+        if (!authorMatch && record.editors && record.editors.length > 0) {
+          for (const editor of record.editors) {
+            const editorLower = editor.toLowerCase();
+            
+            if (termLower && editorLower.includes(termLower)) {
+              authorMatch = true;
+              break;
+            }
+            
+            if (termWords.every(word => editorLower.includes(word))) {
+              authorMatch = true;
+              break;
+            }
+          }
+        }
+        
+        // Check translators if still no match
+        if (!authorMatch && record.translators && record.translators.length > 0) {
+          for (const translator of record.translators) {
+            const translatorLower = translator.toLowerCase();
+            
+            if (termLower && translatorLower.includes(termLower)) {
+              authorMatch = true;
+              break;
+            }
+            
+            if (termWords.every(word => translatorLower.includes(word))) {
+              authorMatch = true;
+              break;
+            }
+          }
+        }
+        
+        if (!authorMatch) {
+          return false;
+        }
+      }
+      
+      // ISBN/ISSN search
+      else if (field.toLowerCase() === 'isbn' && record.isbn) {
+        // Clean ISBN for comparison (remove hyphens and spaces)
+        const recordISBN = record.isbn.replace(/[^0-9X]/g, '');
+        const searchISBN = term.replace(/[^0-9X]/g, '');
+        
+        if (!recordISBN.includes(searchISBN)) {
+          return false;
+        }
+      }
+      else if (field.toLowerCase() === 'issn' && record.issn) {
+        // Clean ISSN for comparison
+        const recordISSN = record.issn.replace(/[^0-9X]/g, '');
+        const searchISSN = term.replace(/[^0-9X]/g, '');
+        
+        if (!recordISSN.includes(searchISSN)) {
+          return false;
+        }
+      }
+      
+      // Year search
+      else if (field.toLowerCase() === 'year' && record.year) {
+        if (record.year !== term) {
+          return false;
+        }
+      }
+      
+      // If field is unknown and no match found in known fields, check raw data
+      else if (field.toLowerCase() !== 'title' && 
+              field.toLowerCase() !== 'author' && 
+              field.toLowerCase() !== 'isbn' && 
+              field.toLowerCase() !== 'issn' && 
+              field.toLowerCase() !== 'year') {
+        
+        // Try to find in raw data as last resort
+        if (record.raw_data && record.raw_data.toLowerCase().includes(termLower)) {
+          // Found in raw data, consider it a match
+          continue;
+        }
+        
+        // No match found for this field
+        return false;
+      }
+    }
+    
+    // If we got this far, all search terms matched
+    return true;
+  }
+  
+  /**
+   * Check for errors in OAI-PMH response
+   */
+  private checkForErrors(doc: Document): string | null {
+    // Check for OAI-PMH error elements
+    const errorElement = doc.querySelector('error');
+    if (errorElement) {
+      const code = errorElement.getAttribute('code') || 'unknown';
+      const message = errorElement.textContent || 'Unknown error';
+      return `${code}: ${message}`;
+    }
+    return null;
   }
 }

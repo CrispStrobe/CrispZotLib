@@ -52,7 +52,8 @@ export interface OAIEndpoint {
 
 export interface IxTheoEndpoint {
   name: string;
-  url: string;
+  url: string; // This is the SEARCH URL
+  baseUrl: string; // The base domain URL (https://ixtheo.de)
   description: string;
   formats?: string[];
   languages?: string[];

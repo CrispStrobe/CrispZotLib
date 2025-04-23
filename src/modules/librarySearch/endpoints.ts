@@ -225,6 +225,7 @@ export const NAMESPACES: Record<string, string> = {
     'ris': {
       name: 'IxTheo RIS Format',
       url: 'https://ixtheo.de/Search/Results',
+      baseUrl: 'https://ixtheo.de',           // Base domain URL
       description: 'Index Theologicus with RIS export',
       formats: ['Article', 'Book', 'Book Chapter', 'Journal', 'Review', 'Thesis'],
       languages: ['German', 'English', 'French', 'Italian', 'Spanish', 'Latin', 'Greek', 'Hebrew']
@@ -232,6 +233,7 @@ export const NAMESPACES: Record<string, string> = {
     'marc': {
       name: 'IxTheo MARC Format',
       url: 'https://ixtheo.de/Search/Results',
+      baseUrl: 'https://ixtheo.de',           // Base domain URL
       description: 'Index Theologicus with MARC export',
       formats: ['Article', 'Book', 'Book Chapter', 'Journal', 'Review', 'Thesis'],
       languages: ['German', 'English', 'French', 'Italian', 'Spanish', 'Latin', 'Greek', 'Hebrew']
@@ -240,6 +242,7 @@ export const NAMESPACES: Record<string, string> = {
       name: 'IxTheo HTML Format',
       url: 'https://ixtheo.de/Search/Results',
       description: 'Index Theologicus with HTML parse',
+      baseUrl: 'https://ixtheo.de',           // Base domain URL
       formats: ['Article', 'Book', 'Book Chapter', 'Journal', 'Review', 'Thesis'],
       languages: ['German', 'English', 'French', 'Italian', 'Spanish', 'Latin', 'Greek', 'Hebrew']
     }
