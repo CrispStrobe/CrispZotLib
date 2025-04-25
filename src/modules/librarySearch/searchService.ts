@@ -341,37 +341,64 @@ export class SearchService {
   ): string {
     const queryParams = new URLSearchParams();
 
-    // Prioritize allFieldsTerm
-    if (params.allFieldsTerm?.trim()) {
-        queryParams.append('lookfor', params.allFieldsTerm.trim());
+    // Collect active specific fields using the correct IxTheo type names
+    const specificFieldsCriteria: Array<{ value: string, type: string }> = [];
+    if (params.title?.trim()) {
+        specificFieldsCriteria.push({ value: params.title.trim(), type: 'Title' });
+    }
+    if (params.author?.trim()) {
+        specificFieldsCriteria.push({ value: params.author.trim(), type: 'Author' });
+    }
+    if (params.isbn?.trim()) {
+        // IxTheo uses 'ISN' for ISBN/ISSN in advanced search
+        specificFieldsCriteria.push({ value: params.isbn.trim(), type: 'ISN' });
+    }
+    // Add other specific fields here if the UI supports them in the future
+    // e.g., if (params.year?.trim()) specificFieldsCriteria.push({ value: params.year.trim(), type: 'year' });
+
+    // Determine which search structure to use
+    const useAdvancedStructure = specificFieldsCriteria.length > 0;
+    const useSimpleAllFields = !useAdvancedStructure && params.allFieldsTerm?.trim();
+
+    if (useAdvancedStructure) {
+        queryParams.append('join', 'AND'); // Join lines with AND (we only use line 0)
+
+        specificFieldsCriteria.forEach((criterion, index) => {
+            queryParams.append('lookfor0[]', criterion.value); // Term for line 0
+            queryParams.append('type0[]', criterion.type);     // Type for line 0
+            // Add 'AND' operator between terms within line 0
+            if (index < specificFieldsCriteria.length - 1) {
+                queryParams.append('bool0[]', 'AND');
+            }
+        });
+         // Log if allFieldsTerm was ignored
+         if (params.allFieldsTerm?.trim()) {
+             ztoolkit.log(`[buildIxTheoSearchUrl] Using advanced search. Ignoring 'All Fields' term because specific fields (Title, Author, ISN) were provided.`);
+         }
+
+    } else if (useSimpleAllFields) {
+        // Simple structure for "All Fields" only
+        queryParams.append('lookfor', params.allFieldsTerm!.trim());
         queryParams.append('type', 'AllFields');
-    }
-    // Combine specific fields if allFieldsTerm is not provided
-    else {
-        const searchTerms: string[] = [];
-        if (params.title?.trim()) searchTerms.push(`title:(${params.title.trim()})`);
-        if (params.author?.trim()) searchTerms.push(`author:(${params.author.trim()})`);
-        if (params.isbn?.trim()) searchTerms.push(`isn:(${params.isbn.trim()})`); // Use isn for IxTheo ISBN/ISSN
 
-        if (searchTerms.length > 0) {
-            queryParams.append('lookfor', searchTerms.join(' '));
-            queryParams.append('type', 'AllFields'); // Use AllFields even when combining for web search
-        } else {
-            // Default if no terms provided (fetch recent items)
-            queryParams.append('lookfor', '*');
-            queryParams.append('type', 'AllFields');
-        }
+    } else {
+        // Default if no terms provided at all (fetch recent/all)
+        queryParams.append('lookfor', '*');
+        queryParams.append('type', 'AllFields');
+        ztoolkit.log(`[buildIxTheoSearchUrl] No search terms provided, using default '*'.`);
     }
 
+    // --- Common parameters ---
     queryParams.append('limit', String(params.maxRecords || 10));
-    queryParams.append('sort', 'relevance'); // Default sort
+    queryParams.append('sort', 'relevance'); // Or another default like 'year desc'
     if (params.page && params.page > 1) {
         queryParams.append('page', String(params.page));
     }
-    // queryParams.append('botprotect', ''); // May or may not be needed
+    // queryParams.append('botprotect', ''); // Seems optional, omitting for now
 
-    // Use the provided baseUrl which is the search URL
-    return `${baseUrl}?${queryParams.toString()}`;
+    const finalUrl = `${baseUrl}?${queryParams.toString()}`;
+    ztoolkit.log(`[buildIxTheoSearchUrl] Constructed URL: ${finalUrl}`);
+    return finalUrl;
   }
 
   /**

@@ -423,7 +423,7 @@ export class OAIClient {
 
       const response = await fetch(url, {
         method: 'GET',
-        headers: { 'Accept': 'application/xml' },
+        headers: { 'Accept': 'application/xml' }
         // Consider adding AbortController for timeout if needed
       });
 
