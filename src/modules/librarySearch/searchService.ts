@@ -70,82 +70,121 @@ export class SearchService {
 
   /**
    * Execute an SRU protocol search.
-   * (No changes needed in this method based on the OAI requirements)
-   */
-  /**
-   * Execute an SRU protocol search.
-   * MODIFIED: Accepts DOM capabilities.
+   * MODIFIED: Accepts DOM capabilities and maps schema identifiers for DNB/ZDB.
    */
   private static async executeSruSearch(
     params: import('./integration').SearchParams,
     log: (message: string, level?: 'log' | 'warn' | 'error') => void,
-    // --- Add parameters for DOM capabilities ---
+    // --- DOM capabilities ---
     domParser: typeof DOMParser,
     nodeConst: typeof Node,
     xpathResultConst: typeof XPathResult,
     xmlSerializer: typeof XMLSerializer
-    // --- End modification ---
   ): Promise<[boolean, BiblioRecord[], number]> {
+    const logPrefix = "[SearchService.executeSruSearch]";
     try {
         const endpointId = params.endpoint;
         if (!(endpointId in SRU_ENDPOINTS)) {
           throw new Error(`Unknown SRU endpoint: ${endpointId}`);
         }
         const endpointInfo = SRU_ENDPOINTS[endpointId];
-        log(`Using SRU endpoint: ${endpointInfo.name}`);
+        log(`${logPrefix} Using SRU endpoint: ${endpointInfo.name} (${endpointId})`);
 
+        // --- Client Creation (Corrected) ---
         let client = this.sruClients[endpointId];
         if (!client) {
-          // Remove parser instantiation from constructor if it was there
-          client = new SRUClient(endpointInfo.url, endpointInfo.defaultSchema, endpointInfo.version || '1.1');
+          log(`${logPrefix} Creating new SRUClient instance for ${endpointId}`);
+          client = new SRUClient(
+              endpointInfo.url,
+              endpointInfo.defaultSchema,
+              endpointInfo.version || '1.1',
+              30000, // <<< FIX: Explicitly pass the default timeout number
+              endpointInfo.namespaces,
+              endpointInfo.queryParams
+          );
           this.sruClients[endpointId] = client;
         }
 
-        // --- Build SRU Query (Safer version) ---
+        // --- Build SRU Query (using the previously revised safer function) ---
         let query = '';
         try {
-            query = this.buildSruQuery(params, endpointId); // Call the safer buildSruQuery
+            query = this.buildSruQuery(params, endpointId);
+            log(`${logPrefix} Constructed SRU Query: ${query}`);
             if (!query && !(endpointId === 'dnb' || endpointId === 'zdb')) {
-               log("SRU query is empty.", 'warn');
+               log(`${logPrefix} SRU query is empty for non-DNB/ZDB endpoint.`, 'warn');
+               // Depending on requirements, you might want to return early or proceed
             }
-            log(`SRU Query: ${query}`);
         } catch (buildError: any) {
-            log(`Error building SRU query: ${buildError.message}`, 'error');
-            // Check if the error message matches the one we saw
-            if (buildError.message?.includes('suffix is undefined')) {
-                 log('Caught potential "suffix is undefined" error during query build.', 'warn');
-                 // Decide how to handle: maybe try a default query or re-throw
-                 // For now, re-throw to see if the safer buildSruQuery fixed it
-                 throw buildError;
-            }
-            throw buildError; // Re-throw other build errors
+            log(`${logPrefix} Error building SRU query: ${buildError.message}`, 'error');
+            throw buildError; // Re-throw build errors
         }
-        // --- End Build SRU Query ---
 
+        // --- Determine and Map Schema for DNB/ZDB ---
+        const requestedSchema = params.schema; // Schema explicitly chosen by user
+        const defaultSchemaFromConfig = endpointInfo.defaultSchema; // Default from endpoints.ts
+        let schemaToUseForRequest: string | undefined;
 
-        const schemaToUse = params.schema || endpointInfo.defaultSchema;
-        log(`Using schema: ${schemaToUse || '(Endpoint Default)'}`);
+        // Start with the user's choice, or the configured default if no choice was made
+        let initialSchemaChoice = requestedSchema || defaultSchemaFromConfig;
+        log(`${logPrefix} Initial schema choice (user/default): ${initialSchemaChoice || 'None'}`);
 
-        // --- Pass DOM capabilities to client.search ---
+        // Apply mapping specifically for DNB and ZDB endpoints
+        if (endpointId === 'dnb' || endpointId === 'zdb') {
+            log(`${logPrefix} Applying DNB/ZDB schema mapping.`);
+            const lowerCaseChoice = initialSchemaChoice?.toLowerCase();
+            switch (lowerCaseChoice) {
+                case 'marcxml':
+                    schemaToUseForRequest = 'MARC21-xml'; // Correct DNB identifier
+                    log(`${logPrefix} Mapped 'marcxml' to '${schemaToUseForRequest}'`);
+                    break;
+                case 'dc':
+                case 'oai_dc': // Allow oai_dc directly too
+                    schemaToUseForRequest = 'oai_dc';    // Correct DNB identifier
+                    log(`${logPrefix} Mapped '${initialSchemaChoice}' to '${schemaToUseForRequest}'`);
+                    break;
+                case 'rdfxml': // RDFxml is valid
+                    schemaToUseForRequest = 'RDFxml';
+                    log(`${logPrefix} Using valid schema 'RDFxml'`);
+                    break;
+                // Add cases for other known valid DNB schemas if needed
+                default:
+                    // If the initial choice was empty OR invalid, fall back to DNB's absolute default (RDFxml)
+                    if (!initialSchemaChoice) {
+                         log(`${logPrefix} No schema requested or configured, using DNB default 'RDFxml'.`);
+                         schemaToUseForRequest = 'RDFxml'; // DNB's documented default
+                    } else {
+                         log(`${logPrefix} Unknown or unmapped schema '${initialSchemaChoice}' requested for DNB/ZDB. Falling back to DNB default 'RDFxml'.`, 'warn');
+                         schemaToUseForRequest = 'RDFxml'; // Fallback safely to RDFxml
+                    }
+                    break;
+            }
+        } else {
+            // For non-DNB/ZDB endpoints, use the user's choice or configured default directly
+            schemaToUseForRequest = initialSchemaChoice;
+            log(`${logPrefix} Using schema '${schemaToUseForRequest || '(None specified, client may use its default)'}' for non-DNB/ZDB endpoint.`);
+        }
+
+        log(`${logPrefix} Final schema for SRU request: ${schemaToUseForRequest || '(Client Default)'}`);
+
+        // --- Execute Search with Mapped Schema and DOM capabilities ---
         const [totalRecords, records] = await client.search(
           query,
-          domParser,
-          nodeConst,
-          xpathResultConst,
-          xmlSerializer,
-          schemaToUse,
+          domParser,          // Pass DOM capability
+          nodeConst,          // Pass DOM capability
+          xpathResultConst,   // Pass DOM capability
+          xmlSerializer,      // Pass DOM capability
+          schemaToUseForRequest, // Use the potentially mapped schema
           params.maxRecords || 10,
           params.startRecord || 1,
-          // Pass the objects/functions
         );
+        // --- End modification ---
 
-        log(`SRU: Found ${totalRecords} total records, fetched ${records.length} starting from ${params.startRecord || 1}`);
+        log(`${logPrefix} SRU client returned: ${totalRecords} total records, fetched ${records.length} for this page.`);
         return [true, records, totalRecords];
 
       } catch (error: any) {
-        // Log the specific error without assuming 'suffix is undefined'
-        log(`SRU search error for endpoint ${params.endpoint}: ${error.message}`, 'error');
-        log(`Stack: ${error.stack}`, 'error'); // Add stack trace
+        log(`${logPrefix} SRU search failed for endpoint ${params.endpoint}: ${error.message}`, 'error');
+        log(`Stack: ${error.stack}`, 'error');
         return [false, [], 0];
       }
   }
