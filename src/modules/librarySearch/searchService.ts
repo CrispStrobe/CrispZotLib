@@ -2,11 +2,12 @@
 
 import { BiblioRecord } from './models';
 import { SRUClient } from './sruClient';
-import { OAIClient } from './oaiClient';
+import { OAIClient } from './oaiClient'; // Ensure this is the updated OAIClient
 import { SRU_ENDPOINTS, OAI_ENDPOINTS, IXTHEO_ENDPOINTS } from './endpoints';
 import { getPref } from '../../utils/prefs';
 
-// Removed 'url' and 'cross-fetch' imports - use global versions
+// Assuming SearchParams is correctly defined in integration.ts
+// import { SearchParams } from './integration'; // Adjust path if needed
 
 /**
  * SearchService - Implements a pure TypeScript search system
@@ -20,42 +21,70 @@ export class SearchService {
   private static oaiClients: Record<string, OAIClient> = {};
 
   /**
-   * Execute a search with the specified parameters
+   * Execute a search with the specified parameters.
+   * This is the main entry point for different protocols.
    */
   static async executeSearch(
+    // Use the SearchParams type from integration.ts (adjust import path if needed)
     params: import('./integration').SearchParams,
     log: (message: string, level?: 'log' | 'warn' | 'error') => void = ztoolkit.log // Default logger
-  ): Promise<[boolean, BiblioRecord[], number]> { // Return total records count
+    // --- CHANGE: Return type adjusted for OAI token, but needs careful handling by caller ---
+    // Returning the token here might break existing callers expecting only 3 values.
+    // Option 1: Return only 3 values (discard token here).
+    // Option 2: Return 4 values and update callers (integration.ts).
+    // Let's go with Option 1 for minimal disruption to this file's signature,
+    // assuming integration.ts will handle OAI pagination separately.
+  ): Promise<[boolean, BiblioRecord[], number]> { // Keep original return signature
     log(`Executing search with params: ${JSON.stringify(params)}`);
     try {
       switch (params.protocol.toLowerCase()) {
         case 'sru':
-          return await this.executeSruSearch(params, log);
+          // --- Get DOM capabilities from main window ---
+          const mainWindow = Zotero.getMainWindow();
+          if (!mainWindow) {
+              throw new Error("Could not get Zotero main window for DOM parsing.");
+          }
+          // Pass the necessary objects/functions to executeSruSearch
+          return await this.executeSruSearch(params, log, mainWindow.DOMParser, mainWindow.Node, mainWindow.XPathResult, mainWindow.XMLSerializer);
+          // --- End modification ---
+
         case 'oai':
-          // Note: OAI uses resumptionToken, not startRecord.
-          return await this.executeOaiSearch(params, log);
+          // ... (OAI logic remains the same) ...
+          const [oaiSuccess, oaiRecords, oaiTotal, oaiNextToken] = await this.executeOaiSearch(params, log);
+          if (oaiNextToken) { log(`OAI search returned next resumption token (discarded by executeSearch): ${oaiNextToken.substring(0, 50)}...`); }
+          return [oaiSuccess, oaiRecords, oaiTotal];
+
         case 'ixtheo':
-          // IxTheo uses 'page' parameter derived from startRecord and maxRecords
-          const page = params.startRecord && params.maxRecords
-            ? Math.floor((params.startRecord - 1) / params.maxRecords) + 1
-            : 1;
-          return await this.executeIxTheoSearch({
-            ...params,
-            page: page, // Pass calculated page number
-            format: params.endpoint // Pass the selected format (ris, marc, html)
-          }, log);
+          // ... (IxTheo logic remains the same) ...
+          const page = params.startRecord && params.maxRecords ? Math.floor((params.startRecord - 1) / params.maxRecords) + 1 : 1;
+          return await this.executeIxTheoSearch({ ...params, page: page, format: params.endpoint }, log);
+
         default:
           throw new Error(`Unsupported protocol: ${params.protocol}`);
       }
     } catch (error: any) {
       log(`Search execution failed: ${error.message}`, 'error');
-      return [false, [], 0]; // Return failure state with 0 total
+      return [false, [], 0];
     }
   }
 
+  /**
+   * Execute an SRU protocol search.
+   * (No changes needed in this method based on the OAI requirements)
+   */
+  /**
+   * Execute an SRU protocol search.
+   * MODIFIED: Accepts DOM capabilities.
+   */
   private static async executeSruSearch(
     params: import('./integration').SearchParams,
-    log: (message: string, level?: 'log' | 'warn' | 'error') => void
+    log: (message: string, level?: 'log' | 'warn' | 'error') => void,
+    // --- Add parameters for DOM capabilities ---
+    domParser: typeof DOMParser,
+    nodeConst: typeof Node,
+    xpathResultConst: typeof XPathResult,
+    xmlSerializer: typeof XMLSerializer
+    // --- End modification ---
   ): Promise<[boolean, BiblioRecord[], number]> {
     try {
         const endpointId = params.endpoint;
@@ -67,184 +96,135 @@ export class SearchService {
 
         let client = this.sruClients[endpointId];
         if (!client) {
-          client = new SRUClient(
-            endpointInfo.url,
-            endpointInfo.defaultSchema,
-            endpointInfo.version || '1.1'
-          );
+          // Remove parser instantiation from constructor if it was there
+          client = new SRUClient(endpointInfo.url, endpointInfo.defaultSchema, endpointInfo.version || '1.1');
           this.sruClients[endpointId] = client;
         }
 
-        let query = this.buildSruQuery(params, endpointId);
-        if (!query) {
-           log("SRU query is empty, proceeding if endpoint allows.", 'warn');
-           // If an empty query should be an error, uncomment the line below
-           // throw new Error("Failed to build SRU query - requires title, author, or ISBN");
+        // --- Build SRU Query (Safer version) ---
+        let query = '';
+        try {
+            query = this.buildSruQuery(params, endpointId); // Call the safer buildSruQuery
+            if (!query && !(endpointId === 'dnb' || endpointId === 'zdb')) {
+               log("SRU query is empty.", 'warn');
+            }
+            log(`SRU Query: ${query}`);
+        } catch (buildError: any) {
+            log(`Error building SRU query: ${buildError.message}`, 'error');
+            // Check if the error message matches the one we saw
+            if (buildError.message?.includes('suffix is undefined')) {
+                 log('Caught potential "suffix is undefined" error during query build.', 'warn');
+                 // Decide how to handle: maybe try a default query or re-throw
+                 // For now, re-throw to see if the safer buildSruQuery fixed it
+                 throw buildError;
+            }
+            throw buildError; // Re-throw other build errors
         }
-        log(`SRU Query: ${query}`);
+        // --- End Build SRU Query ---
+
 
         const schemaToUse = params.schema || endpointInfo.defaultSchema;
         log(`Using schema: ${schemaToUse || '(Endpoint Default)'}`);
 
+        // --- Pass DOM capabilities to client.search ---
         const [totalRecords, records] = await client.search(
           query,
+          domParser,
+          nodeConst,
+          xpathResultConst,
+          xmlSerializer,
           schemaToUse,
           params.maxRecords || 10,
-          params.startRecord || 1
+          params.startRecord || 1,
+          // Pass the objects/functions
         );
-        log(`SRU: Found ${totalRecords} total records, fetched ${records.length} starting from ${params.startRecord || 1}`);
 
-        return [true, records, totalRecords]; // Return true even if no records found, but total is known
+        log(`SRU: Found ${totalRecords} total records, fetched ${records.length} starting from ${params.startRecord || 1}`);
+        return [true, records, totalRecords];
 
       } catch (error: any) {
+        // Log the specific error without assuming 'suffix is undefined'
         log(`SRU search error for endpoint ${params.endpoint}: ${error.message}`, 'error');
-        return [false, [], 0]; // Indicate failure
+        log(`Stack: ${error.stack}`, 'error'); // Add stack trace
+        return [false, [], 0];
       }
   }
 
   /**
- * Execute an OAI-PMH protocol search using the NEW OAIClient logic
- */
-private static async executeOaiSearch(
-  params: import('./integration').SearchParams,
-  log: (message: string, level?: 'log' | 'warn' | 'error') => void
-): Promise<[boolean, BiblioRecord[], number]> {
-  try {
-    const endpointId = params.endpoint;
-
-    if (!(endpointId in OAI_ENDPOINTS)) {
-      throw new Error(`Unknown OAI-PMH endpoint: ${endpointId}`);
-    }
-
-    const endpointInfo = OAI_ENDPOINTS[endpointId];
-    log(`Using OAI-PMH endpoint: ${endpointInfo.name}`);
-
-    // Get or create OAI client using the NEW class
-    let client = this.oaiClients[endpointId];
-    if (!client) {
-      client = new OAIClient(
-        endpointInfo.url,
-        endpointInfo.defaultMetadataPrefix
-      );
-      this.oaiClients[endpointId] = client;
-    }
-
-    // Build search query object
-    const searchQuery: Record<string, string> = {};
-    if (params.title) searchQuery.title = params.title;
-    if (params.author) searchQuery.author = params.author;
-    if (params.isbn) searchQuery.isbn = params.isbn; // Client handles ISBN/ISSN mapping internally if needed
-
-    log(`OAI-PMH search criteria: ${JSON.stringify(searchQuery)}`);
-
-    // Call the main search method of the NEW OAIClient
-    // It will internally decide whether to use DNB logic or standard logic
-    const [totalCount, records] = await client.search(
-        searchQuery,
-        endpointInfo.defaultMetadataPrefix,
-        undefined, // set_spec (client might default for DNB)
-        undefined, // from_date (client might default for DNB)
-        undefined, // until_date (client might default for DNB)
-        params.maxRecords || 10
-    );
-
-    log(`OAI-PMH: Client returned ${records.length} records, estimated total: ${totalCount}`);
-
-    // The new client's search method handles DNB logic and filtering,
-    // so we should be able to return the results directly.
-    return [records.length > 0, records, totalCount];
-
-  } catch (error: any) {
-    log(`OAI search error for endpoint ${params.endpoint}: ${error.message}`, 'error');
-    return [false, [], 0];
-  }
-}
-
-  private static async executeOaiSearch_old(
-    params: {
-      endpoint: string;
-      title?: string;
-      author?: string;
-      isbn?: string; // Consider mapping ISBN to a supported OAI query field if possible
-      maxRecords?: number;
-      // OAI uses resumptionToken, startRecord is ignored here
-    },
+   * Execute an OAI-PMH protocol search using the updated OAIClient logic.
+   * Handles filtering and calls the appropriate OAIClient methods.
+   * (This method already reflects the necessary logic from previous steps)
+   */
+  private static async executeOaiSearch(
+    // Use the SearchParams type which should now include OAI specific fields + resumptionToken
+    params: import('./integration').SearchParams,
     log: (message: string, level?: 'log' | 'warn' | 'error') => void
-  ): Promise<[boolean, BiblioRecord[], number]> {
+  // --- CHANGE: Ensure return type matches the implementation ---
+  ): Promise<[boolean, BiblioRecord[], number, string | null]> { // Return success, records, total, next token
+    const logPrefix = "[SearchService.executeOaiSearch]";
     try {
       const endpointId = params.endpoint;
-  
-      // Verify endpoint exists
+
       if (!(endpointId in OAI_ENDPOINTS)) {
         throw new Error(`Unknown OAI-PMH endpoint: ${endpointId}`);
       }
-  
+
       const endpointInfo = OAI_ENDPOINTS[endpointId];
-      log(`Using OAI-PMH endpoint: ${endpointInfo.name}`);
-  
-      // Get or create an OAI client for this endpoint
+      log(`${logPrefix} Using OAI-PMH endpoint: ${endpointInfo.name}`);
+
+      // Get or create OAI client
       let client = this.oaiClients[endpointId];
       if (!client) {
         client = new OAIClient(
           endpointInfo.url,
-          endpointInfo.defaultMetadataPrefix
+          endpointInfo.defaultMetadataPrefix // Pass default prefix from endpoint config
         );
         this.oaiClients[endpointId] = client;
       }
-  
-      // Build search query
-      const searchQuery: Record<string, string> = {};
-      if (params.title) searchQuery.title = params.title;
-      if (params.author) searchQuery.author = params.author;
-      if (params.isbn) searchQuery.isbn = params.isbn; // This will work for both ISBN and ISSN
-  
-      log(`OAI-PMH search criteria: ${JSON.stringify(searchQuery)}`);
-  
-      // Calculate appropriate date ranges
-      // For DNB, narrower date range works better (prevents 413 errors)
-      const isDNB = endpointId.toLowerCase().includes('dnb');
-      let fromDate, untilDate;
-  
-      // Until date is always today
-      untilDate = new Date().toISOString().split('T')[0];
-  
-      if (isDNB) {
-        // For DNB, use a 3-month window (prevents 413 errors)
-        const threeMonthsAgo = new Date();
-        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-        fromDate = threeMonthsAgo.toISOString().split('T')[0];
-      } else {
-        // For other repositories, one year is reasonable
-        const oneYearAgo = new Date();
-        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-        fromDate = oneYearAgo.toISOString().split('T')[0];
-      }
-  
-      // Execute search
-      const [totalCount, records] = await client.search(
-        searchQuery,
-        endpointInfo.defaultMetadataPrefix,
-        isDNB ? "dnb:reiheA" : undefined, // Use specific set for DNB to reduce result size
-        fromDate,
-        untilDate,
-        params.maxRecords || 10
+
+      // Prepare filter query for local filtering
+      const filterQuery: Record<string, string> = {};
+      if (params.title) filterQuery.title = params.title;
+      if (params.author) filterQuery.author = params.author;
+      // ISBN/ISSN filtering is handled by record_matches_query in the client
+      if (params.isbn) filterQuery.isbn = params.isbn;
+      // Handle allFieldsTerm for local filtering
+      if (params.allFieldsTerm) filterQuery.allFields = params.allFieldsTerm;
+
+      log(`${logPrefix} OAI Harvest Params: set=${params.set}, prefix=${params.metadataPrefix || endpointInfo.defaultMetadataPrefix}, from=${params.from}, until=${params.until}, token=${params.resumptionToken ? '...' : 'none'}`);
+      log(`${logPrefix} OAI Local Filter: ${JSON.stringify(filterQuery)}`);
+
+      // Call the updated OAIClient search method
+      const [totalCount, records, nextResumptionToken] = await client.search(
+        params.metadataPrefix || endpointInfo.defaultMetadataPrefix || 'oai_dc', // Ensure a prefix is always passed
+        params.set,          // Pass OAI set parameter
+        params.from,         // Pass OAI from date
+        params.until,        // Pass OAI until date
+        filterQuery,         // Pass local filter terms
+        params.maxRecords || 10, // Pass max results limit
+        params.resumptionToken // Pass resumption token if available
       );
-  
-      log(`OAI-PMH: Found ${totalCount} matching records, fetched ${records.length}`);
-  
-      // Return success status, the records, and the total count
-      return [records.length > 0, records, totalCount];
+
+      log(`${logPrefix} OAIClient returned ${records.length} records (after filtering). Estimated total: ${totalCount}. Next token: ${nextResumptionToken ? '...' : 'null'}`);
+
+      // Return success status (true if >= 0 records found, false only on error),
+      // the filtered records for this page, the estimated total count, and the next token.
+      // Success is true even if 0 records match the filter, as long as the OAI request itself didn't fail.
+      return [true, records, totalCount, nextResumptionToken];
+
     } catch (error: any) {
-      log(`OAI search error for endpoint ${params.endpoint}: ${error.message}`);
-      return [false, [], 0]; // Indicate failure
+      log(`${logPrefix} OAI search error for endpoint ${params.endpoint}: ${error.message}`, 'error');
+      // Indicate failure: false success, empty records, 0 total, null token
+      return [false, [], 0, null];
     }
   }
 
+
   /**
-   * Execute an IxTheo search
+   * Execute an IxTheo search.
+   * (No changes needed in this method based on the OAI requirements)
    */
   private static async executeIxTheoSearch(
-    // Use imported SearchParams type & add page/format if needed
     params: import('./integration').SearchParams & { page: number, format: string },
     log: (message: string, level?: 'log' | 'warn' | 'error') => void
   ): Promise<[boolean, BiblioRecord[], number]> {
@@ -262,7 +242,6 @@ private static async executeOaiSearch(
 
     try {
       // 2. Fetch HTML results page
-      // Use global fetch
       const htmlResponse = await fetch(searchUrl, {
           headers: { // Add browser-like headers
              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -275,132 +254,125 @@ private static async executeOaiSearch(
       }
       const htmlText = await htmlResponse.text();
 
+      // 3. Parse HTML to get basic info and IDs
       const [parsedResults, totalCount] = this.parseIxTheoHtmlResultsPage(htmlText, log);
       log(`IxTheo HTML Parse: Found ${parsedResults.length} items on page, Total reported: ${totalCount}`);
 
       if (parsedResults.length === 0) {
-        return [true, [], totalCount];
+        return [true, [], totalCount]; // Success, but no results
       }
 
+      // 4. Fetch detailed data for each result concurrently
       const detailedRecordsPromises = parsedResults.map(async ({ id, basicInfo }) => {
         try {
-          // ADDED logging before fetch
           log(`Attempting to fetch details for IxTheo record ${id} (format: ${params.format})`, 'log');
           const detailedRecordData = await this.fetchIxTheoRecordDetails(id, params.format, endpointInfo.baseUrl, log);
 
-          // ADDED logging after fetch
           if (detailedRecordData) {
-              log(`Successfully fetched/parsed details for ${id}. Data: ${JSON.stringify(detailedRecordData).substring(0, 200)}...`, 'log');
+              log(`Successfully fetched/parsed details for ${id}.`);
+              // Merge basic and detailed info
+              const finalRecord: BiblioRecord = {
+                  // Defaults
+                  title: "Untitled", authors: [], editors: [], translators: [], contributors: [], urls: [], subjects: [],
+                  // Overwrite with basic info first
+                  ...basicInfo,
+                  // Overwrite/add detailed info
+                  ...detailedRecordData,
+                  // Ensure ID and schema are correct
+                  id: id,
+                  schema: `ixtheo-${params.format}`,
+                  // Prefer detailed raw_data if available
+                  raw_data: detailedRecordData.raw_data || basicInfo.raw_data,
+              };
+              // Ensure arrays exist
+              finalRecord.authors = finalRecord.authors || [];
+              finalRecord.editors = finalRecord.editors || [];
+              finalRecord.translators = finalRecord.translators || [];
+              finalRecord.contributors = finalRecord.contributors || [];
+              finalRecord.urls = finalRecord.urls || [];
+              finalRecord.subjects = finalRecord.subjects || [];
+              return finalRecord;
           } else {
-              log(`fetchIxTheoRecordDetails returned null for ${id}.`, 'warn');
-          }
-
-          if (detailedRecordData) {
-            const finalRecord: BiblioRecord = {
-                title: "Untitled", authors: [], editors: [], translators: [], contributors: [],
-                urls: [], subjects: [],
-                ...basicInfo,
-                ...detailedRecordData,
-                id: id,
-                schema: `ixtheo-${params.format}`,
-                raw_data: detailedRecordData.raw_data || basicInfo.raw_data,
-            };
-            finalRecord.authors = finalRecord.authors || [];
-            finalRecord.editors = finalRecord.editors || [];
-            finalRecord.translators = finalRecord.translators || [];
-            finalRecord.contributors = finalRecord.contributors || [];
-            finalRecord.urls = finalRecord.urls || [];
-            finalRecord.subjects = finalRecord.subjects || [];
-            // ADDED logging of final merged record
-            log(`Final merged record for ${id}: ${JSON.stringify(finalRecord).substring(0, 300)}...`, 'log');
-            return finalRecord;
-          } else {
-            log(`Falling back to basic info for IxTheo record ${id}.`, 'warn');
-             const fallbackRecord = {
+            log(`fetchIxTheoRecordDetails returned null for ${id}. Falling back to basic info.`, 'warn');
+             // Fallback to basic info if detail fetch fails
+             return {
                  id: id, title: basicInfo.title || "Untitled",
-                 authors: basicInfo.authors || [], editors: basicInfo.editors || [],
-                 translators: basicInfo.translators || [], contributors: basicInfo.contributors || [],
+                 authors: basicInfo.authors || [], editors: [], translators: [], contributors: [], // Assume these aren't in basic
                  urls: basicInfo.urls || [], subjects: basicInfo.subjects || [],
                  year: basicInfo.year, publisher_name: basicInfo.publisher_name,
                  format: basicInfo.format, raw_data: basicInfo.raw_data,
-                 schema: 'ixtheo-html-basic'
+                 schema: 'ixtheo-html-basic' // Indicate fallback schema
              } as BiblioRecord;
-             // ADDED logging of fallback record
-             log(`Fallback record for ${id}: ${JSON.stringify(fallbackRecord).substring(0, 300)}...`, 'log');
-             return fallbackRecord;
           }
         } catch (detailError: any) {
           log(`Error processing IxTheo record ${id}: ${detailError.message}`, 'error');
-            const errorRecord = {
-                 id: id, title: basicInfo.title || "Untitled",
-                 authors: basicInfo.authors || [], editors: basicInfo.editors || [],
-                 translators: basicInfo.translators || [], contributors: basicInfo.contributors || [],
-                 urls: basicInfo.urls || [], subjects: basicInfo.subjects || [],
-                 year: basicInfo.year, publisher_name: basicInfo.publisher_name,
-                 format: basicInfo.format, raw_data: basicInfo.raw_data,
-                 schema: 'ixtheo-error'
-             } as BiblioRecord;
-             // ADDED logging of error record
-             log(`Error record for ${id}: ${JSON.stringify(errorRecord).substring(0, 300)}...`, 'log');
-             return errorRecord;
+           // Return error record
+           return {
+               id: id, title: basicInfo.title || "[Error Processing Record]",
+               authors: basicInfo.authors || [], editors: [], translators: [], contributors: [],
+               urls: [], subjects: [],
+               year: basicInfo.year, publisher_name: basicInfo.publisher_name,
+               format: basicInfo.format, raw_data: `Error: ${detailError.message}\n\n${basicInfo.raw_data || ''}`,
+               schema: 'ixtheo-error'
+           } as BiblioRecord;
         }
       });
 
+      // Wait for all detail fetches and filter out nulls/errors if needed
       const detailedRecords = (await Promise.all(detailedRecordsPromises))
-                                .filter((record): record is BiblioRecord => record !== null);
+                                .filter((record): record is BiblioRecord => record !== null && record.schema !== 'ixtheo-error'); // Filter out nulls and error records
 
       log(`IxTheo: Successfully processed ${detailedRecords.length} records overall.`);
-      return [true, detailedRecords, totalCount];
+      return [true, detailedRecords, totalCount]; // Success, return processed records and total
 
     } catch (error: any) {
       log(`Error in executeIxTheoSearch: ${error.message}`, 'error');
-      return [false, [], 0];
+      return [false, [], 0]; // Indicate failure
     }
   }
 
+  // --- Helper methods (buildIxTheoSearchUrl, parseIxTheoHtmlResultsPage, fetchIxTheoRecordDetails, etc.) remain the same ---
+  // --- Make sure they are correctly implemented as shown previously ---
+
   /** Helper to build IxTheo Search URL */
   private static buildIxTheoSearchUrl(
-    // Use imported SearchParams type & add page if needed
     params: import('./integration').SearchParams & { page?: number },
-    baseUrl: string
-): string {
+    baseUrl: string // This is the search results URL from IXTHEO_ENDPOINTS
+  ): string {
     const queryParams = new URLSearchParams();
 
-    // --- ADDED: Prioritize allFieldsTerm ---
-    if (params.allFieldsTerm) {
-        queryParams.append('lookfor', params.allFieldsTerm);
+    // Prioritize allFieldsTerm
+    if (params.allFieldsTerm?.trim()) {
+        queryParams.append('lookfor', params.allFieldsTerm.trim());
         queryParams.append('type', 'AllFields');
     }
-    // --- END ADDED ---
-    else { // --- ADDED: else block ---
-        // Combine specific fields if allFieldsTerm is not provided
+    // Combine specific fields if allFieldsTerm is not provided
+    else {
         const searchTerms: string[] = [];
-        if (params.title) searchTerms.push(`title:(${params.title})`);
-        if (params.author) searchTerms.push(`author:(${params.author})`);
-        if (params.isbn) searchTerms.push(`isn:(${params.isbn})`); // Use isn for IxTheo ISBN/ISSN
+        if (params.title?.trim()) searchTerms.push(`title:(${params.title.trim()})`);
+        if (params.author?.trim()) searchTerms.push(`author:(${params.author.trim()})`);
+        if (params.isbn?.trim()) searchTerms.push(`isn:(${params.isbn.trim()})`); // Use isn for IxTheo ISBN/ISSN
 
         if (searchTerms.length > 0) {
             queryParams.append('lookfor', searchTerms.join(' '));
-            // Still use AllFields when combining prefixes for IxTheo web search
-            queryParams.append('type', 'AllFields');
+            queryParams.append('type', 'AllFields'); // Use AllFields even when combining for web search
         } else {
-            // Default if no terms provided at all (e.g., '*')
-            // IxTheo might handle empty 'lookfor' or you might send '*'
+            // Default if no terms provided (fetch recent items)
             queryParams.append('lookfor', '*');
             queryParams.append('type', 'AllFields');
         }
-    } // --- END ADDED: else block ---
-
+    }
 
     queryParams.append('limit', String(params.maxRecords || 10));
-    queryParams.append('sort', 'relevance'); // Or another default sort
+    queryParams.append('sort', 'relevance'); // Default sort
     if (params.page && params.page > 1) {
         queryParams.append('page', String(params.page));
     }
-    queryParams.append('botprotect', ''); // Keep bot protection parameter
+    // queryParams.append('botprotect', ''); // May or may not be needed
 
+    // Use the provided baseUrl which is the search URL
     return `${baseUrl}?${queryParams.toString()}`;
-}
+  }
 
   /**
    * Parse IxTheo HTML search results page
@@ -411,6 +383,7 @@ private static async executeOaiSearch(
     log: (message: string, level?: 'log' | 'warn' | 'error') => void
   ): [Array<{ id: string; basicInfo: Partial<BiblioRecord> }>, number] {
     log('Parsing IxTheo HTML results page');
+    // log(`Raw HTML Text (first 1000 chars): ${htmlText.substring(0, 1000)}`); // Optional: Log raw HTML for deep debugging
     const results: Array<{ id: string; basicInfo: Partial<BiblioRecord> }> = [];
     let totalCount = 0;
 
@@ -422,207 +395,143 @@ private static async executeOaiSearch(
       }
       const parser = new win.DOMParser();
       const doc = parser.parseFromString(htmlText, 'text/html');
+      // log(`Parsed document body outerHTML (first 1000 chars): ${doc.body?.outerHTML?.substring(0, 1000) || 'Body not found'}`); // Optional: Log parsed body
 
-      // --- Extract total results count (REFINED v2) ---
-      // Priority 1: Look for data-record-total attribute
+      // --- Extract total results count ---
+      // Priority 1: data-record-total attribute
       const statsDiv = doc.querySelector('div.search-stats');
       const dataTotal = statsDiv?.getAttribute('data-record-total');
-
       if (dataTotal && /^\d+$/.test(dataTotal)) {
           totalCount = parseInt(dataTotal, 10);
           log(`Extracted total count from data-record-total: ${totalCount}`);
       } else {
-          // Priority 2: Fallback to parsing text content if attribute missing/invalid
-          log('data-record-total attribute not found or invalid. Falling back to text parsing.', 'warn');
-          const summarySelectors = [
-              '.resultHeader .resultcount',
-              '.search-stats .pager-text .js-search-stats', // More specific
-              '.search-stats',
-              '.pagination-summary',
-              '.result_count',
-              '#result_count'
-          ];
-          let summaryElement: Element | null = null;
-          for (const selector of summarySelectors) {
-              summaryElement = doc.querySelector(selector);
-              if (summaryElement?.textContent) {
-                  log(`Found summary text element with selector: ${selector}`);
-                  break;
-              }
-          }
-
+          // Priority 2: Text content within specific elements
+          const summaryElement = doc.querySelector('.search-stats .js-search-stats, .resultHeader .resultcount, .search-stats .pager-text'); // Added more specific selectors
           if (summaryElement?.textContent) {
               const summaryText = summaryElement.textContent;
-              log(`Found summary text: "${summaryText}"`);
-              // Regex to find the number after "of", "von", "de", "sur" or the last number
+              // Regex to find numbers after "von", "of", "de", "sur" or just the last number
               const match = summaryText.match(/(?:of|von|de|sur)\s+(\d[\d,.]*)/i) || summaryText.match(/(\d[\d,.]*)\s*$/);
               if (match && match[1]) {
                   totalCount = parseInt(match[1].replace(/[,.]/g, ''), 10);
                   log(`Extracted total count from summary text: ${totalCount}`);
               } else {
-                  log(`Could not extract total count number from summary text: "${summaryText}"`, 'warn');
+                   log(`Could not extract total count number from summary text: "${summaryText}"`, 'warn');
               }
           } else {
-              log('Could not find any element containing total count text.', 'warn');
+               log('Could not find any element containing total count text.', 'warn');
           }
       }
-      // --- End Total Count Extraction ---
 
-
-      // Extract result items (logic remains the same)
-      const resultItems = doc.querySelectorAll('.result');
-      log(`Found ${resultItems.length} result items on HTML page`);
+      // --- Extract result items ---
+      // *** CORRECTED SELECTOR ***
+      const resultItems = doc.querySelectorAll('ol.record-list > li.result');
+      log(`Found ${resultItems.length} result items on HTML page using selector 'ol.record-list > li.result'`);
 
       resultItems.forEach((item: Element, index: number) => {
+        // log(`Processing item index ${index}: ${item.outerHTML.substring(0, 200)}...`); // Optional: Log start of each item
         let recordId: string | null = null;
-        const basicInfo: Partial<BiblioRecord> = { authors: [], subjects: [], urls: [], editors: [], translators: [], contributors: [] }; // Initialize arrays
+        const basicInfo: Partial<BiblioRecord> = { authors: [], subjects: [], urls: [], editors: [], translators: [], contributors: [] };
 
-        // --- Extract Record ID (Try multiple methods) ---
-        // 1. Hidden input .hiddenId
-        const hiddenIdInput = item.querySelector('.hiddenId') as HTMLInputElement;
+        // --- Extract Record ID (Primary: hiddenId) ---
+        const hiddenIdInput = item.querySelector('input.hiddenId') as HTMLInputElement;
         if (hiddenIdInput?.value) {
           recordId = hiddenIdInput.value;
         }
-        // 2. Checkbox value (format Solr|ID)
+        // Fallback: Checkbox value (less reliable)
         if (!recordId) {
           const checkbox = item.querySelector('input.checkbox-select-item') as HTMLInputElement;
           if (checkbox?.value && checkbox.value.includes('|')) {
             recordId = checkbox.value.split('|')[1];
+            log(`Used fallback ID from checkbox for item index ${index}`);
           }
         }
-        // 3. From li id and corresponding hidden form input (more complex)
-        if (!recordId) {
-            const liId = item.getAttribute('id');
-            if (liId && liId.startsWith('result')) {
-                try {
-                    const resultIndexMatch = liId.match(/\d+$/);
-                    if (resultIndexMatch) {
-                        const resultIndex = parseInt(resultIndexMatch[0], 10);
-                        // Find the corresponding hidden input in the main form based on index
-                        const hiddenInputs = doc.querySelectorAll('form[name="bulkActionForm"] input[name="idsAll[]"]');
-                        // Adjust index if results are 1-based but querySelectorAll is 0-based
-                        const actualIndex = resultIndex -1; // Assuming li id="result1" corresponds to first hidden input
-                        if (actualIndex >= 0 && actualIndex < hiddenInputs.length) {
-                            const hiddenValue = (hiddenInputs[actualIndex] as HTMLInputElement)?.value;
-                             if (hiddenValue && hiddenValue.includes('|')) {
-                                recordId = hiddenValue.split('|')[1];
-                            }
-                        } else {
-                             log(`Index ${actualIndex} out of bounds for hidden inputs (length ${hiddenInputs.length})`, 'warn');
-                        }
-                    }
-                } catch (e) { log(`Error parsing ID from li element: ${e}`, 'warn'); }
-            }
-        }
-
 
         if (!recordId) {
           log(`Could not find record ID for item index ${index}`, 'warn');
+          // log(`HTML for item without ID: ${item.outerHTML}`); // Optional: Log full item HTML if ID fails
           return; // Skip item if no ID found
         }
+        // log(`Found ID ${recordId} for item index ${index}`); // Optional: Log successful ID
 
         // --- Extract Basic Metadata ---
-        // Title
-        const titleElem = item.querySelector('.title a');
+        const titleElem = item.querySelector('a.title'); // Selector for title link
         basicInfo.title = titleElem?.textContent?.trim() || 'Untitled';
 
-        // Authors
-        const authorElem = item.querySelector('.author');
-        if (authorElem?.textContent) {
-            const authorText = authorElem.textContent.trim();
-            // Split authors, handle potential "(Author)" suffix
-            basicInfo.authors = authorText.split(';')
-                                       .map(a => a.replace(/\s*\(Author\)$/i, '').trim())
-                                       .filter(Boolean);
+        // Author: Look for the div immediately following the title's div, then the span inside
+        const titleDiv = titleElem?.closest('div'); // Find the div containing the title link
+        const authorDiv = titleDiv?.nextElementSibling; // The next div should contain author info
+        const authorSpan = authorDiv?.querySelector('span'); // Find the span within that div
+        if (authorSpan?.textContent) {
+            // Split by semicolon and clean up "(VerfasserIn)" etc.
+            basicInfo.authors = authorSpan.textContent.trim().split(';')
+                                       .map(a => a.replace(/\([^)]+\)$/, '').trim()) // Remove trailing parenthetical roles
+                                       .filter(Boolean); // Remove empty strings
         }
 
-        // Format(s)
-        const formatElems = item.querySelectorAll('.format');
-        // FIXED: Cast Array.from result before mapping
-        const formats = (Array.from(formatElems) as Element[]).map((el: Element) => el.textContent?.trim()).filter(Boolean);
-        basicInfo.format = formats.join(', ') || undefined; // Join multiple formats
+        // Format: Get text from all spans with class 'format'
+        const formatElems = item.querySelectorAll('div.result-formats span.format');
+        basicInfo.format = (Array.from(formatElems) as Element[])
+                            .map(el => el.textContent?.trim())
+                            .filter(Boolean)
+                            .join(', ') || undefined;
 
-        // Year
-        const yearElem = item.querySelector('.publishDate');
-        if (yearElem?.textContent) {
-          const yearMatch = yearElem.textContent.match(/\b(1[89]\d{2}|20\d{2})\b/);
-          basicInfo.year = yearMatch ? yearMatch[0] : undefined;
-        }
+        // Year/Publisher/Subjects are typically NOT in the list view, only on detail page.
+        // We'll rely on fetchIxTheoRecordDetails for those.
 
-         // Publisher (less common on results page, but try)
-         const publisherElem = item.querySelector('.publisher');
-         basicInfo.publisher_name = publisherElem?.textContent?.trim() || undefined;
-
-         // Subjects (often linked)
-         const subjectLinks = item.querySelectorAll('.subject a');
-         // FIXED: Cast Array.from result before mapping
-         basicInfo.subjects = (Array.from(subjectLinks) as Element[]).map((a: Element) => a.textContent?.trim()).filter(Boolean) as string[];
-
-         // Raw HTML snippet for debugging
-         // FIXED: Cast outerHTML to string
-         basicInfo.raw_data = item.outerHTML as string;
+        // Store raw HTML of the list item for debugging/fallback
+        basicInfo.raw_data = item.outerHTML as string;
 
         results.push({ id: recordId, basicInfo });
       });
 
-       // Final check if count is still zero
+      // Estimate total count if not found reliably
       if (totalCount === 0 && results.length > 0) {
-        log(`Total count remains 0 after parsing. Using parsed count (${results.length}) as a minimum estimate.`, 'warn');
+        log(`Total count is 0. Using parsed count (${results.length}) as estimate.`, 'warn');
         totalCount = results.length;
-   } else if (totalCount === 0 && results.length === 0) {
-       log('No results found on page and total count is 0.', 'log');
-   }
+      }
 
- } catch (error: any) {
-   log(`Error parsing IxTheo HTML results page: ${error.message}`, 'error');
-   return [[], 0];
- }
- return [results, totalCount];
-}
+    } catch (error: any) {
+      log(`Error parsing IxTheo HTML results page: ${error.message}`, 'error');
+      log(`Stack trace: ${error.stack}`, 'error'); // Log stack trace
+      return [[], 0]; // Return empty on error
+    }
+    log(`Finished parsing IxTheo HTML. Found ${results.length} items.`);
+    return [results, totalCount];
+  }
 
   /**
    * Fetches and parses detailed data for a single IxTheo record.
    */
   private static async fetchIxTheoRecordDetails(
     recordId: string,
-    format: string,
-    baseUrl: string,
+    format: string, // 'ris', 'marc', 'html'
+    baseUrl: string, // e.g., 'https://ixtheo.de'
     log: (message: string, level?: 'log' | 'warn' | 'error') => void
   ): Promise<Partial<BiblioRecord> | null> {
-    // ADDED logging
-    log(`Fetching details for IxTheo record ${recordId} in format: ${format}`, 'log');
+    log(`Fetching details for IxTheo record ${recordId} in format: ${format}`);
     try {
       let resultData: string | null = null;
       let parsedRecord: Partial<BiblioRecord> | null = null;
 
       if (format === 'ris') {
         resultData = await this.fetchIxTheoExportData(recordId, 'RIS', baseUrl, log);
-        if (resultData) {
-            parsedRecord = this.parseIxTheoRis(resultData, log);
-        }
+        if (resultData) parsedRecord = this.parseIxTheoRis(resultData, log);
       } else if (format === 'marc') {
         resultData = await this.fetchIxTheoExportData(recordId, 'MARC', baseUrl, log);
-         if (resultData) {
-            parsedRecord = this.parseIxTheoMarc(resultData, log);
-        }
+        if (resultData) parsedRecord = this.parseIxTheoMarc(resultData, log);
       } else if (format === 'html') {
         resultData = await this.fetchIxTheoDetailPage(recordId, baseUrl, log);
-         if (resultData) {
-            parsedRecord = this.parseIxTheoDetailPageHtml(resultData, log);
-        }
+        if (resultData) parsedRecord = this.parseIxTheoDetailPageHtml(resultData, log);
       } else {
         log(`Unsupported detail format requested: ${format}. Falling back to RIS.`, 'warn');
         resultData = await this.fetchIxTheoExportData(recordId, 'RIS', baseUrl, log);
-         if (resultData) {
-            parsedRecord = this.parseIxTheoRis(resultData, log);
-        }
+        if (resultData) parsedRecord = this.parseIxTheoRis(resultData, log);
       }
 
-      // ADDED logging of fetch/parse outcome
       if (parsedRecord) {
-          log(`Successfully fetched and parsed ${format} for ${recordId}.`, 'log');
+          log(`Successfully fetched and parsed ${format} for ${recordId}.`);
       } else {
-          log(`Failed to get valid ${format} data for ${recordId}. Fetch returned: ${resultData === null ? 'null' : 'data (length ' + resultData?.length + ')'}`, 'warn');
+          log(`Failed to get valid ${format} data for ${recordId}.`, 'warn');
       }
       return parsedRecord;
 
@@ -632,83 +541,70 @@ private static async executeOaiSearch(
     }
   }
 
-  /** Fetches RIS or MARC export data */
+  /** Fetches RIS or MARC export data from IxTheo */
   private static async fetchIxTheoExportData(
     recordId: string,
     exportFormat: 'RIS' | 'MARC',
     baseUrl: string,
     log: (message: string, level?: 'log' | 'warn' | 'error') => void
   ): Promise<string | null> {
-    // FIXED: Use style=RIS instead of RISPlusAbstract
     const exportUrl = `${baseUrl}/Record/${recordId}/Export?style=${exportFormat}`;
-    // ADDED logging
-    log(`Fetching ${exportFormat} export from URL: ${exportUrl}`, 'log');
+    log(`Fetching ${exportFormat} export from URL: ${exportUrl}`);
     try {
        const response = await fetch(exportUrl, {
-           headers: {
+           headers: { // Mimic browser request
                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-               'Accept': 'text/plain, */*; q=0.01',
-               'X-Requested-With': 'XMLHttpRequest',
-               'Referer': `${baseUrl}/Record/${recordId}`,
+               'Accept': 'text/plain, */*; q=0.01', // Correct accept header for export
+               'X-Requested-With': 'XMLHttpRequest', // Often used for AJAX requests
+               'Referer': `${baseUrl}/Record/${recordId}`, // Referer header
            }
        });
 
-        // ADDED logging of response status and headers
-       log(`Response status for ${exportFormat} export ${recordId}: ${response.status}`, 'log');
-       try {
-            log(`Response headers for ${exportFormat} export ${recordId}: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`, 'log');
-       } catch (headerErr) {
-            log(`Could not stringify headers for ${recordId}: ${headerErr}`, 'warn');
-       }
-
+       log(`Response status for ${exportFormat} export ${recordId}: ${response.status}`);
 
        if (!response.ok) {
-        // Log HTTP errors before throwing
-        log(`Export request failed for ${recordId} with HTTP status: ${response.status} ${response.statusText}`, 'error');
-        throw new Error(`Export request failed with HTTP status: ${response.status} ${response.statusText}`);
+        log(`Export request failed for ${recordId}: ${response.status} ${response.statusText}`, 'error');
+        // Check body for specific error messages if possible
+        const errorBody = await response.text().catch(() => '');
+        if (errorBody.includes("not supported")) {
+             log(`Format ${exportFormat} not supported for ${recordId}.`, 'warn');
+             return null;
+        }
+        throw new Error(`Export request failed: ${response.status} ${response.statusText}`);
       }
 
       const contentType = response.headers.get('Content-Type');
-      const expectedContentType = exportFormat === 'RIS' ? 'application/x-research-info-systems' : 'application/marc';
-      const isPlainText = contentType?.includes('text/plain'); // Common for RIS
-      const isHtml = contentType?.includes('text/html');
       const data = await response.text();
+      log(`Response Content-Type for ${exportFormat} export ${recordId}: ${contentType}`);
 
-      // ADDED logging of response body beginning
-      log(`Response body beginning for ${exportFormat} export ${recordId} (Content-Type: ${contentType}):\n${data.substring(0, 300)}...`, 'log');
-
-
-      // REFINED Check: Look for the error message *first*
+      // Check for explicit error message in body
       if (data.includes("The selected export format is not supported by this record")) {
-          log(`IxTheo reported export format ${exportFormat} not supported for record ${recordId}. Reason: Explicit message found.`, 'warn');
-          return null; // Indicate failure gracefully
-      }
-
-      // THEN check content type if no explicit error message
-      if (isHtml || (!contentType?.includes(expectedContentType) && !(exportFormat === 'RIS' && isPlainText)) ) {
-          log(`Unexpected content type received for ${exportFormat} export ${recordId}: ${contentType}. Body did not contain known error message.`, 'warn');
-          // Treat as failure if content type is wrong *and* no known error message was present
+          log(`IxTheo reported export format ${exportFormat} not supported for record ${recordId}.`, 'warn');
           return null;
-          // Or throw: throw new Error(`Unexpected content type for ${exportFormat} export: ${contentType}`);
       }
-
+      // Check if content type is unexpected (e.g., HTML instead of plain text/MARC)
+      const expectedContentType = exportFormat === 'RIS' ? 'application/x-research-info-systems' : 'application/marc';
+      const isPlainText = contentType?.includes('text/plain');
+      if (contentType?.includes('text/html') || (!contentType?.includes(expectedContentType) && !(exportFormat === 'RIS' && isPlainText))) {
+          log(`Unexpected content type received for ${exportFormat} export ${recordId}: ${contentType}. Assuming failure.`, 'warn');
+          return null;
+      }
 
       if (!data.trim()) {
-          log(`Export returned empty response for ${recordId} (${exportFormat}). Reason: Empty body.`, 'warn');
+          log(`Export returned empty response for ${recordId} (${exportFormat}).`, 'warn');
           return null;
       }
 
-      log(`${exportFormat} data received and appears valid for ${recordId} (length: ${data.length})`, 'log');
-      return data; // Success
+      log(`${exportFormat} data received and appears valid for ${recordId} (length: ${data.length})`);
+      return data;
 
     } catch (error: any) {
-      // Catch fetch errors or errors thrown above
-      log(`Error fetching ${exportFormat} export for ${recordId}. Reason: ${error.message}`, 'error');
-      return null; // Indicate failure
+      log(`Error fetching ${exportFormat} export for ${recordId}: ${error.message}`, 'error');
+      return null;
     }
   }
 
-  /** Fetches the HTML detail page */
+  /** Fetches the HTML detail page from IxTheo */
   private static async fetchIxTheoDetailPage(
     recordId: string,
     baseUrl: string,
@@ -717,7 +613,6 @@ private static async executeOaiSearch(
     const detailUrl = `${baseUrl}/Record/${recordId}`;
      log(`Fetching HTML detail page from: ${detailUrl}`);
     try {
-       // Use global fetch
        const response = await fetch(detailUrl, {
            headers: { // Standard browser headers
                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -738,565 +633,246 @@ private static async executeOaiSearch(
 
   /**
    * Parse IxTheo RIS formatted results into a partial BiblioRecord
+   * (Implementation remains the same as previously provided)
    */
   private static parseIxTheoRis(risText: string, log: (message: string, level?: 'log' | 'warn' | 'error') => void): Partial<BiblioRecord> {
-    // ADDED logging
-    log(`Starting RIS parsing. Input data (first 300 chars):\n${risText.substring(0, 300)}...`, 'log');
+    log(`Starting RIS parsing...`);
     const record: Partial<BiblioRecord> = { authors: [], editors: [], translators: [], urls: [], subjects: [] };
     record.raw_data = risText;
-
     try {
-      const lines = risText.split(/[\r\n]+/); // Split by newline
+      const lines = risText.split(/[\r\n]+/);
       let currentTag = '';
-      let currentValue = '';
-      let startPage: string | undefined = undefined; // Keep track of start page separately
+      let startPage: string | undefined = undefined;
 
       for (const line of lines) {
         const trimmedLine = line.trim();
         if (!trimmedLine) continue;
-
-        // RIS format: TAG  - Value
         const match = trimmedLine.match(/^([A-Z][A-Z0-9])\s{2,}-\s?(.*)$/);
         if (match) {
           currentTag = match[1];
-          currentValue = match[2].trim();
-
+          const currentValue = match[2].trim();
           switch (currentTag) {
             case 'TY': record.format = this.mapRisTypeToFormat(currentValue); break;
             case 'TI': case 'T1': record.title = currentValue; break;
             case 'AU': case 'A1': record.authors?.push(currentValue); break;
-            case 'ED': case 'A2': record.editors?.push(currentValue); break; // A2 often used for editors too
-            case 'A4': record.translators?.push(currentValue); break; // A4 for Translator
+            case 'ED': case 'A2': record.editors?.push(currentValue); break;
+            case 'A4': record.translators?.push(currentValue); break;
             case 'PY': case 'Y1':
               const yearMatch = currentValue.match(/(\d{4})/);
               if (yearMatch) record.year = yearMatch[1];
               break;
             case 'PB': record.publisher_name = currentValue; break;
             case 'CY': record.place_of_publication = currentValue; break;
-            case 'SN': // ISBN or ISSN
+            case 'SN':
               const cleanedSN = currentValue.replace(/[- ]/g, '');
               if (/^\d{4}\d{3}[\dX]$/.test(cleanedSN)) { record.issn = currentValue; }
-              else { record.isbn = currentValue.replace(/\s*\(.*?\)\s*$/, ''); } // Clean ISBN
+              else { record.isbn = currentValue.replace(/\s*\(.*?\)\s*$/, ''); }
               break;
-            case 'T2': case 'JO': case 'JA': case 'JF': // Journal Title or Book Title (for chapters)
-                // Use existing format if already determined, otherwise guess based on ISSN
+            case 'T2': case 'JO': case 'JA': case 'JF':
                 const format = record.format || (record.issn ? 'Journal Article' : 'Book Chapter');
                 if (format === 'Journal Article') { record.journal_title = currentValue; }
-                else { record.series = currentValue; } // Assume book title/series otherwise
+                else { record.series = currentValue; }
                 break;
             case 'VL': record.volume = currentValue; break;
             case 'IS': record.issue = currentValue; break;
-            case 'SP': startPage = currentValue; break; // Store start page
-            case 'EP': // End page - combine with start page later
+            case 'SP': startPage = currentValue; break;
+            case 'EP':
               if (startPage && !startPage.includes('-')) { record.pages = `${startPage}-${currentValue}`; }
-              else if (!startPage) { record.pages = currentValue; } // Only end page found
+              else if (!startPage) { record.pages = currentValue; }
               break;
-            case 'UR': case 'L1': record.urls?.push(currentValue); break; // URL, L1 is primary URL
-            case 'AB': case 'N2': record.abstract = currentValue; break; // Abstract or Note 2
-            case 'KW': record.subjects?.push(currentValue); break; // Keywords
-            case 'LA': record.language = currentValue; break; // Language
-            case 'DO': record.doi = currentValue; break; // DOI
-            case 'ET': record.edition = currentValue; break; // Edition
-            // Add other tags as needed: M1, M3, etc.
+            case 'UR': case 'L1': record.urls?.push(currentValue); break;
+            case 'AB': case 'N2': record.abstract = currentValue; break;
+            case 'KW': record.subjects?.push(currentValue); break;
+            case 'LA': record.language = currentValue; break;
+            case 'DO': record.doi = currentValue; break;
+            case 'ET': record.edition = currentValue; break;
           }
-        } else if (currentTag && trimmedLine) {
-          // Handle continuation lines (though less common in basic RIS)
-          // log(`Continuation line for tag ${currentTag}: ${trimmedLine}`, 'warn');
         }
       }
-
-      // Finalize pages field if only start page was found
-      if (startPage && !record.pages) {
-          record.pages = startPage;
-      }
-
-       // Ensure arrays are initialized even if empty
-       record.authors = record.authors || [];
-       record.editors = record.editors || [];
-       record.translators = record.translators || [];
-       record.urls = record.urls || [];
-       record.subjects = record.subjects || [];
-
-    } catch (error: any) {
-      log(`Error parsing RIS data: ${error.message}`, 'error');
-    }
-    log(`Finished RIS parsing. Result: ${JSON.stringify(record).substring(0, 300)}...`, 'log');
+      if (startPage && !record.pages) record.pages = startPage;
+      record.authors = record.authors || [];
+      record.editors = record.editors || [];
+      record.translators = record.translators || [];
+      record.urls = record.urls || [];
+      record.subjects = record.subjects || [];
+    } catch (error: any) { log(`Error parsing RIS data: ${error.message}`, 'error'); }
+    log(`Finished RIS parsing.`);
     return record;
   }
 
-  /** Helper to map RIS TY field to a more descriptive format string */
+  /** Helper to map RIS TY field */
   private static mapRisTypeToFormat(risType: string): string | undefined {
       const typeMap: Record<string, string> = {
           'JOUR': 'Journal Article', 'BOOK': 'Book', 'CHAP': 'Book Chapter',
           'THES': 'Thesis', 'CONF': 'Conference Paper', 'RPRT': 'Report',
-          'SER': 'Journal', 'MAP': 'Map', 'MUSIC': 'Music Score', // Add others as needed
+          'SER': 'Journal', 'MAP': 'Map', 'MUSIC': 'Music Score',
           'GEN': 'Generic', 'ELEC': 'Electronic Resource'
       };
-      return typeMap[risType] || risType; // Return mapped value or original if not found
+      return typeMap[risType] || risType;
   }
-
 
   /**
    * Parse IxTheo MARC formatted results (basic regex implementation)
+   * (Implementation remains the same as previously provided)
    */
   private static parseIxTheoMarc(marcText: string, log: (message: string, level?: 'log' | 'warn' | 'error') => void): Partial<BiblioRecord> {
-    log(`Starting MARC parsing. Input data (first 300 chars):\n${marcText.substring(0, 300)}...`, 'log');
+    log(`Starting MARC parsing...`);
     const record: Partial<BiblioRecord> = { authors: [], editors: [], subjects: [], urls: [] };
-     record.raw_data = marcText; // Store raw data
-
+    record.raw_data = marcText;
     try {
-      // Helper to find subfield value
-      const findSubfield = (fieldTag: string, subfieldCode: string, indicators: string = '\\d\\d'): string | undefined => {
-          // Regex: =TAG indicators $CODE value ($ not captured)
-          // Allow for optional subfields between indicators and target subfield
-          const regex = new RegExp(`=${fieldTag}\\s+${indicators}\\s+(?:\\$\\S[^$]*)*?\\$${subfieldCode}([^$]+)`);
-          const match = marcText.match(regex);
-          return match ? match[1].trim().replace(/[/\s.;,]+$/, '') : undefined; // Clean trailing punctuation
+      const findSubfield = (tag: string, code: string, ind: string = '\\d\\d') => {
+          const r = new RegExp(`=${tag}\\s+${ind}\\s+(?:\\$\\S[^$]*)*?\\$${code}([^$]+)`);
+          const m = marcText.match(r); return m ? m[1].trim().replace(/[/\s.;,]+$/, '') : undefined;
       };
-       // Helper to find multiple subfield values
-      const findSubfields = (fieldTag: string, subfieldCode: string, indicators: string = '\\d\\d'): string[] => {
-          const values: string[] = [];
-           // Regex: =TAG indicators (any subfields)* $CODE value ($ not captured) - Global search
-          const regex = new RegExp(`=${fieldTag}\\s+${indicators}\\s+(?:\\$\\S[^$]*)*?\\$${subfieldCode}([^$]+)`, 'g');
-          let match;
-          while ((match = regex.exec(marcText)) !== null) {
-              values.push(match[1].trim().replace(/[/\s.;,]+$/, ''));
-          }
-          return values;
-      };
-       // Helper to find specific field block and then subfields within it
-      const findSubfieldsInBlock = (fieldTag: string, subfieldCode: string, indicators: string = '\\d\\d'): string[] => {
-          const values: string[] = [];
-          // Find the whole field block first
-          const fieldRegex = new RegExp(`^=${fieldTag}\\s+${indicators}\\s+.*$`, 'm'); // Find the start of the field line
-          const fieldMatch = marcText.match(fieldRegex);
-          if (fieldMatch) {
-              const fieldBlock = fieldMatch[0];
-              // Now find the specific subfield within that block
-              const subfieldRegex = new RegExp(`\\$${subfieldCode}([^$]+)`, 'g');
-              let subMatch;
-              while ((subMatch = subfieldRegex.exec(fieldBlock)) !== null) {
-                   values.push(subMatch[1].trim().replace(/[/\s.;,]+$/, ''));
-              }
-          }
-          return values;
+      const findSubfieldsInBlock = (tag: string, code: string, ind: string = '\\d\\d') => {
+          const v: string[] = []; const fr = new RegExp(`^=${tag}\\s+${ind}\\s+.*$`, 'm'); const fm = marcText.match(fr);
+          if (fm) { const fb = fm[0]; const sr = new RegExp(`\\$${code}([^$]+)`, 'g'); let sm; while ((sm = sr.exec(fb)) !== null) v.push(sm[1].trim().replace(/[/\s.;,]+$/, '')); } return v;
       };
 
-
-      // --- Extract Fields ---
-      // Title (245 $a, $b)
-      const titleA = findSubfield('245', 'a');
-      const titleB = findSubfield('245', 'b');
-      record.title = titleA ? (titleB ? `${titleA}: ${titleB}` : titleA) : undefined;
-
-      // Authors (100 $a, 700 $a)
-      const author100 = findSubfield('100', 'a');
-      if (author100) record.authors?.push(author100);
-      record.authors?.push(...findSubfieldsInBlock('700', 'a')); // Use findSubfieldsInBlock for potentially multiple 700s
-
-      // Editors (check 700 $e) - More robust check
-      const editorNames: string[] = [];
-      const field700Regex = /^=700\s+\d\d\s+.*$/gm; // Find all 700 fields
-      let field700Match;
-      while ((field700Match = field700Regex.exec(marcText)) !== null) {
-          const fieldBlock = field700Match[0];
-          const roleMatch = fieldBlock.match(/\$e(.*?)(?:$|\$)/);
-          const nameMatch = fieldBlock.match(/\$a(.*?)(?:$|\$)/);
-          if (roleMatch && nameMatch && roleMatch[1].trim().match(/edt|Hrsg|hrsg|editeur|éditeur/i)) {
-              editorNames.push(nameMatch[1].trim().replace(/[/\s.;,]+$/, ''));
-          }
-      }
-       record.editors = editorNames;
-       // Remove editors from authors list if found
-       if (record.authors && record.editors) {
-           record.authors = record.authors.filter(a => !record.editors?.includes(a));
-       }
-
-
-      // Publication (260/264 $a=place, $b=publisher, $c=year)
-      const place = findSubfield('260', 'a') || findSubfield('264', 'a', '.1'); // 264 ind2=1 for publication
-      const publisher = findSubfield('260', 'b') || findSubfield('264', 'b', '.1');
-      const pubDate = findSubfield('260', 'c') || findSubfield('264', 'c', '.1');
-      record.place_of_publication = place;
-      record.publisher_name = publisher;
-      if (pubDate) {
-          const yearMatch = pubDate.match(/(\d{4})/);
-          record.year = yearMatch ? yearMatch[1] : undefined;
-      }
-
-      // ISBN (020 $a)
-      record.isbn = findSubfield('020', 'a')?.replace(/\s*\(.*?\)\s*$/, ''); // Clean qualifiers
-
-      // ISSN (022 $a)
-      record.issn = findSubfield('022', 'a');
-
-      // Series (490 $a)
-      record.series = findSubfield('490', 'a');
-
-      // Language (041 $a) - Basic, gets code
-      record.language = findSubfield('041', 'a');
-
-      // Subjects (650 $a)
-      record.subjects = findSubfieldsInBlock('650', 'a'); // Use findSubfieldsInBlock
-
-      // Abstract (520 $a)
-      record.abstract = findSubfield('520', 'a');
-
-      // Format from Leader (LDR pos 6)
-       const leaderMatch = marcText.match(/=LDR\s+(\S{24})/);
-       if (leaderMatch) {
-           const leader = leaderMatch[1];
-           const typeCode = leader.length > 6 ? leader[6] : '?';
-           const levelCode = leader.length > 7 ? leader[7] : '?';
-           record.format = this.mapMarcTypeToFormat(typeCode, levelCode);
-       }
-
-      // Journal Info (773 $t=title, $g=vol/issue/pages)
-      const hostTitle = findSubfield('773', 't');
-      const hostInfo = findSubfield('773', 'g'); // Get the whole $g
-       // Determine if it's likely an article based on format or ISSN presence
-       const isArticle = record.format === 'Journal Article' || record.issn;
-
-      if (hostTitle && isArticle) {
-          record.journal_title = hostTitle;
-          if (hostInfo) {
-              // More specific regex for vol/issue/pages within $g
-              const volMatch = hostInfo.match(/(?:vol|v)\.?\s*(\d+)/i);
-              const issueMatch = hostInfo.match(/(?:no|nr|num)\.?\s*(\d+)/i);
-              const pagesMatch = hostInfo.match(/(?:pp|p)\.?\s*(\d+(?:-\d+)?)/i);
-              record.volume = volMatch ? volMatch[1] : undefined;
-              record.issue = issueMatch ? issueMatch[1] : undefined;
-              record.pages = pagesMatch ? pagesMatch[1] : undefined;
-          }
-      } else if (hostTitle) {
-          // If not an article, host title might be book title for a chapter
-          record.series = hostTitle;
-      }
-
-
-      // URLs (856 $u)
-      record.urls = findSubfieldsInBlock('856', 'u', '4\\d'); // Ind1=4 for http
-
-       // Ensure arrays are initialized
-       record.authors = record.authors || [];
-       record.editors = record.editors || [];
-       record.subjects = record.subjects || [];
-       record.urls = record.urls || [];
-
-    } catch (error: any) {
-      log(`Error parsing MARC data (regex): ${error.message}`, 'error');
-    }
-    log(`Finished MARC parsing. Result: ${JSON.stringify(record).substring(0, 300)}...`, 'log');
+      const tA = findSubfield('245', 'a'); const tB = findSubfield('245', 'b'); record.title = tA ? (tB ? `${tA}: ${tB}` : tA) : undefined;
+      const a100 = findSubfield('100', 'a'); if (a100) record.authors?.push(a100); record.authors?.push(...findSubfieldsInBlock('700', 'a'));
+      const eNames: string[] = []; const r700 = /^=700\s+\d\d\s+.*$/gm; let m700; while ((m700 = r700.exec(marcText)) !== null) { const fb = m700[0]; const rm = fb.match(/\$e(.*?)(?:$|\$)/); const nm = fb.match(/\$a(.*?)(?:$|\$)/); if (rm && nm && rm[1].trim().match(/edt|Hrsg|hrsg|editeur|éditeur/i)) eNames.push(nm[1].trim().replace(/[/\s.;,]+$/, '')); } record.editors = eNames; if (record.authors && record.editors) record.authors = record.authors.filter(a => !record.editors?.includes(a));
+      const pl = findSubfield('260', 'a') || findSubfield('264', 'a', '.1'); const pub = findSubfield('260', 'b') || findSubfield('264', 'b', '.1'); const date = findSubfield('260', 'c') || findSubfield('264', 'c', '.1'); record.place_of_publication = pl; record.publisher_name = pub; if (date) { const ym = date.match(/(\d{4})/); record.year = ym ? ym[1] : undefined; }
+      record.isbn = findSubfield('020', 'a')?.replace(/\s*\(.*?\)\s*$/, ''); record.issn = findSubfield('022', 'a'); record.series = findSubfield('490', 'a'); record.language = findSubfield('041', 'a'); record.subjects = findSubfieldsInBlock('650', 'a'); record.abstract = findSubfield('520', 'a');
+      const lm = marcText.match(/=LDR\s+(\S{24})/); if (lm) { const l = lm[1]; const tc = l.length > 6 ? l[6] : '?'; const lc = l.length > 7 ? l[7] : '?'; record.format = this.mapMarcTypeToFormat(tc, lc); }
+      const ht = findSubfield('773', 't'); const hi = findSubfield('773', 'g'); const isA = record.format === 'Journal Article' || record.issn; if (ht && isA) { record.journal_title = ht; if (hi) { const vm = hi.match(/(?:vol|v)\.?\s*(\d+)/i); const im = hi.match(/(?:no|nr|num)\.?\s*(\d+)/i); const pm = hi.match(/(?:pp|p)\.?\s*(\d+(?:-\d+)?)/i); record.volume = vm ? vm[1] : undefined; record.issue = im ? im[1] : undefined; record.pages = pm ? pm[1] : undefined; } } else if (ht) { record.series = ht; }
+      record.urls = findSubfieldsInBlock('856', 'u', '4\\d');
+      record.authors = record.authors || []; record.editors = record.editors || []; record.subjects = record.subjects || []; record.urls = record.urls || [];
+    } catch (error: any) { log(`Error parsing MARC data: ${error.message}`, 'error'); }
+    log(`Finished MARC parsing.`);
     return record;
   }
 
-   /** Helper to map MARC LDR/06 and LDR/07 codes to a format string */
+   /** Helper to map MARC LDR codes */
    private static mapMarcTypeToFormat(typeCode: string, levelCode: string): string | undefined {
-       // Based on https://www.loc.gov/marc/bibliographic/bdleader.html
-       if (typeCode === 'a') { // Language material
-           if (levelCode === 'm') return 'Book';
-           if (levelCode === 's') return 'Journal'; // Serial
-           if (levelCode === 'a') return 'Journal Article'; // Analytic component part (often article)
-           if (levelCode === 'c') return 'Book Chapter'; // Collection
-           if (levelCode === 'i') return 'Integrating Resource'; // e.g., loose-leaf
-       }
-       if (typeCode === 't') return 'Book'; // Manuscript language material
-       if (typeCode === 'c' || typeCode === 'd') return 'Music Score'; // Notated music
-       if (typeCode === 'e' || typeCode === 'f') return 'Map'; // Cartographic
-       if (typeCode === 'g') return 'Video'; // Projected medium
-       if (typeCode === 'i' || typeCode === 'j') return 'Music Recording'; // Nonmusical/Musical sound recording
-       if (typeCode === 'k') return 'Image'; // 2D graphic
-       if (typeCode === 'm') return 'Computer File'; // Software, electronic resource
-       if (typeCode === 'o') return 'Kit';
-       if (typeCode === 'p') return 'Mixed Materials';
-       if (typeCode === 'r') return 'Object'; // 3D artifact
-
-       return undefined; // Unknown or not mapped
+       if (typeCode === 'a') { if (levelCode === 'm') return 'Book'; if (levelCode === 's') return 'Journal'; if (levelCode === 'a') return 'Journal Article'; if (levelCode === 'c') return 'Book Chapter'; if (levelCode === 'i') return 'Integrating Resource'; }
+       if (typeCode === 't') return 'Book'; if (typeCode === 'c' || typeCode === 'd') return 'Music Score'; if (typeCode === 'e' || typeCode === 'f') return 'Map'; if (typeCode === 'g') return 'Video'; if (typeCode === 'i' || typeCode === 'j') return 'Music Recording'; if (typeCode === 'k') return 'Image'; if (typeCode === 'm') return 'Computer File'; if (typeCode === 'o') return 'Kit'; if (typeCode === 'p') return 'Mixed Materials'; if (typeCode === 'r') return 'Object';
+       return undefined;
    }
 
   /**
    * Parse IxTheo HTML detail page
+   * (Implementation remains the same as previously provided)
    */
   private static parseIxTheoDetailPageHtml(htmlText: string, log: (message: string, level?: 'log' | 'warn' | 'error') => void): Partial<BiblioRecord> {
-    log(`Starting HTML detail page parsing. Input data (first 300 chars):\n${htmlText.substring(0, 300)}...`, 'log');
+    log(`Starting HTML detail page parsing...`);
     const record: Partial<BiblioRecord> = { authors: [], editors: [], subjects: [], urls: [] };
-    record.raw_data = htmlText; // Store raw HTML
-
+    record.raw_data = htmlText;
     try {
-      // FIXED: Use Zotero.getMainWindow() for DOMParser
-      const win = Zotero.getMainWindow();
-      if (!win || !win.DOMParser) {
-         // Log specific error if main window or DOMParser is missing
-        log("DOMParser not available via Zotero.getMainWindow()", 'error');
-        throw new Error("DOMParser not available.");
-      }
-      const parser = new win.DOMParser();
-      const doc = parser.parseFromString(htmlText, 'text/html');
+      const win = Zotero.getMainWindow(); if (!win || !win.DOMParser) throw new Error("DOMParser not available."); const parser = new win.DOMParser(); const doc = parser.parseFromString(htmlText, 'text/html');
+      const findDetail = (lbl: string) => { const ths = doc.querySelectorAll('.description-tab table.table-striped th'); for (const th of ths) if (th.textContent?.trim().includes(lbl)) return (th.nextElementSibling as HTMLElement)?.textContent?.trim(); return undefined; };
+      const findDetailMulti = (lbl: string, sel: string = 'span, a') => { const v: string[] = []; const ths = doc.querySelectorAll('.description-tab table.table-striped th'); for (const th of ths) if (th.textContent?.trim().includes(lbl)) { const td = th.nextElementSibling as HTMLElement; if (td) td.querySelectorAll(sel).forEach((el: Element) => { const txt = el.textContent?.trim(); if (txt && !v.includes(txt)) v.push(txt); }); break; } return v; };
+      const findUrlsInDetail = (lbl: string) => { const u: string[] = []; const ths = doc.querySelectorAll('.description-tab table.table-striped th'); for (const th of ths) if (th.textContent?.trim().includes(lbl)) { const td = th.nextElementSibling as HTMLElement; td?.querySelectorAll('a[href]').forEach((lnk: Element) => { const hr = lnk.getAttribute('href'); if (hr && hr.startsWith('http') && !u.includes(hr)) u.push(hr); }); break; } return u; };
 
-
-      // Helper to get text from next TD after a TH containing specific text
-      const findDetail = (label: string): string | undefined => {
-          const thElements = doc.querySelectorAll('.description-tab table.table-striped th');
-          for (const th of thElements) {
-              // Use includes for partial matches, trim whitespace
-              if (th.textContent?.trim().includes(label)) {
-                  const td = th.nextElementSibling as HTMLElement;
-                  // Get text, potentially cleaning up nested spans/links if needed
-                  return td?.textContent?.trim() || undefined;
-              }
-          }
-          return undefined;
-      };
-       // Helper to get text from potentially multiple spans/links within the next TD
-      const findDetailMulti = (label: string, selector: string = 'span, a'): string[] => {
-          const values: string[] = [];
-          const thElements = doc.querySelectorAll('.description-tab table.table-striped th');
-          for (const th of thElements) {
-               if (th.textContent?.trim().includes(label)) {
-                   const td = th.nextElementSibling as HTMLElement;
-                   if (td) {
-                       td.querySelectorAll(selector).forEach((el: Element) => { // FIXED: Added type Element
-                           const text = el.textContent?.trim();
-                           // Avoid adding empty strings or duplicates
-                           if (text && !values.includes(text)) values.push(text);
-                       });
-                   }
-                   break; // Assume first match is correct
-               }
-           }
-           return values;
-      };
-       // Helper to get URL from link(s) in next TD
-       const findUrlsInDetail = (label: string): string[] => {
-           const urls: string[] = [];
-           const thElements = doc.querySelectorAll('.description-tab table.table-striped th');
-           for (const th of thElements) {
-               if (th.textContent?.trim().includes(label)) {
-                   const td = th.nextElementSibling as HTMLElement;
-                   td?.querySelectorAll('a[href]').forEach((link: Element) => { // FIXED: Added type Element
-                       const href = link.getAttribute('href');
-                       if (href && href.startsWith('http') && !urls.includes(href)) {
-                           urls.push(href);
-                       }
-                   });
-                   break; // Assume first match is correct
-               }
-           }
-           return urls;
-       };
-
-
-      // --- Extract Fields ---
-      // Title (h3 property="name")
-      record.title = doc.querySelector('h3[property="name"]')?.textContent?.trim();
-
-      // Authors (spans with property="name" in Author row)
-      record.authors = findDetailMulti('Author:', 'span[property="name"]');
-
-      // Format (spans with class="format" in Format row)
-      record.format = findDetailMulti('Format:', 'span.format').join(', ') || undefined;
-
-      // Language
-      record.language = findDetail('Language:');
-
-      // Publication Info (Published: row)
-      const publishedText = findDetail('Published:');
-      if (publishedText) {
-          // Try to extract place, publisher, year
-          // More robust extraction: handle cases like "Place : Publisher, Year" or just "Place : Publisher" or "Year"
-          const yearMatch = publishedText.match(/(\d{4})/);
-          record.year = yearMatch ? yearMatch[1] : undefined;
-
-          let remainingText = publishedText;
-          if (record.year) {
-              remainingText = remainingText.replace(record.year, '').replace(/[,.\s]*$/, ''); // Remove year and trailing punctuation
-          }
-
-          const parts = remainingText.split(':');
-          if (parts.length > 1) {
-              record.place_of_publication = parts[0].trim();
-              record.publisher_name = parts[1].split(',')[0].trim(); // Take part after colon, before first comma
-          } else if (parts.length === 1 && !record.place_of_publication) {
-              // If only one part and no place yet, assume it might be the place or publisher
-              record.publisher_name = parts[0].trim(); // Default to publisher
-          }
-      }
-
-      // Subjects (links in Subject row(s)) - Find all subject rows
-       const subjectRows = doc.querySelectorAll('.description-tab table.table-striped th');
-       const subjectsSet = new Set<string>(); // Use a Set to avoid duplicates
-       subjectRows.forEach((th: Element) => { // FIXED: Added type Element
-           if (th.textContent?.trim().startsWith('Subject')) {
-               const td = th.nextElementSibling as HTMLElement;
-               td?.querySelectorAll('a').forEach((link: Element) => { // FIXED: Added type Element
-                   const text = link.textContent?.trim();
-                   if (text) subjectsSet.add(text);
-               });
-           }
-       });
-       record.subjects = Array.from(subjectsSet);
-
-
-      // ISBN/ISSN
-      record.isbn = findDetail('ISBN:');
-      record.issn = findDetail('ISSN:');
-
-      // Extent/Physical Description
-      record.extent = findDetail('Physical Description:');
-
-      // Series (link in Series row)
-      record.series = findDetailMulti('Series', 'a')[0]; // Assuming single series link
-
-      // Journal Info (In: row)
-      const journalText = findDetail('In:');
-       // FIXED: Cast Array.from result and ensure predicate returns boolean
-       const thIn = (Array.from(doc.querySelectorAll('.description-tab table.table-striped th')) as Element[])
-                    .find((th: Element) => !!th.textContent?.trim().includes('In:'));
-
-       if (thIn) { // FIXED: Moved logic inside the guard
-           const tdIn = thIn.nextElementSibling as HTMLElement; // Access is safe within the guard
-           const journalLink = tdIn?.querySelector('a');
-           record.journal_title = journalLink?.textContent?.trim() || journalText?.split(',')[0].trim();
-
-           if (journalText) {
-               const volMatch = journalText.match(/Volume:\s*(\d+)/i);
-               const issueMatch = journalText.match(/Issue:\s*(\d+)/i);
-               const pagesMatch = journalText.match(/Pages:\s*(\d+(?:-\d+)?)/i);
-               record.volume = volMatch ? volMatch[1] : undefined;
-               record.issue = issueMatch ? issueMatch[1] : undefined;
-               record.pages = pagesMatch ? pagesMatch[1] : undefined;
-           }
-       }
-
-
-      // Abstract/Summary
-      record.abstract = findDetail('Summary:');
-
-      // URLs (Online Access: row, links with class 'fulltext')
-      record.urls = findUrlsInDetail('Online Access:');
-
-       // DOI (Look for DOI: label)
-       record.doi = findDetail('DOI:');
-
-
-       // Ensure arrays are initialized
-       record.authors = record.authors || [];
-       record.editors = record.editors || []; // HTML parsing might not easily get editors
-       record.subjects = record.subjects || [];
-       record.urls = record.urls || [];
-
-    } catch (error: any) {
-      log(`Error parsing IxTheo detail page HTML: ${error.message}`, 'error');
-    }
-    log(`Finished HTML detail page parsing. Result: ${JSON.stringify(record).substring(0, 300)}...`, 'log');
+      record.title = doc.querySelector('h3[property="name"]')?.textContent?.trim(); record.authors = findDetailMulti('Author:', 'span[property="name"]'); record.format = findDetailMulti('Format:', 'span.format').join(', ') || undefined; record.language = findDetail('Language:');
+      const pubTxt = findDetail('Published:'); if (pubTxt) { const ym = pubTxt.match(/(\d{4})/); record.year = ym ? ym[1] : undefined; let remTxt = pubTxt; if (record.year) remTxt = remTxt.replace(record.year, '').replace(/[,.\s]*$/, ''); const pts = remTxt.split(':'); if (pts.length > 1) { record.place_of_publication = pts[0].trim(); record.publisher_name = pts[1].split(',')[0].trim(); } else if (pts.length === 1 && !record.place_of_publication) { record.publisher_name = pts[0].trim(); } }
+      const subjRows = doc.querySelectorAll('.description-tab table.table-striped th'); const subjSet = new Set<string>(); subjRows.forEach((th: Element) => { if (th.textContent?.trim().startsWith('Subject')) { const td = th.nextElementSibling as HTMLElement; td?.querySelectorAll('a').forEach((lnk: Element) => { const txt = lnk.textContent?.trim(); if (txt) subjSet.add(txt); }); } }); record.subjects = Array.from(subjSet);
+      record.isbn = findDetail('ISBN:'); record.issn = findDetail('ISSN:'); record.extent = findDetail('Physical Description:'); record.series = findDetailMulti('Series', 'a')[0];
+      const jnlTxt = findDetail('In:'); const thIn = (Array.from(doc.querySelectorAll('.description-tab table.table-striped th')) as Element[]).find(th => !!th.textContent?.trim().includes('In:')); if (thIn) { const tdIn = thIn.nextElementSibling as HTMLElement; const jnlLnk = tdIn?.querySelector('a'); record.journal_title = jnlLnk?.textContent?.trim() || jnlTxt?.split(',')[0].trim(); if (jnlTxt) { const vm = jnlTxt.match(/Volume:\s*(\d+)/i); const im = jnlTxt.match(/Issue:\s*(\d+)/i); const pm = jnlTxt.match(/Pages:\s*(\d+(?:-\d+)?)/i); record.volume = vm ? vm[1] : undefined; record.issue = im ? im[1] : undefined; record.pages = pm ? pm[1] : undefined; } }
+      record.abstract = findDetail('Summary:'); record.urls = findUrlsInDetail('Online Access:'); record.doi = findDetail('DOI:');
+      record.authors = record.authors || []; record.editors = record.editors || []; record.subjects = record.subjects || []; record.urls = record.urls || [];
+    } catch (error: any) { log(`Error parsing IxTheo detail page HTML: ${error.message}`, 'error'); }
+    log(`Finished HTML detail page parsing.`);
     return record;
   }
 
-
+  /**
+   * Build SRU query string based on parameters and endpoint specifics.
+   * (SAFER version 2 - Prioritize DNB/ZDB known indexes)
+   */
   private static buildSruQuery(
-    // Accept the full SearchParams object
     params: import('./integration').SearchParams,
     endpointId: string
   ): string {
-    // --- NEW: Prioritize allFieldsTerm ---
-    if (params.allFieldsTerm && params.allFieldsTerm.trim() !== '') {
-        const searchTerm = params.allFieldsTerm.trim();
-        // Use specific 'woe' index for DNB and ZDB "Word Or Expression" search
-        if (endpointId === 'dnb' || endpointId === 'zdb') {
-            // Note: DNB/ZDB 'woe' typically doesn't require quotes around the value
-            return `woe=${searchTerm}`;
-        } else {
-            // Use standard CQL 'anywhere' index for other SRU endpoints
-            // Quote the value to handle spaces and special characters correctly in CQL
-            return `cql.anywhere all "${searchTerm}"`;
-        }
-        // If allFieldsTerm is present, we don't use the specific fields below
-    }
-    // --- END NEW ---
+    const isDnbOrZdb = endpointId === 'dnb' || endpointId === 'zdb';
 
-    // --- EXISTING LOGIC (Fallback if allFieldsTerm is empty) ---
+    // Prioritize allFieldsTerm
+    if (params.allFieldsTerm?.trim()) {
+        const searchTerm = params.allFieldsTerm.trim();
+        return isDnbOrZdb ? `woe=${searchTerm}` : `cql.anywhere all "${searchTerm}"`; // Use woe for DNB/ZDB
+    }
+
+    const queryParts: string[] = [];
     const endpointInfo = SRU_ENDPOINTS[endpointId];
     const examples = endpointInfo?.examples || {};
-    const queryParts: string[] = [];
 
-    // Helper function remains unchanged
     const formatPart = (key: 'title' | 'author' | 'isbn', value: string | undefined): string | null => {
-        if (!value || value.trim() === '') return null; // Also check for empty/whitespace-only strings
-        const trimmedValue = value.trim(); // Use trimmed value
+        if (!value?.trim()) return null;
+        const trimmedValue = value.trim();
 
-        const example = examples[key];
-        if (example) {
-            // Use example format if available
-            if (typeof example === 'string') {
-                if (example.includes('=')) {
-                    const parts = example.split('=');
-                    const prefix = parts[0].trim();
-                    const isQuoted = parts[1].trim().startsWith('"');
-                    return isQuoted ? `${prefix}="${trimmedValue}"` : `${prefix}=${trimmedValue}`;
-                } else if (example.includes(' any ')) {
-                    const parts = example.split(' any ');
-                    return `${parts[0]} any "${trimmedValue}"`;
-                } else if (example.includes(' all ')) {
-                     const parts = example.split(' all ');
-                     return `${parts[0]} all "${trimmedValue}"`;
-                }
-            } else if (typeof example === 'object') {
-                 // Handle advanced example structure if needed (e.g., DNB)
-                 // This part might need refinement based on how examples are structured
-                 ztoolkit.log(`Using advanced example structure for ${key} - needs specific handling`, 'warn');
-                 // Example fallback for DNB-like structure
-                 const prefix = Object.keys(example)[0]; // e.g., TIT
-                 return `${prefix}=${trimmedValue}`;
+        // --- START FIX: Prioritize DNB/ZDB known indexes ---
+        if (isDnbOrZdb) {
+            switch (key) {
+                case 'title': return `TIT=${trimmedValue}`;
+                case 'author': return `PER=${trimmedValue}`;
+                case 'isbn': return (endpointId === 'zdb') ? `ISS=${trimmedValue}` : `NUM=${trimmedValue}`; // ZDB uses ISS for ISSN/ISBN? DNB uses NUM. Defaulting DNB to NUM.
             }
         }
-        // Fallback formats if no example matches
+        // --- END FIX ---
+
+        // --- Fallback to using examples object (with safer access) ---
+        const example = examples[key];
+        if (example) {
+            if (typeof example === 'string') {
+                if (example.includes('=')) {
+                    // Safer split and check
+                    const parts = example.split('=', 2);
+                    const prefix = parts[0].trim();
+                    const suffixTemplate = parts[1] || ''; // Default to empty string if no suffix part
+                    return suffixTemplate.trim().startsWith('"') ? `${prefix}="${trimmedValue}"` : `${prefix}=${trimmedValue}`;
+                } else if (example.includes(' any ')) {
+                    const [prefix] = example.split(' any ', 1);
+                    return `${prefix} any "${trimmedValue}"`;
+                } else if (example.includes(' all ')) {
+                    const [prefix] = example.split(' all ', 1);
+                    return `${prefix} all "${trimmedValue}"`;
+                } else {
+                    // Assume it's just a prefix if no operator/equals found
+                    return `${example}=${trimmedValue}`; // Default to equals if unsure
+                }
+            } else if (typeof example === 'object' && example !== null) {
+                const prefix = example.prefix || '';
+                const operator = example.operator || '='; // Default operator
+                if (prefix) {
+                    return operator === '=' ? `${prefix}${trimmedValue}` : `${prefix} ${operator} "${trimmedValue}"`;
+                }
+            }
+        }
+        // --- End Fallback ---
+
+        // --- Generic Fallback (if no DNB/ZDB and no example found) ---
+        // This part might be less necessary now but kept for other endpoints
         switch (key) {
-            case 'isbn':
-                switch (endpointId) {
-                    case 'dnb': return `ISBN=${trimmedValue}`;
-                    case 'bnf': return `bib.isbn any "${trimmedValue}"`;
-                    case 'zdb': return `ISS=${trimmedValue}`; // ZDB uses ISS for ISSN/ISBN
-                    default: return `isbn=${trimmedValue}`; // Common default
-                }
-            case 'author':
-                 switch (endpointId) {
-                    case 'dnb': return `PER=${trimmedValue}`;
-                    case 'bnf': return `bib.author any "${trimmedValue}"`;
-                    default: return `author="${trimmedValue}"`; // Common default
-                }
-            case 'title':
-                 switch (endpointId) {
-                    case 'dnb': return `TIT=${trimmedValue}`;
-                    case 'bnf': return `bib.title any "${trimmedValue}"`;
-                    default: return `title="${trimmedValue}"`; // Common default
-                }
+            case 'isbn': return (endpointId === 'bnf') ? `bib.isbn any "${trimmedValue}"` : `isbn=${trimmedValue}`;
+            case 'author': return (endpointId === 'bnf') ? `bib.author any "${trimmedValue}"` : `author="${trimmedValue}"`;
+            case 'title': return (endpointId === 'bnf') ? `bib.title any "${trimmedValue}"` : `title="${trimmedValue}"`;
         }
         return null;
     };
 
-
-    // Prioritize ISBN (using the potentially updated params object)
+    // Build query parts (ISBN takes precedence if present)
     const isbnQuery = formatPart('isbn', params.isbn);
-    if (isbnQuery) return isbnQuery;
+    if (isbnQuery) return isbnQuery; // If ISBN is searched, return only that
 
-    // Combine Title and Author (using the potentially updated params object)
     const titleQuery = formatPart('title', params.title);
     const authorQuery = formatPart('author', params.author);
-
     if (titleQuery) queryParts.push(titleQuery);
     if (authorQuery) queryParts.push(authorQuery);
 
     if (queryParts.length === 0) {
-        // Return empty string if no terms provided (neither allFields nor specific fields)
+        // Should not happen if validation passed, but return empty if it does
+        ztoolkit.log("No valid SRU query parts generated.", 'warn');
         return '';
     }
 
-    // Join with appropriate operator (AND is common, BNF uses 'and')
+    // Join multiple parts (e.g., title AND author)
     const joinOperator = (endpointId === 'bnf') ? ' and ' : ' AND ';
     return queryParts.join(joinOperator);
-    // --- END EXISTING LOGIC ---
   }
 
+   /**
+    * Helper to show a debug dialog (implementation unchanged).
+    */
    private static showDebugDialog(title: string, message: string, debugInfo: string): void {
         try {
           const dialogHelper = new ztoolkit.Dialog(12, 1)
@@ -1324,9 +900,7 @@ private static async executeOaiSearch(
         } catch (e) {
           console.error(`${title}: ${message}`);
           console.error(debugInfo);
-          try {
-            Zotero.getMainWindow()?.alert(`${title}\n\n${message}\n\n(See console for full debug info)`);
-          } catch { /* ignore */ }
+          try { Zotero.getMainWindow()?.alert(`${title}\n\n${message}\n\n(See console for full debug info)`); } catch { /* ignore */ }
         }
    }
 

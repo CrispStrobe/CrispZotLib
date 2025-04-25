@@ -16,10 +16,29 @@ search-dialog-script-path = Script Path:
 search-dialog-search-section = Search Parameters
 search-dialog-protocol = Protocol:
 search-dialog-endpoint = Endpoint:
+
+# SRU Specific (Example, might not be needed if handled dynamically)
+# search-dialog-schema = Schema:
+# search-dialog-schema-default = Endpoint Default
+# search-dialog-schema-marcxml = MARCXML
+# search-dialog-schema-dc = Dublin Core
+
+# OAI Specific
+search-dialog-oai-set = Set:
+search-dialog-oai-update-sets = Update Sets
+search-dialog-oai-prefix = Metadata Prefix:
+search-dialog-oai-from = From Date:
+search-dialog-oai-until = Until Date:
+
+# Search / Filter Fields
+search-dialog-allfields = All Fields:
+search-dialog-allfields-disabled-oai-tooltip = "All Fields" search is not available for OAI-PMH protocol. Use specific fields or OAI harvesting options.
 search-dialog-title-field = Title:
 search-dialog-author = Author:
 search-dialog-isbn = ISBN/ISSN:
 search-dialog-max-results = Max Results:
+
+# Buttons and Status
 search-dialog-search-button = Search
 search-dialog-cancel-button = Cancel
 search-dialog-searching = Searching...

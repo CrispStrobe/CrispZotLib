@@ -2,7 +2,8 @@
 // Updated layout for results dialog
 
 import { BiblioRecord } from './models';
-import { openSearchDialog, createStyledDialog } from './searchDialog'; // Assuming createStyledDialog is correctly defined here
+import { openSearchDialog } from './searchDialog';
+import { createStyledDialog } from '../../utils/dialogUtils'; 
 import { SearchService } from './searchService';
 import { getString } from "../../utils/locale";
 import { config } from "../../../package.json";
@@ -11,13 +12,22 @@ import { config } from "../../../package.json";
 export type SearchParams = {
   protocol: string;
   endpoint: string;
+  // OAI Harvesting Params
+  set?: string;
+  metadataPrefix?: string;
+  from?: string;
+  until?:string;
+  // SRU Schema
+  schema?: string;
+  // Local Filtering Params (used by SRU query builder and OAI local filter)
   title?: string;
   author?: string;
   isbn?: string;
-  allFieldsTerm?: string; 
-  schema?: string; // Include schema if implementing schema selection
+  allFieldsTerm?: string;
+  // Pagination & Limit
   maxRecords: number;
-  startRecord?: number; // Optional, for pagination
+  startRecord?: number; // Primarily for SRU/IxTheo page calculation
+  resumptionToken?: string; // For OAI pagination
 };
 
 // Define an interface for results dialog data
