@@ -13,8 +13,8 @@ This plugin allows you to search various library catalogs and repositories direc
 ## Installation
 
 1.  Download the latest release `.xpi` file from the [Releases](https://github.com/CrispStrobe/CrispZotLib/releases) page.
-2.  In Zotero, go to `Tools` → `Add-ons`.
-3.  Click the gear icon and select "Install Add-on From File...".
+2.  In Zotero, go to `Tools` → `Plugins`.
+3.  Click the gear icon and select "Install Plugin From File...".
 4.  Select the downloaded `.xpi` file and click "Install".
 5.  Restart Zotero if prompted.
 
