@@ -16,7 +16,7 @@
     "url": "git+https://github.com/CrispStrobe/CrispZotLib.git"
   },
   "author": "CrispStrobe",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "scripts": {
     "start": "zotero-plugin serve",
     "build": "zotero-plugin build && tsc --noEmit",
