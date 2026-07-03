@@ -65,6 +65,12 @@ function escapeBibtex(value: string): string {
   return value.replace(/([#$%&_{}])/g, '\\$1');
 }
 
+// RIS is a line-based format: an embedded newline in a value (common in abstracts)
+// splits it into malformed tag-less lines. Collapse newlines to spaces.
+function sanitizeRisValue(value: string): string {
+  return String(value).replace(/[\r\n]+/g, ' ').trim();
+}
+
 // Canonical mapping from a BiblioRecord to a Zotero item type. `document_type`
 // (computed by the SRU/OAI parsers) wins; otherwise fall back to heuristics.
 // ISBN is checked before ISSN so a book carrying a series ISSN is not
@@ -244,7 +250,7 @@ export function formatRecordRis(record: BiblioRecord): string {
       ris.push(`ID  - ${record.id}`);
       
       // Add title
-      ris.push(`TI  - ${record.title}`);
+      ris.push(`TI  - ${sanitizeRisValue(record.title)}`);
       
       // Add authors
       for (const author of record.authors) {
@@ -354,7 +360,7 @@ export function formatRecordRis(record: BiblioRecord): string {
       
       // Add abstract
       if (record.abstract) {
-        ris.push(`AB  - ${record.abstract}`);
+        ris.push(`AB  - ${sanitizeRisValue(record.abstract)}`);
       }
       
       // Add keywords (from subjects)

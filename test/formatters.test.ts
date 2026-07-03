@@ -119,6 +119,18 @@ describe('formatRecordRis', () => {
     const auLines = out.split('\n').filter((l) => l.startsWith('AU  -'));
     expect(auLines).toHaveLength(2);
   });
+
+  it('collapses newlines in title/abstract so RIS lines stay well-formed', () => {
+    const out = formatRecordRis(
+      rec({ title: 'Line one\nline two', abstract: 'para one\n\npara two' }),
+    );
+    // No line may start without a two-letter RIS tag + "  - ".
+    for (const line of out.split('\n')) {
+      if (line.trim()) expect(line).toMatch(/^[A-Z][A-Z0-9] {2}- /);
+    }
+    expect(out).toContain('TI  - Line one line two');
+    expect(out).toContain('AB  - para one para two');
+  });
 });
 
 describe("formatRecord('zotero')", () => {
