@@ -8,7 +8,8 @@ import { OAIClient } from "./oaiClient";
 import { SRU_ENDPOINTS, OAI_ENDPOINTS, IXTHEO_ENDPOINTS } from "./endpoints";
 import { SRUEndpoint, OAIEndpoint, IxTheoEndpoint  } from "./models";
 import { LibrarySearchIntegration, SearchParams } from "./integration";
-import { SearchService } from "./searchService"; 
+import { SearchService } from "./searchService";
+import { resolveIdentifier, detectIdentifierType } from "./identifierResolver";
 
 
 /**
@@ -300,6 +301,32 @@ export async function openSearchDialog(): Promise<void> {
           } finally { dialogData.searching = false; if (searchButton) { searchButton.disabled = false; searchButton.textContent = getString("search-dialog-search-button"); } }
       },
       noClose: true
+    })
+    .addButton("Import by Identifier", "resolve-id", {
+      noClose: true,
+      callback: async () => {
+        const win = dialogHelper.window as Window | undefined;
+        if (!win) return;
+        const input = win.prompt("Enter a DOI, PMID, ISBN, or URL to resolve and import:");
+        if (!input || !input.trim()) return;
+        const identifier = input.trim();
+        if (!detectIdentifierType(identifier)) {
+          win.alert(`"${identifier}" doesn't look like a DOI, PMID, ISBN, or URL.`);
+          return;
+        }
+        const btn = win.document?.getElementById("resolve-id") as HTMLButtonElement | null;
+        try {
+          if (btn) { btn.disabled = true; btn.textContent = "Resolving…"; }
+          const record = await resolveIdentifier(identifier);
+          const count = await LibrarySearchIntegration.importToZotero([record]);
+          win.alert(count > 0 ? `Imported: ${record.title}` : `Could not import "${identifier}".`);
+        } catch (e: any) {
+          ztoolkit.log(`[LibrarySearch] Identifier import failed: ${e?.message || e}`, "error");
+          win.alert(`Could not resolve "${identifier}": ${e?.message || e}`);
+        } finally {
+          if (btn) { btn.disabled = false; btn.textContent = "Import by Identifier"; }
+        }
+      },
     })
     .addButton(getString("search-dialog-cancel-button"), "cancel");
 
