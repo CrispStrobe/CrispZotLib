@@ -82,7 +82,7 @@ export class PathUtils {
       }
     } catch (e) {
       ztoolkit.log("Error selecting file:", e);
-      throw new Error("Could not open file picker: " + e);
+      throw new Error(`Could not open file picker: ${e}`, { cause: e });
     }
   }
 

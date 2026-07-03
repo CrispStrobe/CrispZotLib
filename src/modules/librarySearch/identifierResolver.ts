@@ -309,8 +309,7 @@ export async function resolveIdentifier(
 ): Promise<BiblioRecord> {
   const timeoutMs = opts.timeoutMs ?? 15000;
   const t = (opts.type || detectIdentifierType(identifier) || "") as
-    | IdentifierType
-    | "";
+    IdentifierType | "";
   switch (t) {
     case "doi":
       return resolveDoi(identifier, timeoutMs);

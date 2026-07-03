@@ -60,6 +60,7 @@ interface Window {
 // Global declarations
 declare global {
   // Standard globalThis extensions
+  // eslint-disable-next-line no-shadow-restricted-names -- intentional ambient augmentation of the real globalThis
   var globalThis: {
     addEventListener: typeof window.addEventListener;
     removeEventListener: typeof window.removeEventListener;

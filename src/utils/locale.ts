@@ -14,8 +14,7 @@ interface LocaleData {
     ) => Array<{
       value: string;
       attributes?:
-        | Array<{ name: string; value: string }>
-        | Record<string, string>;
+        Array<{ name: string; value: string }> | Record<string, string>;
     }>;
   };
   fallbackMap: Record<
