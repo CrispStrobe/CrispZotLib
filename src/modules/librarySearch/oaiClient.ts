@@ -2,6 +2,7 @@
 // OAI-PMH protocol client implementation - Fixed version
 
 import { BiblioRecord } from './models';
+import { fetchWithTimeout } from './httpUtils';
 
 // OAI-PMH Client class
 export class OAIClient {
@@ -322,12 +323,12 @@ export class OAIClient {
         ztoolkit.log(`${logPrefix} Executing initial ListRecords.`);
       }
 
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: { 'Accept': 'application/xml' },
-        // timeout: this.timeout // Fetch doesn't directly support timeout like Python requests
-        // Consider using AbortController for timeout: https://developer.mozilla.org/en-US/docs/Web/API/AbortController
-      });
+      const response = await fetchWithTimeout(
+        url,
+        { method: 'GET', headers: { 'Accept': 'application/xml' } },
+        this.timeout,
+        2,
+      );
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Could not read error response body');
@@ -421,11 +422,12 @@ export class OAIClient {
       console.log(`${logPrefix} Executing: ${url}`);
       ztoolkit.log(`${logPrefix} Executing: ${url}`); // Use ztoolkit logger too
 
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: { 'Accept': 'application/xml' }
-        // Consider adding AbortController for timeout if needed
-      });
+      const response = await fetchWithTimeout(
+        url,
+        { method: 'GET', headers: { 'Accept': 'application/xml' } },
+        this.timeout,
+        2,
+      );
 
       if (!response.ok) {
         // Log detailed error before throwing
@@ -515,10 +517,12 @@ export class OAIClient {
       console.log(`${logPrefix} Executing: ${url}`);
       ztoolkit.log(`${logPrefix} Executing: ${url}`);
 
-      const response = await fetch(url, {
-         method: 'GET',
-         headers: { 'Accept': 'application/xml' },
-      });
+      const response = await fetchWithTimeout(
+        url,
+        { method: 'GET', headers: { 'Accept': 'application/xml' } },
+        this.timeout,
+        2,
+      );
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Could not read error response body');
@@ -610,10 +614,12 @@ export class OAIClient {
       console.log(`${logPrefix} Executing: ${url}`);
       ztoolkit.log(`${logPrefix} Executing ListIdentifiers.`);
 
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: { 'Accept': 'application/xml' },
-      });
+      const response = await fetchWithTimeout(
+        url,
+        { method: 'GET', headers: { 'Accept': 'application/xml' } },
+        this.timeout,
+        2,
+      );
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Could not read error response body');
@@ -723,10 +729,12 @@ export class OAIClient {
       ztoolkit.log(`${logPrefix} Executing GetRecord for ${identifier}.`);
 
 
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: { 'Accept': 'application/xml' },
-      });
+      const response = await fetchWithTimeout(
+        url,
+        { method: 'GET', headers: { 'Accept': 'application/xml' } },
+        this.timeout,
+        2,
+      );
 
       if (!response.ok) {
          // Handle specific errors like idDoesNotExist more gracefully

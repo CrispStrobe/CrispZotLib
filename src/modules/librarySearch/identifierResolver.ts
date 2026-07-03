@@ -10,6 +10,7 @@
 //   resolveIdentifier(id, { type?, timeout? }): Promise<BiblioRecord>
 
 import { BiblioRecord } from './models';
+import { fetchWithTimeout as httpFetch } from './httpUtils';
 
 export type IdentifierType = 'doi' | 'pmid' | 'pmcid' | 'isbn' | 'url';
 
@@ -32,19 +33,13 @@ function emptyRecord(id: string): BiblioRecord {
   };
 }
 
-/** fetch() with an AbortController-based timeout. */
+/** fetch() with an AbortController-based timeout (delegates to the shared helper). */
 async function fetchWithTimeout(
   url: string,
   headers: Record<string, string>,
   timeoutMs: number,
 ): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { headers, redirect: 'follow', signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
+  return httpFetch(url, { headers, redirect: 'follow' }, timeoutMs);
 }
 
 // ── Detection ────────────────────────────────────────────────────────────────

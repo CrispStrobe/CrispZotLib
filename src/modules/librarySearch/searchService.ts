@@ -5,25 +5,10 @@ import { SRUClient } from './sruClient';
 import { OAIClient } from './oaiClient'; // Ensure this is the updated OAIClient
 import { SRU_ENDPOINTS, OAI_ENDPOINTS, IXTHEO_ENDPOINTS } from './endpoints';
 import { getPref } from '../../utils/prefs';
+import { fetchWithTimeout } from './httpUtils';
 
 // Assuming SearchParams is correctly defined in integration.ts
 // import { SearchParams } from './integration'; // Adjust path if needed
-
-// fetch() with an AbortController timeout. The raw IxTheo requests are otherwise
-// unbounded — a hung server would leave the results dialog stuck on "Loading…".
-async function fetchWithTimeout(
-  url: string,
-  init: RequestInit = {},
-  timeoutMs = 30000,
-): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 /**
  * SearchService - Implements a pure TypeScript search system
@@ -846,15 +831,19 @@ export class SearchService {
     record.raw_data = htmlText;
     try {
       const win = Zotero.getMainWindow(); if (!win || !win.DOMParser) throw new Error("DOMParser not available."); const parser = new win.DOMParser(); const doc = parser.parseFromString(htmlText, 'text/html');
-      const findDetail = (lbl: string) => { const ths = doc.querySelectorAll('.description-tab table.table-striped th'); for (const th of ths) if (th.textContent?.trim().includes(lbl)) return (th.nextElementSibling as HTMLElement)?.textContent?.trim(); return undefined; };
-      const findDetailMulti = (lbl: string, sel: string = 'span, a') => { const v: string[] = []; const ths = doc.querySelectorAll('.description-tab table.table-striped th'); for (const th of ths) if (th.textContent?.trim().includes(lbl)) { const td = th.nextElementSibling as HTMLElement; if (td) td.querySelectorAll(sel).forEach((el: Element) => { const txt = el.textContent?.trim(); if (txt && !v.includes(txt)) v.push(txt); }); break; } return v; };
-      const findUrlsInDetail = (lbl: string) => { const u: string[] = []; const ths = doc.querySelectorAll('.description-tab table.table-striped th'); for (const th of ths) if (th.textContent?.trim().includes(lbl)) { const td = th.nextElementSibling as HTMLElement; td?.querySelectorAll('a[href]').forEach((lnk: Element) => { const hr = lnk.getAttribute('href'); if (hr && hr.startsWith('http') && !u.includes(hr)) u.push(hr); }); break; } return u; };
+      // The detail table's header cells are queried by every helper below and by
+      // the subject/journal blocks — resolve the NodeList once (the DOM is not
+      // mutated during parsing) instead of re-scanning the whole document ~13x.
+      const ths = doc.querySelectorAll('.description-tab table.table-striped th');
+      const findDetail = (lbl: string) => { for (const th of ths) if (th.textContent?.trim().includes(lbl)) return (th.nextElementSibling as HTMLElement)?.textContent?.trim(); return undefined; };
+      const findDetailMulti = (lbl: string, sel: string = 'span, a') => { const v: string[] = []; for (const th of ths) if (th.textContent?.trim().includes(lbl)) { const td = th.nextElementSibling as HTMLElement; if (td) td.querySelectorAll(sel).forEach((el: Element) => { const txt = el.textContent?.trim(); if (txt && !v.includes(txt)) v.push(txt); }); break; } return v; };
+      const findUrlsInDetail = (lbl: string) => { const u: string[] = []; for (const th of ths) if (th.textContent?.trim().includes(lbl)) { const td = th.nextElementSibling as HTMLElement; td?.querySelectorAll('a[href]').forEach((lnk: Element) => { const hr = lnk.getAttribute('href'); if (hr && hr.startsWith('http') && !u.includes(hr)) u.push(hr); }); break; } return u; };
 
       record.title = doc.querySelector('h3[property="name"]')?.textContent?.trim(); record.authors = findDetailMulti('Author:', 'span[property="name"]'); record.format = findDetailMulti('Format:', 'span.format').join(', ') || undefined; record.language = findDetail('Language:');
       const pubTxt = findDetail('Published:'); if (pubTxt) { const ym = pubTxt.match(/(\d{4})/); record.year = ym ? ym[1] : undefined; let remTxt = pubTxt; if (record.year) remTxt = remTxt.replace(record.year, '').replace(/[,.\s]*$/, ''); const pts = remTxt.split(':'); if (pts.length > 1) { record.place_of_publication = pts[0].trim(); record.publisher_name = pts[1].split(',')[0].trim(); } else if (pts.length === 1 && !record.place_of_publication) { record.publisher_name = pts[0].trim(); } }
-      const subjRows = doc.querySelectorAll('.description-tab table.table-striped th'); const subjSet = new Set<string>(); subjRows.forEach((th: Element) => { if (th.textContent?.trim().startsWith('Subject')) { const td = th.nextElementSibling as HTMLElement; td?.querySelectorAll('a').forEach((lnk: Element) => { const txt = lnk.textContent?.trim(); if (txt) subjSet.add(txt); }); } }); record.subjects = Array.from(subjSet);
+      const subjSet = new Set<string>(); ths.forEach((th: Element) => { if (th.textContent?.trim().startsWith('Subject')) { const td = th.nextElementSibling as HTMLElement; td?.querySelectorAll('a').forEach((lnk: Element) => { const txt = lnk.textContent?.trim(); if (txt) subjSet.add(txt); }); } }); record.subjects = Array.from(subjSet);
       record.isbn = findDetail('ISBN:'); record.issn = findDetail('ISSN:'); record.extent = findDetail('Physical Description:'); record.series = findDetailMulti('Series', 'a')[0];
-      const jnlTxt = findDetail('In:'); const thIn = (Array.from(doc.querySelectorAll('.description-tab table.table-striped th')) as Element[]).find(th => !!th.textContent?.trim().includes('In:')); if (thIn) { const tdIn = thIn.nextElementSibling as HTMLElement; const jnlLnk = tdIn?.querySelector('a'); record.journal_title = jnlLnk?.textContent?.trim() || jnlTxt?.split(',')[0].trim(); if (jnlTxt) { const vm = jnlTxt.match(/Volume:\s*(\d+)/i); const im = jnlTxt.match(/Issue:\s*(\d+)/i); const pm = jnlTxt.match(/Pages:\s*(\d+(?:-\d+)?)/i); record.volume = vm ? vm[1] : undefined; record.issue = im ? im[1] : undefined; record.pages = pm ? pm[1] : undefined; } }
+      const jnlTxt = findDetail('In:'); const thIn = (Array.from(ths) as Element[]).find(th => !!th.textContent?.trim().includes('In:')); if (thIn) { const tdIn = thIn.nextElementSibling as HTMLElement; const jnlLnk = tdIn?.querySelector('a'); record.journal_title = jnlLnk?.textContent?.trim() || jnlTxt?.split(',')[0].trim(); if (jnlTxt) { const vm = jnlTxt.match(/Volume:\s*(\d+)/i); const im = jnlTxt.match(/Issue:\s*(\d+)/i); const pm = jnlTxt.match(/Pages:\s*(\d+(?:-\d+)?)/i); record.volume = vm ? vm[1] : undefined; record.issue = im ? im[1] : undefined; record.pages = pm ? pm[1] : undefined; } }
       record.abstract = findDetail('Summary:'); record.urls = findUrlsInDetail('Online Access:'); record.doi = findDetail('DOI:');
       record.authors = record.authors || []; record.editors = record.editors || []; record.subjects = record.subjects || []; record.urls = record.urls || [];
     } catch (error: any) { log(`Error parsing IxTheo detail page HTML: ${error.message}`, 'error'); }
@@ -955,39 +944,5 @@ export class SearchService {
     const joinOperator = (endpointId === 'bnf') ? ' and ' : ' AND ';
     return queryParts.join(joinOperator);
   }
-
-   /**
-    * Helper to show a debug dialog (implementation unchanged).
-    */
-   private static showDebugDialog(title: string, message: string, debugInfo: string): void {
-        try {
-          const dialogHelper = new ztoolkit.Dialog(12, 1)
-            .addCell(0, 0, { tag: "h2", properties: { innerHTML: title } })
-            .addCell(1, 0, { tag: "p", properties: { innerHTML: message } })
-            .addCell(2, 0, { tag: "h3", properties: { innerHTML: "Debug Information:" } })
-            .addCell(3, 0, {
-              tag: "textarea", namespace: "html",
-              attributes: { readonly: "true" },
-              properties: { value: debugInfo, rows: 20, cols: 80 },
-              styles: { width: "100%", fontFamily: "monospace", whiteSpace: "pre", fontSize: "12px" }
-            })
-            .addButton("Copy to Clipboard", "copy", {
-              callback: () => {
-                const win = dialogHelper.window;
-                const textarea = win?.document.querySelector("textarea");
-                if (textarea) {
-                  textarea.select();
-                  win?.document.execCommand("copy");
-                }
-              }, noClose: true
-            })
-            .addButton("Close", "close");
-          dialogHelper.open(title, { width: 800, height: 600 });
-        } catch (e) {
-          console.error(`${title}: ${message}`);
-          console.error(debugInfo);
-          try { Zotero.getMainWindow()?.alert(`${title}\n\n${message}\n\n(See console for full debug info)`); } catch { /* ignore */ }
-        }
-   }
 
 } // End of SearchService class

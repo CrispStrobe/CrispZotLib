@@ -102,8 +102,22 @@ New SRU added (verified live; the example-driven `buildSruQuery` handles their i
 
 ## Phase 5 — Cross‑repo parity & tests
 - [ ] **5.1** Single shared **endpoint manifest** (JSON) consumed by all three, so an endpoint fix lands once. TS reads it directly; Python loads the same file.
-- [ ] **5.2** Adopt citer's offline **record/replay** test pattern in CrispZotLib: cache real SRU/OAI XML fixtures, assert TS parsers offline (needs an XPath shim for `@xmldom` on the SRU path).
+- [~] **5.2** Adopt citer's offline **record/replay** test pattern in CrispZotLib: cache real SRU/OAI XML fixtures, assert TS parsers offline. SRU MARC path no longer needs an `@xmldom` XPath shim — `indexMarcRecord` (6.2) is `doc.evaluate`-free and offline-tested; OAI/DC paths still need the shim.
 - [ ] **5.3** Parity checklist: same endpoints, same query‑index mapping, same parse fields, same BibTeX/RIS output across all three.
+
+---
+
+## Phase 6 — Performance & hardening (2026‑07‑03)
+
+Internal optimization pass — no endpoint or user‑facing behaviour changes. Gate: `tsc` clean · 44 vitest pass (+6 new) · eslint clean · bundle builds.
+
+- [x] **6.1 Shared HTTP timeout + retry.** New `librarySearch/httpUtils.ts` — `fetchWithTimeout(url, init, timeoutMs, retries)` with an `AbortController` timeout **and** exponential‑backoff retry (network errors / timeouts / 5xx). Wired into all 5 `oaiClient` fetches + the `sruClient` fetch (`retries=2`); the two pre‑existing copies in `searchService`/`identifierResolver` collapsed onto it. Extends 2.11 (was IxTheo‑only) to every client — a hung catalog can no longer stall a search indefinitely (the `timeout` field was stored but never applied).
+- [x] **6.2 SRU MARCXML parse: one‑pass index.** `parseMarcXml` ran `doc.evaluate('.//*[local-name()=…]')` (full subtree scan) on each of ~30 field lookups per record. New pure, exported `indexMarcRecord()` walks the record once (namespace‑agnostic via `getElementsByTagNameNS`/`localName`, no `doc.evaluate`). 4 dead XPath helpers removed. Now offline‑testable → `test/marcIndex.test.ts` (6 cases); previously zero coverage. Unblocks the SRU half of 5.2.
+- [x] **6.3 IxTheo detail HTML: hoist NodeList.** `parseIxTheoDetailPageHtml` re‑ran the same `querySelectorAll('.description-tab … th')` ~13×/record; resolved once and shared.
+- [x] **6.4 Dead code / dedup.** Removed the duplicated `createStyledDialog` from `searchDialog.ts` (now imports `utils/dialogUtils`), dead `showDebugDialog`, and the `find_script*.sh` scratch scripts. Bundle 397,453 → 393,394 B.
+- [x] **6.5 CI.** Added a `test` job (`npm test` was never run in CI); fixed the build artifact path (`build` → `.scaffold/build/*.xpi`, which was archiving nothing); `npm install` → `npm ci` across all workflows.
+- [!] **6.6 OAI DNB N+1.** `oaiClient.searchWithIdentifiers` fetches records one‑by‑one via `GetRecord` (up to ~100 round‑trips). Switching to `ListRecords` is the real win but is a deliberate 413‑avoidance workaround (`oaiClient.ts:207`) with no test coverage — needs a live DNB test before changing.
+- [!] **6.7 Repo‑wide Prettier drift.** `prettier --check .` flags 45 files incl. ones untouched by this pass (`tsconfig.json`, `typings/`), so the `lint` CI job is red on its own baseline. Left alone (a repo‑wide `--write` would fight the intentional dense one‑liners). Decide: reformat all vs. scope via `.prettierignore`.
 
 ---
 

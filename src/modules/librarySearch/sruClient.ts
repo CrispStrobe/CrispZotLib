@@ -2,6 +2,7 @@
 
 import { BiblioRecord } from './models';
 import { NAMESPACES } from './endpoints';
+import { fetchWithTimeout } from './httpUtils';
 
 // Helper function to escape special characters in a query string
 export function escapeQueryString(query: string): string {
@@ -21,6 +22,89 @@ export function cleanPersonName(name: string): string {
   n = n.replace(/\s*\(\s*\d{3,4}\s*-\s*\d{0,4}\.?\s*\)\s*$/, '');
   n = n.replace(/,?\s*\d{4}\s*-\s*\d{0,4}\s*$/, '');
   return n.trim().replace(/,\s*$/, '').trim();
+}
+
+/** Fast lookups over a single MARCXML record. */
+export interface MarcIndex {
+  /** Datafield elements for a tag, optionally filtered by first indicator. */
+  getFields(tag: string, ind1?: string): Element[];
+  /** Trimmed text of every matching subfield across all fields of `tag`. */
+  getData(tag: string, code: string): string[];
+  /** First subfield element with `code` inside `field`, or null. */
+  getSub(field: Element, code: string): Element | null;
+  /** The record's leader text, or null. */
+  leader: string | null;
+}
+
+/**
+ * Build a one-pass index of a MARCXML record's datafields/subfields.
+ *
+ * The previous approach called `doc.evaluate('.//*[local-name()=…]')` — a full
+ * subtree scan — on every one of the ~30 field lookups per record, re-walking
+ * the whole record each time. This walks it once: all datafields are grouped by
+ * tag up front, subfields are read from each field's direct children on first
+ * access and cached. It is also namespace-agnostic (via `getElementsByTagNameNS`
+ * and `localName`) and free of `doc.evaluate`, so it is unit-testable offline.
+ *
+ * @param element          The MARCXML record element (marc:record / recordData).
+ * @param elementNodeType  `Node.ELEMENT_NODE` from the host DOM.
+ */
+export function indexMarcRecord(element: Element, elementNodeType: number): MarcIndex {
+  const fieldsByTag = new Map<string, Element[]>();
+  const datafields = element.getElementsByTagNameNS('*', 'datafield');
+  for (let i = 0; i < datafields.length; i++) {
+    const f = datafields[i];
+    const tag = f.getAttribute('tag');
+    if (!tag) continue;
+    const arr = fieldsByTag.get(tag);
+    if (arr) arr.push(f);
+    else fieldsByTag.set(tag, [f]);
+  }
+
+  // Subfield maps are computed lazily per field and cached (a field's subfields
+  // are often read under several codes, e.g. 245$a then 245$b).
+  const subCache = new Map<Element, Map<string, Element[]>>();
+  const subfieldsOf = (field: Element): Map<string, Element[]> => {
+    const cached = subCache.get(field);
+    if (cached) return cached;
+    const m = new Map<string, Element[]>();
+    const kids = field.childNodes;
+    for (let i = 0; i < kids.length; i++) {
+      const n = kids[i] as unknown as Element;
+      if (n.nodeType === elementNodeType && n.localName === 'subfield') {
+        const code = n.getAttribute('code');
+        if (code == null) continue;
+        const arr = m.get(code);
+        if (arr) arr.push(n);
+        else m.set(code, [n]);
+      }
+    }
+    subCache.set(field, m);
+    return m;
+  };
+
+  const leaderEls = element.getElementsByTagNameNS('*', 'leader');
+  const leader = leaderEls.length ? (leaderEls[0].textContent ?? null) : null;
+
+  return {
+    getFields(tag: string, ind1?: string): Element[] {
+      const fs = fieldsByTag.get(tag) ?? [];
+      return ind1 ? fs.filter((f) => f.getAttribute('ind1') === ind1) : fs.slice();
+    },
+    getData(tag: string, code: string): string[] {
+      const out: string[] = [];
+      for (const f of fieldsByTag.get(tag) ?? []) {
+        for (const sf of subfieldsOf(f).get(code) ?? []) {
+          if (sf.textContent) out.push(sf.textContent.trim());
+        }
+      }
+      return out;
+    },
+    getSub(field: Element, code: string): Element | null {
+      return subfieldsOf(field).get(code)?.[0] ?? null;
+    },
+    leader,
+  };
 }
 
 // SRU Client class
@@ -140,7 +224,12 @@ export class SRUClient {
       const url = this.buildQueryUrl(query, schema, maxRecords, startRecord);
       ztoolkit.log(`Executing SRU query: ${url}`);
 
-      const response = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/xml' } });
+      const response = await fetchWithTimeout(
+        url,
+        { method: 'GET', headers: { 'Accept': 'application/xml' } },
+        this.timeout,
+        2,
+      );
       if (!response.ok) throw new Error(`SRU request failed: ${response.status} ${response.statusText}`);
 
       const xmlText = await response.text();
@@ -359,10 +448,13 @@ export class SRUClient {
     xpathResultConst: typeof XPathResult
   ): BiblioRecord {
     const record: BiblioRecord = { id: recordId, title: "Untitled", authors: [], editors: [], translators: [], contributors: [], urls: [], subjects: [], raw_data: rawXml, schema: 'marcxml' };
-    const findData = (tag: string, code: string) => this.findDatafields(element, tag, code, nodeConst, xpathResultConst);
-    const findFields = (tag: string, ind1?: string) => this.findDatafieldElements(element, tag, ind1, nodeConst, xpathResultConst);
-    const findSub = (field: Element, code: string) => this.findSubfield(field, code, nodeConst, xpathResultConst);
-    const findLead = () => this.findLeader(element, nodeConst, xpathResultConst);
+    // One-pass index of the record's datafields/subfields — avoids re-scanning
+    // the whole subtree on each of the ~30 field lookups below.
+    const marc = indexMarcRecord(element, nodeConst.ELEMENT_NODE);
+    const findData = (tag: string, code: string) => marc.getData(tag, code);
+    const findFields = (tag: string, ind1?: string) => marc.getFields(tag, ind1);
+    const findSub = (field: Element, code: string) => marc.getSub(field, code);
+    const findLead = () => marc.leader;
     const seenNames = new Set<string>();
 
     let title = findData("245", "a")[0]?.replace(/[/:]$/, '').trim() || "Untitled";
@@ -765,76 +857,6 @@ export class SRUClient {
           }
       } catch (e: any) { ztoolkit.log(`Error evaluating XPath iterator "${xpath}": ${e.message}`, 'error'); }
       return elements;
-  }
-
-  /** Helper for finding MARC datafields - MODIFIED */
-  private findDatafields(
-      element: Element, tag: string, code: string,
-      nodeConst: typeof Node, xpathResultConst: typeof XPathResult
-  ): string[] {
-      const results: string[] = [];
-      const processFields = (xpathPrefix: string) => {
-          // Use localName() check for namespace-agnostic matching if needed, or stick to prefixes
-          const fields = this.findElements(element, `.//*[local-name()='datafield' and @tag='${tag}']`, nodeConst, xpathResultConst); // Namespace-agnostic example
-          // const fields = this.findElements(element, `${xpathPrefix}:datafield[@tag="${tag}"]`, nodeConst, xpathResultConst); // Prefix-based
-          for (const field of fields) {
-              const subfields = this.findElements(field, `.//*[local-name()='subfield' and @code='${code}']`, nodeConst, xpathResultConst); // Namespace-agnostic example
-              // const subfields = this.findElements(field, `${xpathPrefix}:subfield[@code="${code}"]`, nodeConst, xpathResultConst); // Prefix-based
-              subfields.forEach(sf => { if (sf.textContent) results.push(sf.textContent.trim()); });
-          }
-      };
-      // Call processFields for relevant prefixes or use namespace-agnostic approach
-      processFields(''); // Try namespace-agnostic first
-      // processFields('.//marc'); processFields('.//mxc'); // Or try specific prefixes
-      return results;
-  }
-
-  /** Helper for finding MARC datafield elements - MODIFIED */
-  private findDatafieldElements(
-      element: Element, tag: string, ind1: string | undefined,
-      nodeConst: typeof Node, xpathResultConst: typeof XPathResult
-  ): Element[] {
-      let results: Element[] = [];
-      const processFields = (xpathPrefix: string) => {
-          let selector = `${xpathPrefix}:datafield[@tag="${tag}"]`;
-          if (ind1) selector += `[@ind1="${ind1}"]`;
-          // Use namespace-agnostic matching if needed
-          let nsAgnosticSelector = `.//*[local-name()='datafield' and @tag='${tag}']`;
-          if (ind1) nsAgnosticSelector += `[@ind1='${ind1}']`;
-          // results = results.concat(this.findElements(element, selector, nodeConst, xpathResultConst)); // Prefix-based
-          results = results.concat(this.findElements(element, nsAgnosticSelector, nodeConst, xpathResultConst)); // Namespace-agnostic
-      };
-      // Call processFields for relevant prefixes or use namespace-agnostic approach
-      processFields(''); // Try namespace-agnostic first
-      // processFields('.//marc'); processFields('.//mxc'); // Or try specific prefixes
-      return results;
-  }
-
-  /** Helper for finding a subfield in a MARC datafield - MODIFIED */
-  private findSubfield(
-      datafield: Element, code: string,
-      nodeConst: typeof Node, xpathResultConst: typeof XPathResult
-  ): Element | null {
-      // Use namespace-agnostic matching
-      return this.findElement(datafield, `.//*[local-name()='subfield' and @code='${code}']`, nodeConst, xpathResultConst);
-      // Or prefix-based:
-      // return this.findElement(datafield, `.//marc:subfield[@code="${code}"]`, nodeConst, xpathResultConst) ||
-      //        this.findElement(datafield, `.//mxc:subfield[@code="${code}"]`, nodeConst, xpathResultConst) ||
-      //        this.findElement(datafield, `subfield[@code="${code}"]`, nodeConst, xpathResultConst);
-  }
-
-   /** Helper for finding MARC leader element - MODIFIED */
-  private findLeader(
-      element: Element,
-      nodeConst: typeof Node, xpathResultConst: typeof XPathResult
-  ): string | null {
-      // Use namespace-agnostic matching
-      const leader = this.findElement(element, `.//*[local-name()='leader']`, nodeConst, xpathResultConst);
-      // Or prefix-based:
-      // const leader = this.findElement(element, './/marc:leader', nodeConst, xpathResultConst) ||
-      //                this.findElement(element, './/mxc:leader', nodeConst, xpathResultConst) ||
-      //                this.findElement(element, 'leader', nodeConst, xpathResultConst);
-      return leader?.textContent || null;
   }
 
   /** Helper to get RDF resource attribute */

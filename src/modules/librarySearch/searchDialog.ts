@@ -3,82 +3,13 @@
 // Imports
 import { getString } from "../../utils/locale";
 import { getPref, setPref } from "../../utils/prefs";
-import { ThemeUtils } from "../themeUtils";
+import { createStyledDialog } from "../../utils/dialogUtils";
 import { OAIClient } from "./oaiClient";
 import { SRU_ENDPOINTS, OAI_ENDPOINTS, IXTHEO_ENDPOINTS } from "./endpoints";
 import { SRUEndpoint, OAIEndpoint, IxTheoEndpoint  } from "./models";
 import { LibrarySearchIntegration, SearchParams } from "./integration";
 import { SearchService } from "./searchService";
 import { resolveIdentifier, detectIdentifierType } from "./identifierResolver";
-
-
-/**
- * Enhanced dialog creation with proper styling
- * NOTE: We keep this function as is for styling consistency.
- */
-export function createStyledDialog(rows: number, cols: number): any {
-  const dialogHelper: any = new ztoolkit.Dialog(rows, cols);
-  const originalOpen = dialogHelper.open;
-
-  dialogHelper.open = function(title: string, windowFeatures?: any) {
-    const result = originalOpen.call(this, title, windowFeatures);
-    try {
-      if (result && result.window) {
-        const win = result.window;
-        if (win.document) {
-          ThemeUtils.applyTheme(win);
-          const doc = win.document;
-          if (doc.body) {
-            doc.body.classList.add('librarysearch-dialog');
-            const container = doc.createElement('div');
-            container.className = 'dialog-container';
-            while (doc.body.childNodes.length > 0) {
-              container.appendChild(doc.body.childNodes[0]);
-            }
-            doc.body.appendChild(container);
-
-            const h1Elements = doc.getElementsByTagName('h1');
-            if (h1Elements.length > 0 && h1Elements[0].parentNode) {
-              const headerDiv = doc.createElement('div');
-              headerDiv.className = 'dialog-header';
-              if (h1Elements[0].parentNode) {
-                h1Elements[0].parentNode.insertBefore(headerDiv, h1Elements[0]);
-                headerDiv.appendChild(h1Elements[0]);
-              }
-            }
-
-            const buttons = doc.querySelectorAll('button');
-            if (buttons.length > 0) {
-              let buttonContainer = doc.querySelector('.button-container');
-              if (!buttonContainer) {
-                buttonContainer = doc.createElement('div');
-                buttonContainer.className = 'button-container';
-                container.appendChild(buttonContainer);
-                for (let i = 0; i < buttons.length; i++) {
-                  const button = buttons[i] as HTMLButtonElement;
-                  if (button.parentNode && button.parentNode !== buttonContainer) {
-                     button.parentNode.removeChild(button);
-                  }
-                  if (button.id === 'search' || button.id === 'import' || button.id === 'importAll' ||
-                      (button.textContent && button.textContent.includes(getString("search-dialog-search-button")))) {
-                    button.classList.add('primary');
-                  }
-                  if (button.parentNode !== buttonContainer) {
-                     buttonContainer.appendChild(button);
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    } catch (e) {
-      ztoolkit.log('Error styling dialog:', e);
-    }
-    return result;
-  };
-  return dialogHelper;
-}
 
 
 /**
