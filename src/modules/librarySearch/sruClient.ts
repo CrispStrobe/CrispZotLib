@@ -12,6 +12,17 @@ export function escapeQueryString(query: string): string {
     .replace(/%20/g, '+');
 }
 
+// Strip life dates and role phrases that DC/RDF sources (esp. BnF) append to
+// creator names, e.g. "Habermas, Jürgen (1929-2026). Auteur du texte".
+export function cleanPersonName(name: string): string {
+  if (!name) return name;
+  let n = name.trim();
+  n = n.replace(/\.\s*(?:Auteur|[ÉE]diteur|Traducteur|Pr[ée]facier|Collaborateur|Illustrateur|Annotateur|Directeur|Author|Editor|Translator|Contributor)[^.]*$/i, '');
+  n = n.replace(/\s*\(\s*\d{3,4}\s*-\s*\d{0,4}\.?\s*\)\s*$/, '');
+  n = n.replace(/,?\s*\d{4}\s*-\s*\d{0,4}\s*$/, '');
+  return n.trim().replace(/,\s*$/, '').trim();
+}
+
 // SRU Client class
 export class SRUClient {
   // Public getter for baseUrl
@@ -294,7 +305,7 @@ export class SRUClient {
     record.title = find('.//dc:title')?.textContent?.trim() || "Untitled";
 
     const processName = (name: string | null | undefined, list: string[], roleList?: { name: string; role: string }[], defaultRole?: string) => {
-        if (!name) return; name = name.trim(); if (!name) return;
+        if (!name) return; name = cleanPersonName(name.trim()); if (!name) return;
         let role = defaultRole || 'author'; let cleanName = name;
         if (/\b(?:ed(?:itor)?|hrsg|hg)\b|\(ed|\(hg/i.test(name)) { role = 'editor'; }
         else if (/\b(?:trans|transl|translator|übersetz|übers)\b|\(trans|\(übers/i.test(name)) { role = 'translator'; }
@@ -523,7 +534,7 @@ export class SRUClient {
     // Helper to process names and roles (can be simplified if roles aren't complex in DNB data)
     const processNameWithRole = (name: string | null | undefined): { cleanName: string | null; role: string; isDuplicate: boolean; } => {
         if (!name) return { cleanName: null, role: 'author', isDuplicate: true };
-        name = name.trim(); if (!name) return { cleanName: null, role: 'author', isDuplicate: true };
+        name = cleanPersonName(name.trim()); if (!name) return { cleanName: null, role: 'author', isDuplicate: true };
         let role = 'author'; // Default role
         let cleanName = name;
         // Basic role detection (can be expanded if needed)
