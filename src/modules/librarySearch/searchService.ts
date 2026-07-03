@@ -6,6 +6,7 @@ import { OAIClient } from "./oaiClient"; // Ensure this is the updated OAIClient
 import { SRU_ENDPOINTS, OAI_ENDPOINTS, IXTHEO_ENDPOINTS } from "./endpoints";
 import { getPref } from "../../utils/prefs";
 import { fetchWithTimeout } from "./httpUtils";
+import { solveIxTheoPow, IxTheoPowToken } from "./ixtheoPow";
 
 // Assuming SearchParams is correctly defined in integration.ts
 // import { SearchParams } from './integration'; // Adjust path if needed
@@ -20,6 +21,39 @@ export class SearchService {
 
   // OAI client cache
   private static oaiClients: Record<string, OAIClient> = {};
+
+  // Cached IxTheo proof-of-work token (see ixtheoPow.ts). Solving is ~0.1M
+  // SHA-256 hashes, so reuse it across the many per-record IxTheo requests
+  // until it nears its 30-minute expiry.
+  private static ixtheoPow: IxTheoPowToken | null = null;
+
+  /**
+   * Return the `Cookie` header value that clears the IxTheo "Verifying your
+   * browser" proof-of-work wall, solving (and caching) the challenge as needed.
+   * Returns undefined if Web Crypto is unavailable so the caller degrades to an
+   * unauthenticated request rather than throwing.
+   */
+  private static async ixtheoCookie(
+    log: (message: string, level?: "log" | "warn" | "error") => void,
+  ): Promise<string | undefined> {
+    const now = Date.now();
+    if (!this.ixtheoPow || this.ixtheoPow.expiresMs < now + 60_000) {
+      const win = Zotero.getMainWindow();
+      const cryptoObj: Crypto | undefined =
+        win?.crypto ?? (globalThis as { crypto?: Crypto }).crypto;
+      if (!cryptoObj?.subtle) {
+        log(
+          "Web Crypto unavailable — cannot solve IxTheo PoW challenge.",
+          "warn",
+        );
+        return undefined;
+      }
+      log("Solving IxTheo proof-of-work challenge…");
+      this.ixtheoPow = await solveIxTheoPow(cryptoObj, now);
+      log("IxTheo proof-of-work solved.");
+    }
+    return `pow_token=${this.ixtheoPow.token}`;
+  }
 
   /**
    * Execute a search with the specified parameters.
@@ -339,6 +373,7 @@ export class SearchService {
 
     try {
       // 2. Fetch HTML results page
+      const ixtheoCookie = await this.ixtheoCookie(log);
       const htmlResponse = await fetchWithTimeout(searchUrl, {
         headers: {
           // Add browser-like headers
@@ -347,6 +382,7 @@ export class SearchService {
           Accept:
             "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
           "Accept-Language": "en-US,en;q=0.5",
+          ...(ixtheoCookie ? { Cookie: ixtheoCookie } : {}),
         },
       });
       if (!htmlResponse.ok) {
@@ -786,6 +822,7 @@ export class SearchService {
     const exportUrl = `${baseUrl}/Record/${recordId}/Export?style=${exportFormat}`;
     log(`Fetching ${exportFormat} export from URL: ${exportUrl}`);
     try {
+      const ixtheoCookie = await this.ixtheoCookie(log);
       const response = await fetchWithTimeout(exportUrl, {
         headers: {
           // Mimic browser request
@@ -794,6 +831,7 @@ export class SearchService {
           Accept: "text/plain, */*; q=0.01", // Correct accept header for export
           "X-Requested-With": "XMLHttpRequest", // Often used for AJAX requests
           Referer: `${baseUrl}/Record/${recordId}`, // Referer header
+          ...(ixtheoCookie ? { Cookie: ixtheoCookie } : {}),
         },
       });
 
@@ -883,6 +921,7 @@ export class SearchService {
     const detailUrl = `${baseUrl}/Record/${recordId}`;
     log(`Fetching HTML detail page from: ${detailUrl}`);
     try {
+      const ixtheoCookie = await this.ixtheoCookie(log);
       const response = await fetchWithTimeout(detailUrl, {
         headers: {
           // Standard browser headers
@@ -890,6 +929,7 @@ export class SearchService {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
           Accept:
             "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+          ...(ixtheoCookie ? { Cookie: ixtheoCookie } : {}),
         },
       });
       if (!response.ok) {
