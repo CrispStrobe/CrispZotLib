@@ -36,7 +36,7 @@ Basic configuration options can be found in Zotero's preferences:
 1.  Click the "Search Libraries" button in the Zotero toolbar (icon looks like a magnifying glass over books) or go to `Tools` → `Library Search`.
 2.  In the "Library Search" dialog:
     - Select the `Protocol` (SRU, OAI-PMH, or IxTheo).
-    - Select the `Endpoint` (e.g., dnb, loc, crossref).
+    - Select the `Endpoint` (e.g., dnb, k10plus, loc).
     - For SRU, you can optionally select a specific `Schema Format` or leave it as "Endpoint Default".
     - Enter your search terms (Title, Author, ISBN/ISSN).
     - Set the `Max Results` you want to retrieve per page.
@@ -50,9 +50,7 @@ Basic configuration options can be found in Zotero's preferences:
 
 ## Supported Protocols and Endpoints
 
-(This list remains the same as the protocols/endpoints themselves haven't changed, only the implementation method)
-
-Endpoint URLs were verified live in July 2026; several stale endpoints were repaired or replaced.
+Endpoint URLs were verified live in July 2026; several stale endpoints were repaired or replaced, and a few new union catalogues were added. The endpoint list is a shared manifest (`endpoints.json`) reused across the sibling CrispLib / citer projects.
 
 ### SRU (Search/Retrieve via URL) Endpoints:
 
@@ -60,8 +58,10 @@ Endpoint URLs were verified live in July 2026; several stale endpoints were repa
 - **bnf**: French National Library
 - **zdb**: Journal Database (Zeitschriftendatenbank)
 - **k10plus**: GBV+SWB union catalogue (covers most German academic libraries)
+- **b3kat**: Bibliotheksverbund Bayern + KOBV (Bavarian + Berlin-Brandenburg union catalogue)
 - **swisscovery**: SLSP, Swiss academic union catalogue
-- **loc**: Library of Congress (SRU gateway on port 210 — may be blocked on some networks)
+- **obv**: Austrian Library Network (OBVSG / Alma)
+- **loc**: Library of Congress (SRU gateway on port 210 — verified working, but some networks block port 210)
 - **kb**: National Library of the Netherlands (GGC)
 - **bibsys**: Norwegian academic libraries (BIBSYS/Alma)
 
@@ -69,9 +69,7 @@ _(Trove was removed: it no longer offers open SRU and now requires a personal AP
 
 ### OAI-PMH (Open Archives Initiative) Endpoints:
 
-- **crossref**: Crossref scholarly publishing (UNIXREF schema)
 - **dnb**: German National Library OAI
-- **loc**: Library of Congress OAI
 - **europeana**: European Digital Library
 - **ddb**: German Digital Library
 - **harvard**: Harvard Library
@@ -106,15 +104,14 @@ _(Searches IxTheo via HTML scraping and fetches details in the chosen format)_
 
 ### Testing
 
-- Unit tests: `npm test` (vitest — covers formatters, identifier detection, endpoint-table sanity).
+- Unit tests: `npm test` (vitest — covers formatters, identifier detection & ISBN/ISSN checksum validation, MARCXML field indexing, charset-aware XML decoding, the IxTheo proof-of-work solver, and endpoint-table sanity).
 - Development: `npm start` launches Zotero with the plugin hot-reloaded (`zotero-plugin serve`).
 
 ## Known Issues
 
 - Still work in progress; not all endpoints may work perfectly with all query types or schemas.
-- IxTheo search relies on HTML scraping and specific export URLs, which might break if the IxTheo website changes significantly.
+- IxTheo search relies on HTML scraping and specific export URLs, which might break if the IxTheo website changes significantly. IxTheo also gates pages behind a JavaScript "proof-of-work" anti-bot challenge; the plugin solves it automatically (a one-time ~1–2 s computation, cached for ~30 minutes), so the first IxTheo search of a session may be slightly slower.
 - Very large result sets (especially with OAI-PMH over wide date ranges) might be slow or incomplete due to repository limitations.
-- OAI-PMH pagination (Next/Previous across resumption tokens) and the Crossref UNIXREF parser are still being finished; see `PLAN.md`.
 - The Library of Congress SRU endpoint uses port 210, which some networks block.
 
 See `PLAN.md` for the full roadmap and the shared-endpoint work across the sibling CrispLib / citer projects.
