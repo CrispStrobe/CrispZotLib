@@ -81,7 +81,7 @@ New SRU added (verified live; the example-driven `buildSruQuery` handles their i
 - [ ] **2.15** Title `/ Author` strip regex over‑greedy; year regex 1000–2099 only; RIS ISBN+ISSN both as `SN`.
 
 ### New capability
-- [ ] **2.16 Port `identifier_resolver.py`** → TS. DOI (doi.org CSL‑JSON content negotiation), PMID (NCBI), ISBN (OpenLibrary/Google Books), URL (Citoid). Biggest missing feature vs citer/CrispLib.
+- [x] **2.16 Port `identifier_resolver.py`** → TS (`identifierResolver.ts`). DOI (doi.org CSL‑JSON), PMID (NCBI), ISBN (OpenLibrary **+ Google Books fallback** — better than CrispLib's OL‑only), URL (Citoid). Returns `BiblioRecord`, `AbortController` timeouts. Detection unit‑tested (6 tests); DOI/PMID/ISBN paths live‑validated end‑to‑end. **Still TODO: wire into the search dialog UI** as an "Import by identifier" action.
 
 ### buildSruQuery index mapping
 - [ ] **2.17** Generalize `searchService.buildSruQuery` for per‑endpoint index families: `TIT=`/`PER=` (DNB/ZDB), `bath.*` (LoC), `dc.*` (KB), `alma.*` (BIBSYS/swisscovery), `pica.*` (K10plus), CQL `bib.*` (BnF). Currently hard‑codes DNB/ZDB + example‑driven fallback.

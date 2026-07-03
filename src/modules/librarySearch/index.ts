@@ -26,6 +26,16 @@ export { openSearchDialog } from './searchDialog';
 // Export integration class
 export { LibrarySearchIntegration } from './integration';
 
+// Export identifier resolution (DOI / PMID / ISBN / URL -> BiblioRecord)
+export {
+  resolveIdentifier,
+  detectIdentifierType,
+  resolveDoi,
+  resolvePmid,
+  resolveIsbn,
+  resolveUrl,
+} from './identifierResolver';
+
 // Initialize the library search module
 export function initializeLibrarySearch(): void {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- lazy require avoids a circular import at module load
