@@ -1,9 +1,10 @@
 // endpoints.ts - Endpoint definitions.
 //
 // The endpoint data lives in the SHARED manifest endpoints.json, which is kept
-// byte-identical across CrispZotLib / CrispLib / citer (see scripts/sync-endpoints.sh
-// and endpoints.parity.test). Edit the manifest, not this file, so an endpoint fix
-// lands once for all three projects. This module just types and re-exports it.
+// byte-identical across CrispZotLib / CrispLib / citer via scripts/sync-endpoints.sh
+// (run `scripts/sync-endpoints.sh --check` to verify parity). Edit the manifest, not
+// this file, so an endpoint fix lands once for all three projects. This module just
+// types and re-exports it.
 
 import { SRUEndpoint, OAIEndpoint, IxTheoEndpoint } from './models';
 import manifest from './endpoints.json';
