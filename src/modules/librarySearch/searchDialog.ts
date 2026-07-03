@@ -288,11 +288,11 @@ export async function openSearchDialog(): Promise<void> {
               maxRecords: dialogData.maxResults,
             };
             ztoolkit.log("Executing search with params:", searchParams);
-            const [success, results, totalRecords] = await LibrarySearchIntegration.executeSearch(searchParams);
+            const [success, results, totalRecords, initialOaiToken] = await LibrarySearchIntegration.executeSearch(searchParams);
             if (success && results && results.length > 0) {
               addon.data.lastSearchResults = results; const searchDialogRef = addon.data.dialog; addon.data.dialog = undefined;
               if (searchDialogRef?.window && !searchDialogRef.window.closed) { searchDialogRef.window.close(); }
-              await LibrarySearchIntegration.openResultsDialog(results, totalRecords, searchParams);
+              await LibrarySearchIntegration.openResultsDialog(results, totalRecords, searchParams, initialOaiToken);
             } else { dialogData.errorMessage = getString("search-dialog-no-results"); dialogHelper.window?.alert(getString("search-dialog-no-results")); }
           } catch (error: any) {
             ztoolkit.log("Search error:", error); dialogData.errorMessage = error?.message || getString("search-dialog-error");

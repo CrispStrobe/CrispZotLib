@@ -39,8 +39,18 @@ export interface ResultsDialogData {
   currentStartRecord: number;
   searchParams: SearchParams; // Store original search parameters
   isLoading: boolean; // To prevent multiple clicks
+  // OAI-PMH pagination is token-based and forward-only. oaiNextToken is the token
+  // to fetch the *next* page; oaiTokenStack records the tokens used to reach each
+  // page so "Previous" can re-fetch (index 0 = page 1, fetched with no token).
+  oaiNextToken?: string;
+  oaiTokenStack?: (string | undefined)[];
   loadCallback?: (window: Window) => void;
   unloadCallback?: () => void;
+}
+
+/** True for protocols that paginate via OAI resumption tokens rather than startRecord. */
+function isOaiPagination(params: SearchParams): boolean {
+  return (params.protocol || '').toLowerCase() === 'oai';
 }
 
 /**
@@ -57,9 +67,9 @@ export class LibrarySearchIntegration {
   /**
    * Execute a search with the given parameters
    */
-  static async executeSearch(params: SearchParams): Promise<[boolean, BiblioRecord[], number]> {
+  static async executeSearch(params: SearchParams): Promise<[boolean, BiblioRecord[], number, string?]> {
     try {
-      // Use our new SearchService
+      // Use our new SearchService (4th element = OAI resumption token for next page)
       return await SearchService.executeSearch(params);
     } catch (error) {
       console.error('Error executing search:', error);
@@ -80,7 +90,8 @@ export class LibrarySearchIntegration {
   static async openResultsDialog(
     results: BiblioRecord[],
     totalRecords: number = results.length,
-    searchParams: SearchParams // Pass original search parameters
+    searchParams: SearchParams, // Pass original search parameters
+    initialOaiToken?: string // OAI resumption token from the initial search (page 1 -> page 2)
   ): Promise<void> {
     if (!results || results.length === 0) {
       ztoolkit.log("No results to display");
@@ -100,6 +111,9 @@ export class LibrarySearchIntegration {
       currentStartRecord: searchParams.startRecord || 1,
       searchParams: searchParams,
       isLoading: false,
+      oaiNextToken: initialOaiToken,
+      oaiTokenStack: [undefined], // page 1 was reached with no token
+
       loadCallback: (window: Window) => {
         console.log("Results dialog opened");
         if (window.document && window.document.body) {
@@ -202,7 +216,15 @@ export class LibrarySearchIntegration {
                     type: "click", listener: async () => {
                         if (dialogData.isLoading) return;
                         const newStartRecord = dialogData.currentStartRecord - dialogData.searchParams.maxRecords;
-                        if (newStartRecord >= 1) {
+                        if (isOaiPagination(dialogData.searchParams)) {
+                            const stack = dialogData.oaiTokenStack || [undefined];
+                            if (stack.length <= 1) return; // already on page 1
+                            stack.pop(); // discard the token that reached the current page
+                            const prevToken = stack[stack.length - 1]; // token that reached the previous page
+                            if (newStartRecord >= 1) {
+                                await fetchAndDisplayPage(newStartRecord, dialogData, dialogHelper.window.document, prevToken);
+                            }
+                        } else if (newStartRecord >= 1) {
                             await fetchAndDisplayPage(newStartRecord, dialogData, dialogHelper.window.document);
                         }
                     }
@@ -221,7 +243,12 @@ export class LibrarySearchIntegration {
                     type: "click", listener: async () => {
                         if (dialogData.isLoading) return;
                         const newStartRecord = dialogData.currentStartRecord + dialogData.searchParams.maxRecords;
-                        if (newStartRecord <= dialogData.totalRecords) {
+                        if (isOaiPagination(dialogData.searchParams)) {
+                            const token = dialogData.oaiNextToken;
+                            if (!token) return; // no more pages
+                            (dialogData.oaiTokenStack ||= [undefined]).push(token); // token used to reach the next page
+                            await fetchAndDisplayPage(newStartRecord, dialogData, dialogHelper.window.document, token);
+                        } else if (newStartRecord <= dialogData.totalRecords) {
                             await fetchAndDisplayPage(newStartRecord, dialogData, dialogHelper.window.document);
                         }
                     }
@@ -266,19 +293,25 @@ export class LibrarySearchIntegration {
     async function fetchAndDisplayPage(
       startRecord: number,
       dialogData: ResultsDialogData,
-      doc: Document // Pass the document context
+      doc: Document, // Pass the document context
+      oaiToken?: string // For OAI: the resumption token that fetches this page
     ): Promise<void> {
         dialogData.isLoading = true;
         updatePaginationControls(doc, dialogData, "Loading..."); // Update status/buttons
 
         try {
             const params = { ...dialogData.searchParams, startRecord: startRecord };
-            const [success, newResults, totalRecords] = await LibrarySearchIntegration.executeSearch(params);
+            if (isOaiPagination(dialogData.searchParams)) {
+                params.resumptionToken = oaiToken; // undefined => first page
+            }
+            const [success, newResults, totalRecords, nextToken] = await LibrarySearchIntegration.executeSearch(params);
 
             if (success && newResults) {
                 dialogData.searchResults = newResults;
                 dialogData.currentStartRecord = startRecord;
                 dialogData.totalRecords = totalRecords;
+                // Token to fetch the page *after* this one (undefined => no more pages).
+                dialogData.oaiNextToken = nextToken;
                 dialogData.selectedResults = []; // Clear selection
 
                 const resultsContainer = doc.getElementById("results-container");
@@ -433,11 +466,18 @@ function updatePaginationControls(doc: Document, dialogData: ResultsDialogData, 
     }
   }
 
+  const oai = (dialogData.searchParams.protocol || '').toLowerCase() === 'oai';
   if (prevButton) {
-    prevButton.disabled = dialogData.isLoading || dialogData.currentStartRecord <= 1;
+    // OAI: Previous is available only if we have earlier tokens on the stack.
+    prevButton.disabled = dialogData.isLoading ||
+      (oai ? (dialogData.oaiTokenStack?.length || 1) <= 1 : dialogData.currentStartRecord <= 1);
   }
   if (nextButton) {
-    // Corrected logic: disable if the *next* page would start beyond the total
-    nextButton.disabled = dialogData.isLoading || (dialogData.currentStartRecord + dialogData.searchParams.maxRecords > dialogData.totalRecords);
+    // OAI pagination is token-driven (totalRecords is only an estimate), so gate
+    // Next on whether the server returned a resumption token for the next page.
+    nextButton.disabled = dialogData.isLoading ||
+      (oai
+        ? !dialogData.oaiNextToken
+        : dialogData.currentStartRecord + dialogData.searchParams.maxRecords > dialogData.totalRecords);
   }
 }

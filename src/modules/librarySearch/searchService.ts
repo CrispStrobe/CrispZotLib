@@ -28,13 +28,11 @@ export class SearchService {
     // Use the SearchParams type from integration.ts (adjust import path if needed)
     params: import('./integration').SearchParams,
     log: (message: string, level?: 'log' | 'warn' | 'error') => void = ztoolkit.log // Default logger
-    // --- CHANGE: Return type adjusted for OAI token, but needs careful handling by caller ---
-    // Returning the token here might break existing callers expecting only 3 values.
-    // Option 1: Return only 3 values (discard token here).
-    // Option 2: Return 4 values and update callers (integration.ts).
-    // Let's go with Option 1 for minimal disruption to this file's signature,
-    // assuming integration.ts will handle OAI pagination separately.
-  ): Promise<[boolean, BiblioRecord[], number]> { // Keep original return signature
+    // Returns [success, records, totalCount, oaiResumptionToken?]. The 4th element
+    // is the OAI-PMH resumption token for the *next* page (undefined for SRU/IxTheo
+    // or when there are no more pages). The optional trailing element keeps this
+    // assignable from the 3-tuples that the SRU/IxTheo paths return.
+  ): Promise<[boolean, BiblioRecord[], number, string?]> {
     log(`Executing search with params: ${JSON.stringify(params)}`);
     try {
       switch (params.protocol.toLowerCase()) {
@@ -50,10 +48,10 @@ export class SearchService {
         }
 
         case 'oai': {
-          // ... (OAI logic remains the same) ...
           const [oaiSuccess, oaiRecords, oaiTotal, oaiNextToken] = await this.executeOaiSearch(params, log);
-          if (oaiNextToken) { log(`OAI search returned next resumption token (discarded by executeSearch): ${oaiNextToken.substring(0, 50)}...`); }
-          return [oaiSuccess, oaiRecords, oaiTotal];
+          if (oaiNextToken) { log(`OAI search returned next resumption token: ${oaiNextToken.substring(0, 50)}...`); }
+          // Thread the resumption token to the caller for pagination.
+          return [oaiSuccess, oaiRecords, oaiTotal, oaiNextToken || undefined];
         }
 
         case 'ixtheo': {
