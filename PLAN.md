@@ -64,7 +64,7 @@ New SRU added (verified live; the example-driven `buildSruQuery` handles their i
 - [x] **2.2 `setField` on invalid fields aborts import.** Fixed: each `setField` wrapped in try/catch (invalid field skipped, not fatal). Verified live that ISBN is not a valid field for journalArticle — the exact crash this prevents.
 - [x] **2.3 No per‑item error isolation.** Fixed: each item wrapped in try/catch; successes/failures counted and reported; batch continues past a bad record.
 - [ ] **2.4 OAI pagination broken.** `searchService.ts:51‑55` discards `resumptionToken`; Next/Prev re‑runs page 1. Thread token through pagination state.
-- [ ] **2.5 Malformed XML swallowed.** `oaiClient`/`sruClient` — a `<parsererror>` doc reads as "0 results". Detect parse errors and surface them.
+- [~] **2.5 Malformed XML swallowed.** `oaiClient`/`sruClient` — a `<parsererror>` doc reads as "0 results". Detect parse errors and surface them.
 - [ ] **2.6 Import buttons not re‑entrancy guarded.** `integration.ts:234‑253` — add `isLoading` guard like the pagination handlers. Prevents double‑click duplicates.
 
 ### Medium

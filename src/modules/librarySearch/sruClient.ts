@@ -136,6 +136,15 @@ export class SRUClient {
       const parser = new domParserConst(); // Use passed DOMParser
       const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
 
+      // Detect malformed XML: DOMParser yields a document containing a
+      // <parsererror> element rather than throwing. Without this, a truncated or
+      // invalid response is indistinguishable from a legitimate empty result.
+      const parseErrors = xmlDoc.getElementsByTagName('parsererror');
+      if (parseErrors && parseErrors.length > 0) {
+        ztoolkit.log(`SRU response was not well-formed XML: ${(parseErrors[0].textContent || '').slice(0, 200)}`, 'error');
+        return [0, []];
+      }
+
       const diagnostics = this.checkForDiagnostics(xmlDoc, nodeConst, xpathResultConst);
       if (diagnostics.length > 0) {
         ztoolkit.log(`SRU diagnostics found: ${diagnostics.join('; ')}`, 'warn');
