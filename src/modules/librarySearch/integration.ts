@@ -2,7 +2,7 @@
 // Updated layout for results dialog
 
 import { BiblioRecord } from './models';
-import { mapRecordToItemType } from './formatters';
+import { mapRecordToItemType, parseCreatorName } from './formatters';
 import { openSearchDialog } from './searchDialog';
 import { createStyledDialog } from '../../utils/dialogUtils'; 
 import { SearchService } from './searchService';
@@ -320,24 +320,17 @@ export class LibrarySearchIntegration {
             // Determine item type — document_type wins; fall back to heuristics.
             const itemType = mapRecordToItemType(record);
 
-            // Format creators
+            // Format creators (corporate/mononym names kept single-field).
             const creators: any[] = [];
-            if (record.authors && record.authors.length > 0) {
-                record.authors.forEach(author => {
-                    const creator: any = { creatorType: "author" };
-                    if (author.includes(',')) { const parts = author.split(',', 2); creator.lastName = parts[0].trim(); creator.firstName = parts.length > 1 ? parts[1].trim() : ""; }
-                    else { const parts = author.split(' '); if (parts.length > 1) { creator.lastName = parts[parts.length - 1]; creator.firstName = parts.slice(0, parts.length - 1).join(' '); } else { creator.lastName = author; creator.firstName = ""; } }
-                    creators.push(creator);
-                });
-            }
-             if (record.editors && record.editors.length > 0) {
-                record.editors.forEach(editor => {
-                    const creator: any = { creatorType: "editor" };
-                     if (editor.includes(',')) { const parts = editor.split(',', 2); creator.lastName = parts[0].trim(); creator.firstName = parts.length > 1 ? parts[1].trim() : ""; }
-                    else { const parts = editor.split(' '); if (parts.length > 1) { creator.lastName = parts[parts.length - 1]; creator.firstName = parts.slice(0, parts.length - 1).join(' '); } else { creator.lastName = editor; creator.firstName = ""; } }
-                    creators.push(creator);
-                });
-            }
+            (record.authors || []).forEach(author => {
+                creators.push({ creatorType: "author", ...parseCreatorName(author) });
+            });
+            (record.editors || []).forEach(editor => {
+                creators.push({ creatorType: "editor", ...parseCreatorName(editor) });
+            });
+            (record.translators || []).forEach(translator => {
+                creators.push({ creatorType: "translator", ...parseCreatorName(translator) });
+            });
 
             // Create base Zotero item
             const item: any = {
@@ -390,7 +383,12 @@ export class LibrarySearchIntegration {
                         itemData._creatorsData.forEach((creator: any, i: number) => {
                             const creatorTypeID = Zotero.CreatorTypes.getID(creator.creatorType);
                             const validCreatorType = creatorTypeID !== 0 ? creator.creatorType : 'author';
-                            newItem.setCreator(i, { firstName: creator.firstName, lastName: creator.lastName, creatorType: validCreatorType });
+                            // Single-field (corporate/mononym) vs two-field personal name.
+                            const zc: any =
+                                creator.fieldMode === 1 || creator.name
+                                    ? { creatorType: validCreatorType, name: creator.name, fieldMode: 1 }
+                                    : { creatorType: validCreatorType, firstName: creator.firstName, lastName: creator.lastName };
+                            newItem.setCreator(i, zc);
                         });
                     }
 

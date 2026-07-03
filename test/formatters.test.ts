@@ -6,6 +6,7 @@ import {
   formatRecordBibtex,
   formatRecordRis,
   formatRecord,
+  parseCreatorName,
 } from '../src/modules/librarySearch/formatters';
 import { BiblioRecord } from '../src/modules/librarySearch/models';
 
@@ -45,6 +46,35 @@ describe('generateCitationKey', () => {
 
   it('returns "unknown" when nothing is available', () => {
     expect(generateCitationKey(rec({}))).toBe('unknown');
+  });
+});
+
+describe('parseCreatorName', () => {
+  it('splits "Last, First"', () => {
+    expect(parseCreatorName('Einstein, Albert')).toEqual({
+      lastName: 'Einstein',
+      firstName: 'Albert',
+    });
+  });
+
+  it('splits "First Last"', () => {
+    expect(parseCreatorName('Guido van Rossum')).toEqual({
+      lastName: 'Rossum',
+      firstName: 'Guido van',
+    });
+  });
+
+  it('keeps corporate names single-field (no "Nations, United")', () => {
+    expect(parseCreatorName('United Nations')).toEqual({ name: 'United Nations', fieldMode: 1 });
+    expect(parseCreatorName('Deutsche Nationalbibliothek')).toEqual({
+      name: 'Deutsche Nationalbibliothek',
+      fieldMode: 1,
+    });
+    expect(parseCreatorName('World Health Organization')).toMatchObject({ fieldMode: 1 });
+  });
+
+  it('keeps a single-token mononym single-field', () => {
+    expect(parseCreatorName('Aristotle')).toEqual({ name: 'Aristotle', fieldMode: 1 });
   });
 });
 

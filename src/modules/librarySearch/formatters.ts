@@ -380,6 +380,42 @@ export function formatRecordRis(record: BiblioRecord): string {
       return ris.join("\n");
 }
 
+// A parsed creator name. Either two-field (firstName/lastName) for personal names,
+// or single-field (name + fieldMode 1) for corporate/organizational/mononym names.
+export interface ParsedCreatorName {
+  firstName?: string;
+  lastName?: string;
+  name?: string;
+  fieldMode?: number;
+}
+
+// Substrings that mark a name as an organization rather than a person. Corporate
+// authors ("United Nations", "Deutsche Nationalbibliothek") must not be split into
+// first/last — that produces nonsense like "Nations, United".
+const CORPORATE_MARKERS =
+  // Substring markers (compound-safe, esp. German compounds like "Nationalbibliothek")
+  // OR short word-bounded tokens that would false-positive as substrings.
+  /(univ(?:ersit)?|institut|department|abteilung|minist|organi[sz]ation|associat|society|gesellschaft|foundation|stiftung|verlag|bibliothek|library|committee|commission|kommission|council|corporation|gmbh|publish|verein|hochschule|akademie|academy|bundes|united nations|european union)|(\b(?:inc|ltd|ag|co|plc|llc|who|unesco|oecd|office|bureau|agency|company|press)\b)/i;
+
+/**
+ * Split a raw creator string into Zotero creator fields.
+ * - "Last, First"  -> { lastName, firstName }
+ * - "First Last"   -> { lastName, firstName }
+ * - Corporate/single-token names -> single-field { name, fieldMode: 1 }
+ */
+export function parseCreatorName(raw: string): ParsedCreatorName {
+  const name = (raw || '').trim();
+  if (!name) return { name: '', fieldMode: 1 };
+  if (name.includes(',')) {
+    const idx = name.indexOf(',');
+    return { lastName: name.slice(0, idx).trim(), firstName: name.slice(idx + 1).trim() };
+  }
+  if (CORPORATE_MARKERS.test(name)) return { name, fieldMode: 1 };
+  const parts = name.split(/\s+/);
+  if (parts.length === 1) return { name, fieldMode: 1 }; // mononym -> single field
+  return { lastName: parts[parts.length - 1], firstName: parts.slice(0, -1).join(' ') };
+}
+
 // Format a record for display or export in the specified format
 export function formatRecord(record: BiblioRecord, format: string = 'text', includeRaw: boolean = false): string {
   switch (format.toLowerCase()) {
@@ -417,44 +453,12 @@ export function formatRecord(record: BiblioRecord, format: string = 'text', incl
             notes: []
           };
           
-          // Format creators for Zotero (need firstName, lastName fields)
+          // Format creators for Zotero (corporate/mononym names kept single-field)
           for (const author of record.authors) {
-            const creator: any = { creatorType: "author" };
-            if (author.includes(',')) {
-              const parts = author.split(',', 2);
-              creator.lastName = parts[0].trim();
-              creator.firstName = parts.length > 1 ? parts[1].trim() : "";
-            } else {
-              const parts = author.split(' ');
-              if (parts.length > 1) {
-                creator.lastName = parts[parts.length - 1];
-                creator.firstName = parts.slice(0, parts.length - 1).join(' ');
-              } else {
-                creator.lastName = author;
-                creator.firstName = "";
-              }
-            }
-            zoteroData.creators.push(creator);
+            zoteroData.creators.push({ creatorType: "author", ...parseCreatorName(author) });
           }
-          
-          // Format editors for Zotero
           for (const editor of record.editors) {
-            const creator: any = { creatorType: "editor" };
-            if (editor.includes(',')) {
-              const parts = editor.split(',', 2);
-              creator.lastName = parts[0].trim();
-              creator.firstName = parts.length > 1 ? parts[1].trim() : "";
-            } else {
-              const parts = editor.split(' ');
-              if (parts.length > 1) {
-                creator.lastName = parts[parts.length - 1];
-                creator.firstName = parts.slice(0, parts.length - 1).join(' ');
-              } else {
-                creator.lastName = editor;
-                creator.firstName = "";
-              }
-            }
-            zoteroData.creators.push(creator);
+            zoteroData.creators.push({ creatorType: "editor", ...parseCreatorName(editor) });
           }
           
           // Add journal article specific fields

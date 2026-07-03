@@ -70,7 +70,7 @@ New SRU added (verified live; the example-driven `buildSruQuery` handles their i
 ### Medium
 - [ ] **2.7 Crossref UNIXREF parser** — `cr_unixsd`/`cr_unixml` schema handling in `oaiClient` (Crossref has no oai_dc).
 - [x] **2.8 BibTeX escaping for all fields** — Fixed: `escapeBibtex()` applied to title, author/editor/translator, journal, publisher, address, series, note (url/doi/isbn left raw). RIS escaping still TODO.
-- [ ] **2.9 Corporate/mononym author handling** — `formatters.ts` + `integration.ts` split "First Last" blindly; "United Nations" → "Nations, United". Detect corporate/single‑token names.
+- [x] **2.9 Corporate/mononym author handling** — `formatters.ts` + `integration.ts` split "First Last" blindly; "United Nations" → "Nations, United". Detect corporate/single‑token names.
 - [ ] **2.10 ISBN/ISSN regex false positives** — `oaiClient` `\d{9,}` matches URNs/DOIs; add checksum/`i`‑flag rigor.
 - [ ] **2.11 IxTheo fetch timeouts + bounded concurrency** — `searchService.ts:284,305‑361` raw fetches have no AbortController; dialog can hang forever.
 - [ ] **2.12 Char‑encoding** — `response.text()` ignores XML‑declared latin‑1 (DNB); umlaut mojibake. Decode per declared charset.
