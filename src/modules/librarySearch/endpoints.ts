@@ -185,20 +185,10 @@ export const NAMESPACES: Record<string, string> = {
         'dnb:reiheN': 'Series N - German Translations'
       }
     },
-    'dnb_digital': {
-      name: 'DNB Digital',
-      url: 'https://services.dnb.de/oai/repository_digital',
-      defaultMetadataPrefix: 'oai_dc',
-      description: 'Digital collections of the German National Library',
-      sets: {}
-    },
-    'loc': {
-      name: 'Library of Congress OAI',
-      url: 'https://memory.loc.gov/cgi-bin/oai2_0',
-      defaultMetadataPrefix: 'oai_dc',
-      description: 'Library of Congress OAI-PMH repository',
-      sets: {}
-    },
+    // NOTE: removed dead OAI endpoints (verified 2026-07-03):
+    //  - dnb_digital: services.dnb.de/oai/repository_digital is 404 (the main
+    //    'dnb' repository already covers digital content via subject-group sets).
+    //  - loc (OAI): memory.loc.gov/cgi-bin/oai2_0 is gone; LoC discontinued OAI-PMH.
     'europeana': {
       name: 'Europeana',
       url: 'https://api.europeana.eu/oai/record',
