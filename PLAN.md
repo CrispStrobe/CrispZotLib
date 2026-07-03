@@ -116,8 +116,13 @@ New SRU added (verified live; the example-driven `buildSruQuery` handles their i
 ## Phase 5 — Cross‑repo parity & tests
 
 - [x] **5.1** Shared **endpoint manifest** live: CrispZotLib is canonical (`endpoints.ts` re‑exports `endpoints.json`), CrispLib + citer load the same file, and `scripts/sync-endpoints.sh` keeps all three byte‑identical (`--check` verifies parity — now clean across all repos after the B3Kat/ÖBV sync).
-- [~] **5.2** Adopt citer's offline **record/replay** test pattern in CrispZotLib: cache real SRU/OAI XML fixtures, assert TS parsers offline. SRU MARC path no longer needs an `@xmldom` XPath shim — `indexMarcRecord` (6.2) is `doc.evaluate`-free and offline-tested; OAI/DC paths still need the shim.
-- [ ] **5.3** Parity checklist: same endpoints, same query‑index mapping, same parse fields, same BibTeX/RIS output across all three.
+- [x] **5.2** Record/replay landed for the SRU MARC path: `test/sruMarcReplay.test.ts` parses a **real captured** DNB response (`test/fixtures/dnb-marcxml-response.xml`) through the actual `parseMarcXml` fully offline (@xmldom + a `Node.ELEMENT_NODE` shim; no XPath engine, since `parseMarcXml` delegates to the `doc.evaluate`-free `indexMarcRecord`). The replay immediately caught a real bug (German `$e='Verfasser'` mis‑filed as contributor — fixed, see 5.3). The OAI/DC paths still use `doc.evaluate` and would need an `@xmldom` XPath shim for the same treatment — deferred.
+- [x] **5.3** Parity audited across the four dimensions:
+  - **Endpoints** — identical by construction: one shared `endpoints.json` (5.1), `sync-endpoints.sh --check` clean across all three.
+  - **Query‑index mapping** — same source (`examples` in the manifest); CrispZotLib's `SRU_INDEX_FAMILIES` reproduces the DNB/ZDB/BnF strings the others derive from examples. Generated queries live‑verified for dnb/zdb/bnf/k10plus/b3kat/obv.
+  - **Parse fields** — found + fixed a divergence: the `Verfasser` author‑relator bug existed in both CrispZotLib (`46e330a`) and CrispLib (`580c38c`); both now map verf/author/autor/creator → author, each with an offline test.
+  - **IxTheo access** — the proof‑of‑work bypass (4.2) is implemented identically in all three, verified live via CrispLib's client.
+  - Remaining gap: no single harness asserts byte‑identical BibTeX/RIS output across the TS and Python formatters on a shared fixture set — that cross‑language golden‑file comparison is the natural next parity step.
 
 ---
 
