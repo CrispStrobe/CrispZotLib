@@ -1,0 +1,602 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OAI-PMH xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd" xmlns="http://www.openarchives.org/OAI/2.0/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><responseDate>2026-07-03T20:54:50Z</responseDate><request metadataPrefix="oai_dc" set="dnb:reiheC" verb="ListRecords" from="2024-01-01" until="2024-01-15">https://services.dnb.de/oai/repository</request><ListRecords xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/oai_dc http://www.openarchives.org/OAI/2.0/oai_dc.xsd"><record><header><identifier>oai:dnb.de/dnb:reiheC/1309340455</identifier><datestamp>2024-01-10T21:40:22Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>[Pharus-Plan und Kurzreiseführer Berlin-City] ; Pharus-map and concise travel guide Berlin city : all sights at a glance for pedestrians and cyclists : public transport, points of interest, museums, theatres, waterways, embassies and illustrative background information</dc:title>
+  <dc:creator>Pharus-Plan Firma</dc:creator>
+  <dc:publisher>Berlin : Pharus-Plan</dc:publisher>
+  <dc:date>2024</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86514-008-1 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309340455</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1305961234</identifier><datestamp>2024-01-10T21:40:19Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Pharus-Plan und Kurzreiseführer Berlin-City : die Innenstadt auf einen Blick - Stadtplan für Fußgänger und Radfahrer : vom Olympiastadion zur East-Side-Gallery : Sehenswürdigkeiten, öffentliche Verkehrsmittel, Museen, Fußwege, Mauerweg, Wasserwege</dc:title>
+  <dc:creator>Pharus-Plan Firma</dc:creator>
+  <dc:publisher>Berlin : Pharus-Plan</dc:publisher>
+  <dc:date>2024</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86514-003-6 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1305961234</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1286514029</identifier><datestamp>2024-01-10T21:40:59Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Deutschland : Strassenkarte : Transit, Index = Germany : road map</dc:title>
+  <dc:creator>Hallwag Kümmerly + Frey</dc:creator>
+  <dc:publisher>Schönbühl/Bern : Hallwag</dc:publisher>
+  <dc:date>2024</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-8283-1062-9 keine Bindung : EUR 9.95 (DE), EUR 10.30 (AT)</dc:identifier>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">3-8283-1062-1</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1286514029</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1312289988</identifier><datestamp>2024-01-10T21:40:30Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Waters north of Rügen : Baltic Sea, Germany and Denmark</dc:title>
+  <dc:creator>Deutschland / Bundesamt für Seeschifffahrt und Hydrographie</dc:creator>
+  <dc:publisher>Hamburg</dc:publisher>
+  <dc:publisher>Rostock : Bundesamt für Seeschifffahrt und Hydrographie</dc:publisher>
+  <dc:publisher>Taunton : UK Hydrographic Office</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>eng</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1312289988</dc:identifier>
+  <dc:subject>620 Ingenieurwissenschaften und Maschinenbau</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1095673912</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1312289627</identifier><datestamp>2024-01-10T21:40:43Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Darßer Ort to Gedser and Kadetrinne/Kadetrenden : Baltic See, Germany and Denmark</dc:title>
+  <dc:creator>Deutschland / Bundesamt für Seeschifffahrt und Hydrographie</dc:creator>
+  <dc:publisher>Hamburg</dc:publisher>
+  <dc:publisher>Rostock : Bundesamt für Seeschifffahrt und Hydrographie</dc:publisher>
+  <dc:publisher>Taunton : UK Hydrographic Office</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>eng</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1312289627</dc:identifier>
+  <dc:subject>620 Ingenieurwissenschaften und Maschinenbau</dc:subject>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1095673912</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1311137475</identifier><datestamp>2024-01-10T21:40:48Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Gedser bis Arkona : Ostsee, deutsche und dänische Küste</dc:title>
+  <dc:creator>Deutschland / Bundesamt für Seeschifffahrt und Hydrographie</dc:creator>
+  <dc:creator>Deutschland / Bundesamt für Seeschifffahrt und Hydrographie</dc:creator>
+  <dc:publisher>Hamburg</dc:publisher>
+  <dc:publisher>Rostock : Bundesamt für Seeschifffahrt und Hydrographie</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-96490-278-8 keine Bindung : EUR 20.00 (DE), EUR 20.60 (AT)</dc:identifier>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">3-96490-278-0</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1311137475</dc:identifier>
+  <dc:subject>620 Ingenieurwissenschaften und Maschinenbau</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1095673912</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1310489351</identifier><datestamp>2024-01-10T21:40:04Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Gemeinde Durmersheim</dc:title>
+  <dc:creator>BVB-Verlagsgesellschaft mbH</dc:creator>
+  <dc:publisher>Nordhorn : BVB, Fachverlag für Kommunale Informationen</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1310489351</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1310481059</identifier><datestamp>2024-01-10T21:41:03Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Gemeinde Wustermark : Informationsplan</dc:title>
+  <dc:creator>BVB-Verlagsgesellschaft mbH</dc:creator>
+  <dc:publisher>Nordhorn : BVB, Fachverlag für Kommunale Informationen</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1310481059</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1310232431</identifier><datestamp>2024-01-10T21:40:31Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Amt Carbäk : Broderstorf, Thulendorf, Roggentin, Poppendorf</dc:title>
+  <dc:creator>BVB-Verlagsgesellschaft mbH</dc:creator>
+  <dc:publisher>Nordhorn : BVB, Fachverlag für Kommunale Informationen</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1310232431</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1310232229</identifier><datestamp>2024-01-10T21:40:29Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>[Woltersdorf] ; Gemeinde Woltersdorf an der Schleuse</dc:title>
+  <dc:creator>BVB-Verlagsgesellschaft mbH</dc:creator>
+  <dc:publisher>Nordhorn : BVB, Fachverlag für Kommunale Informationen</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1310232229</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1310061653</identifier><datestamp>2024-01-10T21:40:25Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Freizeit-Atlas : Deutschland 1:620.000 : landschaftlich schöne Strecken, Sehenswürdigkeiten, Ortsregister / Kartografie: MairDumont, Ostfildern</dc:title>
+  <dc:creator>Mairdumont GmbH &amp; Co. KG</dc:creator>
+  <dc:publisher>Ostfildern : MairDumont, MairDumont Business Solutions</dc:publisher>
+  <dc:publisher>[Frankfurt am Main] : AvD, Automobilclub von Deutschland</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">Broschur</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1310061653</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:format>1 Atlas (96 Seiten)</dc:format>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1310057729</identifier><datestamp>2024-01-10T21:40:40Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>[Freizeit-Atlas] ; ACV speedy atlas : Deutschland 1:620.000 / Kartografie: © MairDumont, Ostfildern</dc:title>
+  <dc:creator>Mairdumont GmbH &amp; Co. KG</dc:creator>
+  <dc:publisher>Ostfildern : MairDumont, MairDumont Business Solutions</dc:publisher>
+  <dc:publisher>[Köln] : ACV, Automobil-Club Verkehr</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">Broschur</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1310057729</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Atlas (96 Seiten)</dc:format>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/130997697X</identifier><datestamp>2024-01-10T21:40:28Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Industriekultur in Sachsen : lebendige Zeugen eines goldenen Zeitalters / Gestaltung, Satz, Karte: SCHUBÄRTH Kommunikationsdesign</dc:title>
+  <dc:creator>Schubärth Kommunikationsdesign</dc:creator>
+  <dc:publisher>Dresden : Tourismus Marketing Gesellschaft Sachsen GmbH</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">130997697X</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309970343</identifier><datestamp>2024-01-10T21:40:41Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>[Bad Sachsa] ; Bad Sachsa</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-731-1 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309970343</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/130997022X</identifier><datestamp>2024-01-10T21:40:11Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>[Heilbad Heiligenstadt] ; Heilbad Heiligenstadt</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-744-1 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">130997022X</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309970076</identifier><datestamp>2024-01-10T21:41:02Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>[Leinefelde O] ; Leinefelde O</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-746-5 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309970076</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309969981</identifier><datestamp>2024-01-10T21:40:47Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>[Menteroda] ; Menteroda</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-747-2 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309969981</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309969892</identifier><datestamp>2024-01-10T21:40:18Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Sondershausen</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-749-6 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309969892</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309969779</identifier><datestamp>2024-01-10T21:40:07Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Bad Frankenhausen (Kyffhäuser)</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-750-2 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309969779</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309969639</identifier><datestamp>2024-01-10T21:40:31Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Artern (Unstrut)</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-751-9 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309969639</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309969507</identifier><datestamp>2024-01-10T21:40:05Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Grebendorf</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-754-0 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309969507</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309969361</identifier><datestamp>2024-01-10T21:40:29Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Küllstedt</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-755-7 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309969361</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309969299</identifier><datestamp>2024-01-10T21:40:30Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Mühlhausen (Thüringen)</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-756-4 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309969299</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309968799</identifier><datestamp>2024-01-10T21:40:45Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Schlotheim</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-757-1 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309968799</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309968748</identifier><datestamp>2024-01-10T21:40:19Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Ebeleben</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-758-8 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309968748</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309968640</identifier><datestamp>2024-01-10T21:40:04Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Greußen</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-759-5 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309968640</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/130996856X</identifier><datestamp>2024-01-10T21:40:39Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>[Kindelbrück] ; Kindelbrück</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-760-1 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">130996856X</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309968446</identifier><datestamp>2024-01-10T21:40:35Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Oberheldrungen</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-761-8 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309968446</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309968225</identifier><datestamp>2024-01-10T21:40:08Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Wiehe</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-762-5 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309968225</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309968160</identifier><datestamp>2024-01-10T21:40:54Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Treffurt</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-764-9 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309968160</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309968071</identifier><datestamp>2024-01-10T21:40:48Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>[Bad Langensalza] ; Bad Langensalza</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-766-3 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309968071</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309968004</identifier><datestamp>2024-01-10T21:40:21Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Großvargula</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-767-0 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309968004</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/130996792X</identifier><datestamp>2024-01-10T21:40:07Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Gebesee</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-768-7 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">130996792X</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309967741</identifier><datestamp>2024-01-10T21:40:58Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>[Sömmerda] ; Sömmerda</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-769-4 Broschur</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309967741</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309967377</identifier><datestamp>2024-01-10T21:41:02Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Creuzburg</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-777-9 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309967377</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309967210</identifier><datestamp>2024-01-10T21:40:20Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Oberschönau</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309967210</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182592287</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309967067</identifier><datestamp>2024-01-10T21:40:23Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Luisenthal</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309967067</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182592287</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309966974</identifier><datestamp>2024-01-10T21:40:16Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Oechsen</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309966974</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182592287</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309966885</identifier><datestamp>2024-01-10T21:40:25Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Tambach-Dietharz (Thüringer Wald)</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309966885</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182592287</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309966745</identifier><datestamp>2024-01-10T21:40:06Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Gräfenroda N</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309966745</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182592287</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309966559</identifier><datestamp>2024-01-10T21:40:04Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Plaue</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309966559</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182592287</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309966370</identifier><datestamp>2024-01-10T21:40:52Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Mihla</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-778-6 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309966370</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309966281</identifier><datestamp>2024-01-10T21:40:24Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Behringen</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-779-3 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309966281</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309966168</identifier><datestamp>2024-01-10T21:40:49Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Gräfentonna</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-780-9 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309966168</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309966079</identifier><datestamp>2024-01-10T21:40:02Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>[Erfurt NW] ; Erfurt NW</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-781-6 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309966079</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309965900</identifier><datestamp>2024-01-10T21:40:37Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Weimar NW</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-783-0 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309965900</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309963746</identifier><datestamp>2024-01-10T21:40:37Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>[Weimar N] ; Weimar N</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-784-7 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309963746</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309958203</identifier><datestamp>2024-01-10T21:40:50Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>[Apolda] ; Apolda</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-785-4 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309958203</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309946248</identifier><datestamp>2024-01-10T21:40:50Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Rad- &amp; Wanderkarte Nordwestharz : UNESCO-Weltkulturerbe Oberharzer Wasserwirtschaft : regionale und überregionale Wanderrouten, WasserWanderWege - Oberharzer Wasserregal, Harzer Hexen-Stieg, Kaiserweg, Stempelstellen der Harzer Wandernadel, UTM-Gitter für GPS-Nutzung : Goslar, Oker, Bad Harzburg, Clausthal-Zellerfeld, Seesen, Altenau, Bad Grund, Langelsheim, Hahnenklee, Bockswiese, Wolfshagen, Lautenthal, Schulenberg, Buntenbock, Brocken</dc:title>
+  <dc:creator>KKV Kartographische Kommunale Verlagsgesellschaft</dc:creator>
+  <dc:creator>KKV Kartographische Kommunale Verlagsgesellschaft</dc:creator>
+  <dc:publisher>Nordhausen : Kartographische Kommunale Verlagsgesellschaft</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86973-262-6 keine Bindung : EUR 5.00 (DE), EUR 5.20 (AT)</dc:identifier>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">3-86973-262-8</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309946248</dc:identifier>
+  <dc:subject>796 Sport</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte in 2 Teilen</dc:format>
+</dc></metadata></record><record><header><identifier>oai:dnb.de/dnb:reiheC/1309942846</identifier><datestamp>2024-01-10T21:40:06Z</datestamp><setSpec>dnb:reiheC</setSpec></header><metadata><dc xmlns:dnb="http://d-nb.de/standards/dnbterms" xmlns="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Camburg</dc:title>
+  <dc:creator>Thüringer Landesamt für Bodenmanagement und Geoinformation</dc:creator>
+  <dc:publisher>Erfurt : Landesamt für Bodenmanagement und Geoinformation</dc:publisher>
+  <dc:date>2023</dc:date>
+  <dc:language>ger</dc:language>
+  <dc:identifier xsi:type="tel:ISBN" xmlns:tel="http://krait.kb.nl/coop/tel/handbook/telterms.html">978-3-86979-786-1 keine Bindung</dc:identifier>
+  <dc:identifier xsi:type="dnb:IDN">1309942846</dc:identifier>
+  <dc:subject>910 Geografie, Reisen</dc:subject>
+  <dc:subject>914.3 Geografie, Reisen (Deutschland)</dc:subject>
+  <dc:format>1 Karte</dc:format>
+  <dc:relation>http://d-nb.info/1182591590</dc:relation>
+</dc></metadata></record><resumptionToken cursor="50" completeListSize="714">hN0feNotjDEOhDAQA1_C_gDJ3k2yl2uR-AYiBAkaTuL_BeTA3Vhj0z9GKjKQvfvN-1QXqUf5nuu-rYOMEiF0BCRXtDSKloy5Rbpbvqv_CzU9wku0hLYVailQq30IWSjOcAG70BsO</resumptionToken></ListRecords></OAI-PMH>
