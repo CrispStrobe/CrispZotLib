@@ -72,9 +72,9 @@ New SRU added (verified live; the example-driven `buildSruQuery` handles their i
 - [x] **2.8 BibTeX escaping for all fields** — Fixed: `escapeBibtex()` applied to title, author/editor/translator, journal, publisher, address, series, note (url/doi/isbn left raw). RIS escaping done (newline sanitization on title/abstract).
 - [x] **2.9 Corporate/mononym author handling** — `formatters.ts` + `integration.ts` split "First Last" blindly; "United Nations" → "Nations, United". Detect corporate/single‑token names.
 - [ ] **2.10 ISBN/ISSN regex false positives** — `oaiClient` `\d{9,}` matches URNs/DOIs; add checksum/`i`‑flag rigor.
-- [ ] **2.11 IxTheo fetch timeouts + bounded concurrency** — `searchService.ts:284,305‑361` raw fetches have no AbortController; dialog can hang forever.
+- [x] **2.11 IxTheo fetch timeouts + bounded concurrency** — `searchService.ts:284,305‑361` raw fetches have no AbortController; dialog can hang forever.
 - [ ] **2.12 Char‑encoding** — `response.text()` ignores XML‑declared latin‑1 (DNB); umlaut mojibake. Decode per declared charset.
-- [ ] **2.13 Placeholder "records" imported as junk** — `oaiClient` returns synthetic `[DELETED RECORD]`/`[Error…]` records that pass import guards. Return null instead.
+- [x] **2.13 Placeholder "records" imported as junk** — `oaiClient` returns synthetic `[DELETED RECORD]`/`[Error…]` records that pass import guards. Return null instead.
 
 ### Low
 - [ ] **2.14** `innerHTML` with remote catalog data in privileged window (`integration.ts:136,151‑153`) → `textContent`.

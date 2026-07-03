@@ -802,14 +802,9 @@ export class OAIClient {
       // Check if record is deleted (should ideally be skipped before calling this)
       if (header?.getAttribute('status') === 'deleted') {
         console.warn(`${logPrefix} Processing a deleted record: ${identifier}. Returning minimal info.`);
-        ztoolkit.log(`${logPrefix} Processing deleted record ${identifier}.`, 'warn');
-        // Return a minimal record indicating deletion, or null
-        return {
-          id: identifier,
-          title: `[DELETED RECORD: ${identifier}]`,
-          authors: [], editors: [], translators: [], contributors: [], urls: [], subjects: []
-        };
-        // return null;
+        ztoolkit.log(`${logPrefix} Skipping deleted record ${identifier}.`, 'warn');
+        // Deleted records must not be imported as items.
+        return null;
       }
 
       // Extract metadata element
@@ -817,13 +812,7 @@ export class OAIClient {
       if (!metadataElement) {
         console.warn(`${logPrefix} Record ${identifier} has no <metadata> element. Cannot parse.`);
         ztoolkit.log(`${logPrefix} Record ${identifier} has no <metadata> element.`, 'warn');
-        // Return minimal record or null
-        return {
-             id: identifier,
-             title: `[Record ${identifier} - No Metadata Found]`,
-             authors: [], editors: [], translators: [], contributors: [], urls: [], subjects: []
-         };
-        // return null;
+        return null; // no metadata -> nothing importable
       }
 
       // --- Determine the actual metadata format within the <metadata> tag ---
@@ -832,11 +821,7 @@ export class OAIClient {
       if (!actualMetadataRoot) {
          console.warn(`${logPrefix} Record ${identifier} has an empty <metadata> element. Cannot parse.`);
          ztoolkit.log(`${logPrefix} Record ${identifier} has empty <metadata> element.`, 'warn');
-         return {
-             id: identifier,
-             title: `[Record ${identifier} - Empty Metadata]`,
-             authors: [], editors: [], translators: [], contributors: [], urls: [], subjects: []
-         };
+         return null; // empty metadata -> nothing importable
       }
 
       // Determine parser based on the requested metadataPrefix
@@ -887,13 +872,7 @@ export class OAIClient {
     } catch (e: any) {
       console.error(`${logPrefix} Error processing record element: ${e.message}`);
       ztoolkit.log(`${logPrefix} Error processing record element: ${e.message}`, 'error');
-      // Return minimal error record or null
-       return {
-           id: 'error-processing',
-           title: `[Error Processing Record: ${e.message}]`,
-           authors: [], editors: [], translators: [], contributors: [], urls: [], subjects: []
-       };
-      // return null;
+      return null; // a parse error must not surface as an importable junk item
     }
   }
 

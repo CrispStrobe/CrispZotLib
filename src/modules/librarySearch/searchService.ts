@@ -9,6 +9,22 @@ import { getPref } from '../../utils/prefs';
 // Assuming SearchParams is correctly defined in integration.ts
 // import { SearchParams } from './integration'; // Adjust path if needed
 
+// fetch() with an AbortController timeout. The raw IxTheo requests are otherwise
+// unbounded — a hung server would leave the results dialog stuck on "Loading…".
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs = 30000,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
  * SearchService - Implements a pure TypeScript search system
  * that replaces the previous Python-based approach
@@ -282,7 +298,7 @@ export class SearchService {
 
     try {
       // 2. Fetch HTML results page
-      const htmlResponse = await fetch(searchUrl, {
+      const htmlResponse = await fetchWithTimeout(searchUrl, {
           headers: { // Add browser-like headers
              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -618,7 +634,7 @@ export class SearchService {
     const exportUrl = `${baseUrl}/Record/${recordId}/Export?style=${exportFormat}`;
     log(`Fetching ${exportFormat} export from URL: ${exportUrl}`);
     try {
-       const response = await fetch(exportUrl, {
+       const response = await fetchWithTimeout(exportUrl, {
            headers: { // Mimic browser request
                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                'Accept': 'text/plain, */*; q=0.01', // Correct accept header for export
@@ -680,7 +696,7 @@ export class SearchService {
     const detailUrl = `${baseUrl}/Record/${recordId}`;
      log(`Fetching HTML detail page from: ${detailUrl}`);
     try {
-       const response = await fetch(detailUrl, {
+       const response = await fetchWithTimeout(detailUrl, {
            headers: { // Standard browser headers
                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
