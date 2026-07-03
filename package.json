@@ -25,7 +25,9 @@
     "release": "zotero-plugin release",
     "test": "vitest run",
     "test:watch": "vitest",
-    "update-deps": "npm update --save"
+    "update-deps": "npm update --save",
+    "test:coverage": "vitest run --coverage --coverage.include='src/**'",
+    "probe:endpoints": "LIVE_PROBE=1 vitest run test/live/endpointHealth.test.ts"
   },
   "dependencies": {
     "zotero-plugin-toolkit": "^5.1.4"
@@ -33,6 +35,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.9.4",
+    "@vitest/coverage-v8": "^4.1.9",
     "@xmldom/xmldom": ">=0.8.12",
     "eslint": "^10.6.0",
     "prettier": "^3.9.4",

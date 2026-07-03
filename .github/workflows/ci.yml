@@ -16,8 +16,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -40,8 +38,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -64,8 +60,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -87,3 +81,21 @@ jobs:
           name: build-result
           path: |
             .scaffold/build/*.xpi
+
+  # Cross-repo shared-file drift check (PLAN 7.5c): endpoints.json and the
+  # formatter parity fixtures are canonical here and byte-copied to the
+  # sibling repos. A red job here means someone changed a shared file without
+  # running scripts/sync-endpoints.sh (or the sibling hasn't been pushed yet).
+  sync-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Clone sibling repos
+        run: |
+          git clone --depth 1 https://github.com/CrispStrobe/CrispLib ../CrispLib
+          git clone --depth 1 https://github.com/CrispStrobe/citer ../citer
+
+      - name: Verify shared files are in sync
+        run: scripts/sync-endpoints.sh --check
