@@ -67,6 +67,39 @@ function escapeBibtex(value: string): string {
   return value.replace(/([#$%&_{}])/g, "\\$1");
 }
 
+// Strip role indicators ("Schmidt, Anna [Verfasser]") and stray brackets from a
+// creator name for BibTeX/RIS output. Mirrors CrispLib's cleaning exactly — the
+// cross-language parity goldens assert identical output.
+function cleanCreatorName(raw: string): string {
+  let name = raw.replace(/\s*\[[^\]]*\]/g, "");
+  name = name.trim().replace(/,\s*$/, "");
+  name = name.replace(/\]\s*$/, "").replace(/^\s*\[/, "");
+  return name;
+}
+
+// Clean a creator list for BibTeX: strip role markers, drop names that clean to
+// nothing, escape the rest. Returns null when no usable name remains (the field
+// is then omitted entirely, matching CrispLib).
+function bibtexCreatorList(names: string[]): string | null {
+  const cleaned = names.map(cleanCreatorName).filter((n) => n.length > 0);
+  if (cleaned.length === 0) return null;
+  return cleaned.map(escapeBibtex).join(" and ");
+}
+
+// Format a creator for a RIS AU/ED line ("Last, First"). Role markers are
+// stripped; corporate and mononym names are kept verbatim rather than flipped
+// ("United Nations" must not become "Nations, United" — same rule as
+// parseCreatorName / PLAN 2.9). Returns "" when nothing usable remains.
+function formatRisCreator(raw: string): string {
+  const name = cleanCreatorName(raw);
+  if (!name) return "";
+  if (name.includes(",")) return name;
+  if (CORPORATE_MARKERS.test(name)) return name;
+  const parts = name.split(/\s+/);
+  if (parts.length === 1) return name;
+  return `${parts[parts.length - 1]}, ${parts.slice(0, -1).join(" ")}`;
+}
+
 // RIS is a line-based format: an embedded newline in a value (common in abstracts)
 // splits it into malformed tag-less lines. Collapse newlines to spaces.
 function sanitizeRisValue(value: string): string {
@@ -151,24 +184,22 @@ export function formatRecordBibtex(record: BiblioRecord): string {
   title = escapeBibtex(title);
   bibtex.push(`  title = {${title}},`);
 
-  // Authors
+  // Authors (role markers stripped, cf. cleanCreatorForBibtex)
   if (record.authors && record.authors.length > 0) {
-    // Format authors properly for BibTeX
-    const authorsList = record.authors.map(escapeBibtex).join(" and ");
-    bibtex.push(`  author = {${authorsList}},`);
+    const authorsList = bibtexCreatorList(record.authors);
+    if (authorsList) bibtex.push(`  author = {${authorsList}},`);
   }
 
   // Editors
   if (record.editors && record.editors.length > 0) {
-    // Format editors properly for BibTeX
-    const editorsList = record.editors.map(escapeBibtex).join(" and ");
-    bibtex.push(`  editor = {${editorsList}},`);
+    const editorsList = bibtexCreatorList(record.editors);
+    if (editorsList) bibtex.push(`  editor = {${editorsList}},`);
   }
 
   // Translators (not a standard BibTeX field, but we'll include it as a note)
   if (record.translators && record.translators.length > 0) {
-    const translatorsList = record.translators.map(escapeBibtex).join(" and ");
-    bibtex.push(`  translator = {${translatorsList}},`);
+    const translatorsList = bibtexCreatorList(record.translators);
+    if (translatorsList) bibtex.push(`  translator = {${translatorsList}},`);
   }
 
   // Year
@@ -274,39 +305,16 @@ export function formatRecordRis(record: BiblioRecord): string {
   // Add title
   ris.push(`TI  - ${sanitizeRisValue(record.title)}`);
 
-  // Add authors
+  // Add authors ("Last, First"; corporate/mononym names kept verbatim)
   for (const author of record.authors) {
-    // For RIS, typically format is "lastname, firstname"
-    if (author.includes(",")) {
-      ris.push(`AU  - ${author}`);
-    } else {
-      // Convert "firstname lastname" to "lastname, firstname"
-      const parts = author.split(" ");
-      if (parts.length > 1) {
-        const lastName = parts[parts.length - 1];
-        const firstNames = parts.slice(0, parts.length - 1).join(" ");
-        ris.push(`AU  - ${lastName}, ${firstNames}`);
-      } else {
-        ris.push(`AU  - ${author}`);
-      }
-    }
+    const name = formatRisCreator(author);
+    if (name) ris.push(`AU  - ${name}`);
   }
 
   // Add editors
   for (const editor of record.editors) {
-    // Format similarly to authors
-    if (editor.includes(",")) {
-      ris.push(`ED  - ${editor}`);
-    } else {
-      const parts = editor.split(" ");
-      if (parts.length > 1) {
-        const lastName = parts[parts.length - 1];
-        const firstNames = parts.slice(0, parts.length - 1).join(" ");
-        ris.push(`ED  - ${lastName}, ${firstNames}`);
-      } else {
-        ris.push(`ED  - ${editor}`);
-      }
-    }
+    const name = formatRisCreator(editor);
+    if (name) ris.push(`ED  - ${name}`);
   }
 
   // Add year

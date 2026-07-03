@@ -140,6 +140,18 @@ Internal optimization pass — no endpoint or user‑facing behaviour changes. G
 
 ---
 
+## Phase 7 — Guarding parity & closing coverage gaps (planned 2026‑07‑03)
+
+Everything above is point‑in‑time verified; Phase 7 makes the guarantees _stay_ true.
+
+- [x] **7.1 Cross‑language golden‑file parity harness** (the gap named in 5.3). DONE: 15 shared fixture records (`test/fixtures/parity/records.json`, chosen to hit every known divergence point — ISBD slash titles, series‑ISSN books, missing document_type, BibTeX specials, role markers, corporate/mononym names, multiline abstracts) + BibTeX/RIS goldens generated from the TS formatters (`UPDATE_GOLDENS=1 npx vitest run test/formatterParity.test.ts`). Asserted byte‑for‑byte by `test/formatterParity.test.ts` (33 tests) AND CrispLib's `test_formatter_parity.py` (31 tests); fixtures canonical here, synced via the generalized `scripts/sync-endpoints.sh`. Convergence fixes the harness forced: **CrispLib** got the 2.8/2.15 fixes it was missing (BibTeX escaping via shared `escape_bibtex`, `\s+/\s+` ISBD title rule, journal‑title→`@article` fallback, single type‑appropriate RIS `SN`, RIS `VL/IS/SP/DO/JO` — volume/issue/pages/DOI were silently dropped before, RIS newline sanitization); **both** repos got corporate‑aware + role‑marker‑stripped RIS `AU/ED` names ("United Nations" no longer flips to "Nations, United" — the 2.9 bug class existed in both RIS exports) and role‑marker stripping in TS BibTeX creator fields (Python already had it).
+- [ ] **7.2 Scheduled endpoint health probe.** Weekly GitHub Actions cron that runs each `endpoints.json` entry's example query live and fails/opens an issue on breakage (Phase 1 found 7 silently‑rotted endpoints; it will happen again). Include an IxTheo PoW canary — the anti‑bot wall already changed once and broke all three repos at once.
+- [ ] **7.3 OAI/DC offline replay** (deferred half of 5.2). Don't shim XPath into @xmldom; instead repeat the 6.2 move — refactor `oaiClient`'s DC/MARC parsing onto a one‑pass, namespace‑agnostic index (no `doc.evaluate`), then add record/replay tests on captured OAI responses. The MARC replay caught a real bug immediately; the DC path (1,667‑line module) has zero equivalent coverage.
+- [ ] **7.4 Testability‑first decomposition.** `searchDialog`/`oaiClient`/`searchService`/`sruClient` hold ~58% of source; `searchService`, `oaiClient`, `integration` have no direct tests. Extract pure record‑shaping/parsing from network + Zotero‑UI code so it's vitest‑reachable — done opportunistically alongside 7.3, not as a big‑bang refactor.
+- [ ] **7.5 Small hardening.** (a) `vitest --coverage` to expose real blind spots; (b) drop unneeded `fetch-depth: 0` from CI jobs; (c) run `sync-endpoints.sh --check` in CI so a forgotten cross‑repo sync fails the build.
+
+---
+
 ## Verified reference data (2026‑07‑03, live)
 
 - Zotero local API: `http://127.0.0.1:23119/api/users/0/…` (enable: Settings → Advanced → "Allow other applications on this computer to communicate with Zotero").

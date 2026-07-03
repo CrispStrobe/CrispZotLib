@@ -1,25 +1,47 @@
 #!/usr/bin/env bash
-# Sync the shared endpoint manifest from this repo (the canonical source) to the
-# sibling CrispLib and citer repos. Edit src/modules/librarySearch/endpoints.json,
-# then run this so an endpoint fix lands once for all three projects.
+# Sync shared cross-repo files from this repo (the canonical source) to the
+# sibling repos, so a fix lands once for all projects:
+#   - endpoints.json         -> CrispLib + citer  (shared endpoint manifest)
+#   - test/fixtures/parity/* -> CrispLib          (formatter parity fixtures +
+#     goldens, asserted by test/formatterParity.test.ts here and
+#     test_formatter_parity.py there; citer has no BiblioRecord formatters)
 #
 #   scripts/sync-endpoints.sh          # copy canonical -> siblings
-#   scripts/sync-endpoints.sh --check  # verify all three are identical (CI/pre-commit)
+#   scripts/sync-endpoints.sh --check  # verify identical (CI/pre-commit)
 set -euo pipefail
 here="$(cd "$(dirname "$0")/.." && pwd)"
-canonical="$here/src/modules/librarySearch/endpoints.json"
-targets=("$here/../CrispLib/endpoints.json" "$here/../citer/endpoints.json")
+
+# "canonical<TAB>target" pairs; targets in missing sibling repos are skipped.
+pairs=()
+endpoints="$here/src/modules/librarySearch/endpoints.json"
+pairs+=("$endpoints	$here/../CrispLib/endpoints.json")
+pairs+=("$endpoints	$here/../citer/endpoints.json")
+for f in "$here"/test/fixtures/parity/*; do
+  pairs+=("$f	$here/../CrispLib/fixtures/parity/$(basename "$f")")
+done
+
+# The repo a target belongs to: the path component right after $here/../
+repo_of() { local rel="${1#"$here/../"}"; printf '%s' "$here/../${rel%%/*}"; }
 
 if [[ "${1:-}" == "--check" ]]; then
   rc=0
-  for t in "${targets[@]}"; do
+  for pair in "${pairs[@]}"; do
+    src="${pair%%	*}" t="${pair#*	}"
+    if [[ ! -d "$(repo_of "$t")" ]]; then continue; fi
     if [[ ! -f "$t" ]]; then echo "MISSING: $t"; rc=1; continue; fi
-    if ! diff -q "$canonical" "$t" >/dev/null; then echo "DRIFT: $t differs from canonical"; rc=1; fi
+    if ! diff -q "$src" "$t" >/dev/null; then echo "DRIFT: $t differs from canonical"; rc=1; fi
   done
-  [[ $rc -eq 0 ]] && echo "endpoints.json in sync across all repos."
+  [[ $rc -eq 0 ]] && echo "shared files in sync across all repos."
   exit $rc
 fi
 
-for t in "${targets[@]}"; do
-  if [[ -d "$(dirname "$t")" ]]; then cp "$canonical" "$t"; echo "synced -> $t"; else echo "skip (no repo): $t"; fi
+for pair in "${pairs[@]}"; do
+  src="${pair%%	*}" t="${pair#*	}"
+  if [[ -d "$(repo_of "$t")" ]]; then
+    mkdir -p "$(dirname "$t")"
+    cp "$src" "$t"
+    echo "synced -> $t"
+  else
+    echo "skip (no repo): $t"
+  fi
 done

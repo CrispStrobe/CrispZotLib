@@ -1,0 +1,170 @@
+[
+  {
+    "id": "dnb-001",
+    "title": "Die Verwandlung : Erzählung / Franz Kafka",
+    "authors": ["Kafka, Franz"],
+    "year": "1915",
+    "publisher_name": "Kurt Wolff Verlag",
+    "place_of_publication": "Leipzig",
+    "isbn": "9783518188781",
+    "language": "ger",
+    "subjects": ["Novelle", "Deutsche Literatur"],
+    "extent": "73 Seiten",
+    "format": "Book"
+  },
+  {
+    "id": "zdb-002",
+    "title": "Handbuch der Physik",
+    "authors": ["Flügge, Siegfried"],
+    "year": "1958",
+    "publisher_name": "Springer",
+    "place_of_publication": "Berlin",
+    "isbn": "3540025375",
+    "issn": "0085-140X",
+    "series": "Encyclopedia of Physics",
+    "language": "ger"
+  },
+  {
+    "id": "doaj-003",
+    "title": "Quantum entanglement in macroscopic systems",
+    "authors": ["Michael A. Nielsen", "Chuang, Isaac"],
+    "year": "2020",
+    "journal_title": "Journal of Modern Physics",
+    "volume": "12",
+    "issue": "3",
+    "pages": "45-67",
+    "doi": "10.1000/xyz123",
+    "issn": "1234-5678",
+    "urls": [
+      "https://example.org/articles/qe-2020",
+      "https://doi.org/10.1000/xyz123"
+    ],
+    "abstract": "We study entanglement at macroscopic scales.",
+    "subjects": ["Quantum physics", "Entanglement"],
+    "language": "eng",
+    "document_type": "journal article"
+  },
+  {
+    "id": "oai-004",
+    "title": "Glaube und Vernunft im Widerstreit",
+    "authors": ["Habermas, Jürgen"],
+    "year": "2005",
+    "journal_title": "Zeitschrift für Theologie",
+    "volume": "48",
+    "issue": "2",
+    "pages": "97-115",
+    "issn": "0044-2895",
+    "language": "ger"
+  },
+  {
+    "id": "loc-005",
+    "title": "TCP/IP illustrated / W. Richard Stevens",
+    "authors": ["Stevens, W. Richard"],
+    "year": "1994",
+    "publisher_name": "Addison-Wesley",
+    "place_of_publication": "Reading, Mass.",
+    "isbn": "0201633469",
+    "language": "eng"
+  },
+  {
+    "id": "k10plus_006",
+    "title": "Profit & Loss: 100% of #hashtags_and_{braces} for $5",
+    "authors": ["O'Brien, Patrick"],
+    "year": "2018",
+    "publisher_name": "Johnson & Johnson R&D",
+    "place_of_publication": "Research_Triangle Park",
+    "series": "Q&A Series",
+    "isbn": "9780262033848",
+    "language": "eng"
+  },
+  {
+    "id": "un-007",
+    "title": "Yearbook of the United Nations 2019",
+    "authors": ["United Nations"],
+    "year": "2019",
+    "publisher_name": "United Nations Publications",
+    "place_of_publication": "New York",
+    "isbn": "9789211014396",
+    "language": "eng"
+  },
+  {
+    "id": "dnb-008",
+    "title": "Geschichte der deutschen Literatur",
+    "authors": ["Schmidt, Anna [Verfasser]"],
+    "editors": ["Weber, Klaus [Herausgeber]"],
+    "translators": ["Neruda, Pablo [Übersetzer]"],
+    "year": "2012",
+    "publisher_name": "De Gruyter",
+    "place_of_publication": "Berlin",
+    "isbn": "9783110190936",
+    "language": "ger"
+  },
+  {
+    "id": "bnf-009",
+    "title": "Religion und kulturelles Gedächtnis",
+    "editors": ["Assmann, Jan"],
+    "year": "2005",
+    "publisher_name": "Beck",
+    "place_of_publication": "München",
+    "isbn": "3406549772",
+    "language": "ger"
+  },
+  {
+    "id": "arxiv-010",
+    "title": "A survey of\nline-broken titles",
+    "authors": ["Curie, Marie"],
+    "year": "2021",
+    "journal_title": "Annals of Metadata",
+    "issn": "2222-3333",
+    "abstract": "First line of the abstract.\nSecond line.\r\nThird line after CRLF.",
+    "language": "eng",
+    "document_type": "article"
+  },
+  {
+    "id": "kit-011",
+    "title": "Machine learning for library metadata",
+    "authors": ["Voltaire"],
+    "year": "2019",
+    "publisher_name": "KIT Scientific Publishing",
+    "place_of_publication": "Karlsruhe",
+    "document_type": "Thesis (doctoral)",
+    "language": "eng"
+  },
+  {
+    "id": "gbv-012",
+    "title": "Frames and their afterlives",
+    "authors": ["Goffman, Erving"],
+    "year": "2015",
+    "pages": "101-120",
+    "series": "Lecture Notes in Sociology",
+    "isbn": "9780674316560",
+    "publisher_name": "Harvard University Press",
+    "place_of_publication": "Cambridge, Mass.",
+    "document_type": "book chapter",
+    "language": "eng"
+  },
+  {
+    "id": "min-013",
+    "title": "Anonymous pamphlet"
+  },
+  {
+    "id": "mit-014",
+    "title": "Proceedings of the 3rd Symposium on Empty Sets",
+    "editors": ["Erdős, Pál"],
+    "year": "1973",
+    "publisher_name": "MIT Press",
+    "place_of_publication": "Cambridge, Mass.",
+    "document_type": "Conference proceedings",
+    "language": "eng"
+  },
+  {
+    "id": "ezb-015",
+    "title": "Annual report on serial holdings",
+    "authors": ["Deutsche Nationalbibliothek"],
+    "year": "2024",
+    "edition": "2nd revised edition",
+    "document_type": "report",
+    "urls": ["https://example.org/reports/2024"],
+    "language": "eng"
+  }
+]
