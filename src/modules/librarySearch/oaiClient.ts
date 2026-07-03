@@ -1183,14 +1183,14 @@ export class OAIClient {
       if (dateElem.textContent) {
         const dateText = dateElem.textContent.trim();
         // Prioritize YYYY format
-        const yearMatchYYYY = dateText.match(/^\b(1\d{3}|20\d{2})\b$/);
+        const yearMatchYYYY = dateText.match(/^\b(1\d{3}|2[01]\d{2})\b$/);
         if (yearMatchYYYY) {
           record.year = yearMatchYYYY[1];
           break; // Found precise year, stop looking
         }
         // Fallback: Extract year from longer date string if not already found
         if (!record.year) {
-          const yearMatchAny = dateText.match(/\b(1\d{3}|20\d{2})\b/);
+          const yearMatchAny = dateText.match(/\b(1\d{3}|2[01]\d{2})\b/);
           if (yearMatchAny) {
             record.year = yearMatchAny[1];
             // Don't break here, maybe a more precise YYYY exists later
@@ -1310,8 +1310,9 @@ export class OAIClient {
           record.pages = potentialPages;
           // Use year from parens if main year field is missing
           if (!record.year && potentialYearInParens) {
-            const yearMatchParens =
-              potentialYearInParens.match(/\b(1\d{3}|20\d{2})\b/);
+            const yearMatchParens = potentialYearInParens.match(
+              /\b(1\d{3}|2[01]\d{2})\b/,
+            );
             if (yearMatchParens) record.year = yearMatchParens[1];
           }
         }
@@ -1426,7 +1427,7 @@ export class OAIClient {
     );
     if (dateElements.length > 0 && dateElements[0].textContent) {
       const dateText = dateElements[0].textContent.trim();
-      const yearMatch = dateText.match(/\b(1\d{3}|20\d{2})\b/);
+      const yearMatch = dateText.match(/\b(1\d{3}|2[01]\d{2})\b/);
       if (yearMatch) {
         record.year = yearMatch[1];
       }

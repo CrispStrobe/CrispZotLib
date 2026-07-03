@@ -143,7 +143,10 @@ export function formatRecordBibtex(record: BiblioRecord): string {
 
   // Clean up the title
   // Remove trailing author information after '/'
-  let title = record.title.replace(/\s*\/\s*[^/]+$/, "");
+  // Strip the ISBD statement of responsibility (" / John Smith"). Require
+  // whitespace on BOTH sides so in-word slashes survive ("TCP/IP", "Either/Or")
+  // (PLAN 2.15).
+  let title = record.title.replace(/\s+\/\s+[^/]+$/, "");
   // Escape special characters for BibTeX
   title = escapeBibtex(title);
   bibtex.push(`  title = {${title}},`);
@@ -249,9 +252,11 @@ export function formatRecordBibtex(record: BiblioRecord): string {
 
 // Format a record as RIS citation
 export function formatRecordRis(record: BiblioRecord): string {
-  // Determine record type
+  // Determine record type. A book carrying a series ISSN is still a book —
+  // only treat as a periodical when there's a journal title or an ISSN with no
+  // ISBN (mirrors the isbn-before-issn rule in mapRecordToItemType).
   let recordType = "BOOK"; // Default to book
-  if (record.issn || record.journal_title) {
+  if (record.journal_title || (record.issn && !record.isbn)) {
     recordType = "JOUR"; // Journal article
   } else if (
     record.series &&
@@ -320,14 +325,15 @@ export function formatRecordRis(record: BiblioRecord): string {
     ris.push(`CY  - ${record.place_of_publication}`);
   }
 
-  // Add ISBN
-  if (record.isbn) {
-    ris.push(`SN  - ${record.isbn}`);
-  }
-
-  // Add ISSN
-  if (record.issn) {
-    ris.push(`SN  - ${record.issn}`);
+  // Add ISBN/ISSN. RIS uses a single `SN` tag for both, so emitting two lines
+  // is ambiguous to importers — pick the identifier matching the type (ISSN for
+  // periodicals, ISBN otherwise) and emit exactly one (PLAN 2.15).
+  const serialNumber =
+    recordType === "JOUR"
+      ? record.issn || record.isbn
+      : record.isbn || record.issn;
+  if (serialNumber) {
+    ris.push(`SN  - ${serialNumber}`);
   }
 
   // Add edition

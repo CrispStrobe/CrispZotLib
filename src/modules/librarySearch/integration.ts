@@ -402,6 +402,9 @@ export class LibrarySearchIntegration {
       "import",
       {
         callback: async () => {
+          // Re-entrancy guard: a second click while the first import is in
+          // flight would import duplicates (PLAN 2.6).
+          if (dialogData.isLoading) return;
           const selectedItems = dialogData.selectedResults.map(
             (idx) => dialogData.searchResults[idx],
           );
@@ -411,6 +414,7 @@ export class LibrarySearchIntegration {
             );
             return;
           }
+          dialogData.isLoading = true;
           try {
             const count =
               await LibrarySearchIntegration.importToZotero(selectedItems);
@@ -418,6 +422,8 @@ export class LibrarySearchIntegration {
             dialogHelper.window?.close();
           } catch (error) {
             dialogHelper.window?.alert(`Error importing items: ${error}`);
+          } finally {
+            dialogData.isLoading = false;
           }
         },
         noClose: true,
@@ -428,6 +434,9 @@ export class LibrarySearchIntegration {
       "importAll",
       {
         callback: async () => {
+          // Re-entrancy guard (PLAN 2.6).
+          if (dialogData.isLoading) return;
+          dialogData.isLoading = true;
           try {
             const count = await LibrarySearchIntegration.importToZotero(
               dialogData.searchResults,
@@ -436,6 +445,8 @@ export class LibrarySearchIntegration {
             dialogHelper.window?.close();
           } catch (error) {
             dialogHelper.window?.alert(`Error importing items: ${error}`);
+          } finally {
+            dialogData.isLoading = false;
           }
         },
         noClose: true,

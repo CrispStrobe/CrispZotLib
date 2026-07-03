@@ -205,3 +205,47 @@ describe("formatRecord('text' / 'json')", () => {
     expect(json.title).toBe("X");
   });
 });
+
+// PLAN 2.15 — regex/format rigor.
+describe("BibTeX title / statement-of-responsibility strip", () => {
+  it("strips the ISBD ' / Author' suffix", () => {
+    const out = formatRecordBibtex(
+      rec({ title: "The Great Work / by Jane Doe", authors: ["Jane Doe"] }),
+    );
+    expect(out).toContain("title = {The Great Work}");
+  });
+
+  it("preserves in-word slashes (no surrounding spaces)", () => {
+    expect(formatRecordBibtex(rec({ title: "TCP/IP Illustrated" }))).toContain(
+      "title = {TCP/IP Illustrated}",
+    );
+    expect(formatRecordBibtex(rec({ title: "Either/Or" }))).toContain(
+      "title = {Either/Or}",
+    );
+  });
+});
+
+describe("RIS SN tag (ISBN/ISSN collision)", () => {
+  it("emits a single SN — ISBN for books", () => {
+    const lines = formatRecordRis(
+      rec({ title: "A Book", isbn: "9783161484100", issn: "0378-5955" }),
+    )
+      .split("\n")
+      .filter((l) => l.startsWith("SN  - "));
+    expect(lines).toEqual(["SN  - 9783161484100"]);
+  });
+
+  it("emits a single SN — ISSN for journals", () => {
+    const lines = formatRecordRis(
+      rec({
+        title: "An Article",
+        journal_title: "Some Journal",
+        isbn: "9783161484100",
+        issn: "0378-5955",
+      }),
+    )
+      .split("\n")
+      .filter((l) => l.startsWith("SN  - "));
+    expect(lines).toEqual(["SN  - 0378-5955"]);
+  });
+});
