@@ -38,7 +38,7 @@ export class SearchService {
     log(`Executing search with params: ${JSON.stringify(params)}`);
     try {
       switch (params.protocol.toLowerCase()) {
-        case 'sru':
+        case 'sru': {
           // --- Get DOM capabilities from main window ---
           const mainWindow = Zotero.getMainWindow();
           if (!mainWindow) {
@@ -47,17 +47,20 @@ export class SearchService {
           // Pass the necessary objects/functions to executeSruSearch
           return await this.executeSruSearch(params, log, mainWindow.DOMParser, mainWindow.Node, mainWindow.XPathResult, mainWindow.XMLSerializer);
           // --- End modification ---
+        }
 
-        case 'oai':
+        case 'oai': {
           // ... (OAI logic remains the same) ...
           const [oaiSuccess, oaiRecords, oaiTotal, oaiNextToken] = await this.executeOaiSearch(params, log);
           if (oaiNextToken) { log(`OAI search returned next resumption token (discarded by executeSearch): ${oaiNextToken.substring(0, 50)}...`); }
           return [oaiSuccess, oaiRecords, oaiTotal];
+        }
 
-        case 'ixtheo':
+        case 'ixtheo': {
           // ... (IxTheo logic remains the same) ...
           const page = params.startRecord && params.maxRecords ? Math.floor((params.startRecord - 1) / params.maxRecords) + 1 : 1;
           return await this.executeIxTheoSearch({ ...params, page: page, format: params.endpoint }, log);
+        }
 
         default:
           throw new Error(`Unsupported protocol: ${params.protocol}`);
@@ -125,7 +128,7 @@ export class SearchService {
         let schemaToUseForRequest: string | undefined;
 
         // Start with the user's choice, or the configured default if no choice was made
-        let initialSchemaChoice = requestedSchema || defaultSchemaFromConfig;
+        const initialSchemaChoice = requestedSchema || defaultSchemaFromConfig;
         log(`${logPrefix} Initial schema choice (user/default): ${initialSchemaChoice || 'None'}`);
 
         // Apply mapping specifically for DNB and ZDB endpoints
@@ -723,22 +726,25 @@ export class SearchService {
             case 'AU': case 'A1': record.authors?.push(currentValue); break;
             case 'ED': case 'A2': record.editors?.push(currentValue); break;
             case 'A4': record.translators?.push(currentValue); break;
-            case 'PY': case 'Y1':
+            case 'PY': case 'Y1': {
               const yearMatch = currentValue.match(/(\d{4})/);
               if (yearMatch) record.year = yearMatch[1];
               break;
+            }
             case 'PB': record.publisher_name = currentValue; break;
             case 'CY': record.place_of_publication = currentValue; break;
-            case 'SN':
+            case 'SN': {
               const cleanedSN = currentValue.replace(/[- ]/g, '');
               if (/^\d{4}\d{3}[\dX]$/.test(cleanedSN)) { record.issn = currentValue; }
               else { record.isbn = currentValue.replace(/\s*\(.*?\)\s*$/, ''); }
               break;
-            case 'T2': case 'JO': case 'JA': case 'JF':
+            }
+            case 'T2': case 'JO': case 'JA': case 'JF': {
                 const format = record.format || (record.issn ? 'Journal Article' : 'Book Chapter');
                 if (format === 'Journal Article') { record.journal_title = currentValue; }
                 else { record.series = currentValue; }
                 break;
+            }
             case 'VL': record.volume = currentValue; break;
             case 'IS': record.issue = currentValue; break;
             case 'SP': startPage = currentValue; break;

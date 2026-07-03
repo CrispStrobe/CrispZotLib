@@ -28,6 +28,7 @@ export { LibrarySearchIntegration } from './integration';
 
 // Initialize the library search module
 export function initializeLibrarySearch(): void {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- lazy require avoids a circular import at module load
   const { LibrarySearchIntegration } = require('./integration');
   LibrarySearchIntegration.init();
 }

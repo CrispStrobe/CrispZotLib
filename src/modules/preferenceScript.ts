@@ -173,11 +173,11 @@ async function updatePrefsUI() {
         addon.data.prefs.rows = [ // Rebuild rows data here
            {
              setting: "Enabled", // Consider using getString()
-             value: Boolean(getPref("enable")) ? "Yes" : "No" // Use Boolean() here too
+             value: getPref("enable") ? "Yes" : "No" // Use Boolean() here too
            },
            {
              setting: "Debug Mode", // Consider using getString()
-             value: Boolean(getPref("debugMode")) ? "Enabled" : "Disabled" // Use Boolean() here too
+             value: getPref("debugMode") ? "Enabled" : "Disabled" // Use Boolean() here too
            }
            // Add other settings dynamically if needed
         ];
@@ -233,8 +233,8 @@ function updatePrefsTable() {
 
    // Update rows data source
    addon.data.prefs.rows = [
-      { setting: "Enabled", value: Boolean(getPref("enable")) ? "Yes" : "No" },
-      { setting: "Debug Mode", value: Boolean(getPref("debugMode")) ? "Enabled" : "Disabled" }
+      { setting: "Enabled", value: getPref("enable") ? "Yes" : "No" },
+      { setting: "Debug Mode", value: getPref("debugMode") ? "Enabled" : "Disabled" }
    ];
 
    // Find and update corresponding cells in the existing table

@@ -173,7 +173,7 @@ export class SRUClient {
 
           const recordIdElement = this.findElement(recordElement, './/srw:recordIdentifier', nodeConst, xpathResultConst);
           const positionElement = this.findElement(recordElement, './/srw:recordPosition', nodeConst, xpathResultConst);
-          let recordId = recordIdElement?.textContent || positionElement?.textContent || `record-${records.length + 1}`;
+          const recordId = recordIdElement?.textContent || positionElement?.textContent || `record-${records.length + 1}`;
 
           const serializer = new xmlSerializerConst(); // Use passed XMLSerializer
           const rawXml = serializer.serializeToString(recordDataElement);
@@ -289,7 +289,7 @@ export class SRUClient {
         let role = defaultRole || 'author'; let cleanName = name;
         if (/\b(?:ed(?:itor)?|hrsg|hg)\b|\(ed|\(hg/i.test(name)) { role = 'editor'; }
         else if (/\b(?:trans|transl|translator|übersetz|übers)\b|\(trans|\(übers/i.test(name)) { role = 'translator'; }
-        cleanName = cleanName.replace(/\s*[\(\[][^)]*(?:ed|hrsg|edit|hg|trans|übersetz)[^)]*[\)\]]/g, '').replace(/\s*(?:ed|hrsg|edit|hg|trans|transl|translator|übersetz|übers)\.?\s*$/g, '').trim();
+        cleanName = cleanName.replace(/\s*[([][^)]*(?:ed|hrsg|edit|hg|trans|übersetz)[^)]*[)\]]/g, '').replace(/\s*(?:ed|hrsg|edit|hg|trans|transl|translator|übersetz|übers)\.?\s*$/g, '').trim();
         if (!cleanName || seenNames.has(cleanName)) return;
         seenNames.add(cleanName);
         if (role === 'editor') record.editors.push(cleanName);
@@ -345,7 +345,7 @@ export class SRUClient {
     const findLead = () => this.findLeader(element, nodeConst, xpathResultConst);
     const seenNames = new Set<string>();
 
-    let title = findData("245", "a")[0]?.replace(/[\/:]$/, '').trim() || "Untitled";
+    let title = findData("245", "a")[0]?.replace(/[/:]$/, '').trim() || "Untitled";
     const subtitle = findData("245", "b")[0]?.trim();
     if (subtitle) title += `: ${subtitle}`; record.title = title;
 

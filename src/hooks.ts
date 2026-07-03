@@ -321,11 +321,12 @@ async function onPrefsEvent(type: string, data: { [key: string]: any }) {
 async function onDialogEvents(type: string, data?: any) {
   try {
     switch (type) {
-      case "openSearch":
+      case "openSearch": {
         // Import the search dialog module dynamically
         const { openSearchDialog } = await import("./modules/librarySearch/searchDialog");
         await openSearchDialog();
         break;
+      }
       default:
         break;
     }

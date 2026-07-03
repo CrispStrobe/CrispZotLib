@@ -171,7 +171,7 @@ export class PathUtils {
         if (!home) return '';
         
         // Extract username from path
-        const parts = home.split(/[\\\/]/);
+        const parts = home.split(/[\\/]/);
         return parts[parts.length - 1] || '';
       } catch (e) {
         ztoolkit.log('Error getting username:', e);

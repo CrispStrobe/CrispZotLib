@@ -13,7 +13,7 @@ async function startup({ id, version, resourceURI, rootURI }, reason) {
   // 1. Wait for Zotero to be ready
   await Zotero.initializationPromise;
 
-  // 2. Normalize rootURI (Zotero 7 vs 6)
+  // 2. Normalize rootURI (Zotero 7 vs 6)
   if (!rootURI) {
     rootURI = resourceURI.spec;
   }
