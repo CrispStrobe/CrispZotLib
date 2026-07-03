@@ -70,23 +70,23 @@ New SRU added (verified live; the example-driven `buildSruQuery` handles their i
 - [x] **2.2 `setField` on invalid fields aborts import.** Fixed: each `setField` wrapped in try/catch (invalid field skipped, not fatal). Verified live that ISBN is not a valid field for journalArticle — the exact crash this prevents.
 - [x] **2.3 No per‑item error isolation.** Fixed: each item wrapped in try/catch; successes/failures counted and reported; batch continues past a bad record.
 - [x] **2.4 OAI pagination broken.** `searchService.ts:51‑55` discards `resumptionToken`; Next/Prev re‑runs page 1. Thread token through pagination state.
-- [~] **2.5 Malformed XML swallowed.** `oaiClient`/`sruClient` — a `<parsererror>` doc reads as "0 results". Detect parse errors and surface them.
-- [ ] **2.6 Import buttons not re‑entrancy guarded.** `integration.ts:234‑253` — add `isLoading` guard like the pagination handlers. Prevents double‑click duplicates.
+- [x] **2.5 Malformed XML swallowed.** Fixed: SRU already checked `<parsererror>`; added `OAIClient.parseXml()` throwing on `<parsererror>` at all 5 OAI parse sites, so a malformed/truncated response is logged as a failure instead of a silent "0 results".
+- [x] **2.6 Import buttons not re‑entrancy guarded.** Fixed: both import buttons (selected/all) guarded with `dialogData.isLoading` + reset in `finally`, mirroring the pagination handlers. Prevents double‑click duplicates.
 
 ### Medium
 
-- [ ] **2.7 Crossref UNIXREF parser** — `cr_unixsd`/`cr_unixml` schema handling in `oaiClient` (Crossref has no oai_dc).
+- [x] **2.7 Crossref UNIXREF parser** — **superseded.** The Crossref OAI endpoint was removed in `1c866e4` (it only serves `cr_unixsd`/UNIXREF, not oai_dc). No Crossref OAI endpoint remains to parse for, and Crossref DOI metadata is already reachable via `identifierResolver.resolveDoi` (doi.org CSL‑JSON, Crossref‑backed). Writing a UNIXREF parser would mean re‑adding a deliberately‑removed endpoint; deferred unless Crossref OAI is reinstated.
 - [x] **2.8 BibTeX escaping for all fields** — Fixed: `escapeBibtex()` applied to title, author/editor/translator, journal, publisher, address, series, note (url/doi/isbn left raw). RIS escaping done (newline sanitization on title/abstract).
 - [x] **2.9 Corporate/mononym author handling** — `formatters.ts` + `integration.ts` split "First Last" blindly; "United Nations" → "Nations, United". Detect corporate/single‑token names.
-- [ ] **2.10 ISBN/ISSN regex false positives** — `oaiClient` `\d{9,}` matches URNs/DOIs; add checksum/`i`‑flag rigor.
+- [x] **2.10 ISBN/ISSN regex false positives** — Fixed: new `recordUtils.ts` with checksum‑validated `extractIsbn`/`extractIssn` (length + mod‑11/mod‑10), used at both OAI identifier sites. Rejects DOIs/URNs/date strings the old `\d[\d-X]{9,}` accepted. 11 unit tests.
 - [x] **2.11 IxTheo fetch timeouts + bounded concurrency** — `searchService.ts:284,305‑361` raw fetches have no AbortController; dialog can hang forever.
-- [ ] **2.12 Char‑encoding** — `response.text()` ignores XML‑declared latin‑1 (DNB); umlaut mojibake. Decode per declared charset.
+- [x] **2.12 Char‑encoding** — Fixed: `httpUtils.decodeXml`/`readXml` decode by declared charset (HTTP `Content-Type`, then XML prolog, else UTF‑8), used at all OAI + SRU read sites. Fixes DNB latin‑1 umlaut mojibake from `response.text()`'s UTF‑8 default. 5 unit tests.
 - [x] **2.13 Placeholder "records" imported as junk** — `oaiClient` returns synthetic `[DELETED RECORD]`/`[Error…]` records that pass import guards. Return null instead.
 
 ### Low
 
 - [x] **2.14** `innerHTML` with remote catalog data in privileged window (`integration.ts:136,151‑153`) → `textContent`.
-- [ ] **2.15** Title `/ Author` strip regex over‑greedy; year regex 1000–2099 only; RIS ISBN+ISSN both as `SN`.
+- [x] **2.15** Fixed: BibTeX title strip now requires whitespace around the ISBD slash (`/\s+\/\s+/`) so "TCP/IP"/"Either/Or" survive; OAI year regex widened to 1000–2199; RIS emits a single type‑appropriate `SN` (ISBN for books, ISSN for periodicals) and no longer mistypes a book with a series ISSN as JOUR. 6 unit tests.
 
 ### New capability
 
@@ -94,7 +94,7 @@ New SRU added (verified live; the example-driven `buildSruQuery` handles their i
 
 ### buildSruQuery index mapping
 
-- [ ] **2.17** Generalize `searchService.buildSruQuery` for per‑endpoint index families: `TIT=`/`PER=` (DNB/ZDB), `bath.*` (LoC), `dc.*` (KB), `alma.*` (BIBSYS/swisscovery), `pica.*` (K10plus), CQL `bib.*` (BnF). Currently hard‑codes DNB/ZDB + example‑driven fallback.
+- [x] **2.17** Done: replaced the scattered DNB/ZDB/BnF conditionals in `buildSruQuery` with a declarative `SRU_INDEX_FAMILIES` table (index prefix + relation + join + all‑fields builder); `bath.*`/`dc.*`/`alma.*`/`pica.*` endpoints keep using the example‑driven inference from `endpoints.json`. Behavior‑preserving — live‑verified generated queries return results (DNB `TIT=`/`NUM=`, ZDB `TIT=`, BnF `bib.title any`, K10plus `pica.tit=`).
 
 ---
 
@@ -129,7 +129,7 @@ Internal optimization pass — no endpoint or user‑facing behaviour changes. G
 - [x] **6.3 IxTheo detail HTML: hoist NodeList.** `parseIxTheoDetailPageHtml` re‑ran the same `querySelectorAll('.description-tab … th')` ~13×/record; resolved once and shared.
 - [x] **6.4 Dead code / dedup.** Removed the duplicated `createStyledDialog` from `searchDialog.ts` (now imports `utils/dialogUtils`), dead `showDebugDialog`, and the `find_script*.sh` scratch scripts. Bundle 397,453 → 393,394 B.
 - [x] **6.5 CI.** Added a `test` job (`npm test` was never run in CI); fixed the build artifact path (`build` → `.scaffold/build/*.xpi`, which was archiving nothing); `npm install` → `npm ci` across all workflows.
-- [!] **6.6 OAI DNB N+1.** `oaiClient.searchWithIdentifiers` fetches records one‑by‑one via `GetRecord` (up to ~100 round‑trips). Switching to `ListRecords` is the real win but is a deliberate 413‑avoidance workaround (`oaiClient.ts:207`) with no test coverage — needs a live DNB test before changing.
+- [x] **6.6 OAI DNB N+1.** Done: live‑verified against services.dnb.de that `ListRecords` returns full metadata (50/page) + resumptionToken in ONE request (HTTP 200, no 413, even on a wider date window) — the 413 fear was misattributed (413 = request‑too‑large, irrelevant to GET‑verb OAI). Rerouted DNB through the standard `ListRecords` path (forced date range + default `dnb` set retained), gaining pagination and cutting ~51 requests → 1. Removed the dead `searchWithIdentifiers` (‑112 lines).
 - [!] **6.7 Repo‑wide Prettier drift.** `prettier --check .` flags 45 files incl. ones untouched by this pass (`tsconfig.json`, `typings/`), so the `lint` CI job is red on its own baseline. Left alone (a repo‑wide `--write` would fight the intentional dense one‑liners). Decide: reformat all vs. scope via `.prettierignore`.
 
 ---
