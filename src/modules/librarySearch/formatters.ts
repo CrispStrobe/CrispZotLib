@@ -58,6 +58,42 @@ export function generateCitationKey(record: BiblioRecord): string {
   return authorKey;
 }
 
+// Escape BibTeX-special characters in a prose value. Applied to text fields
+// (title, names, journal, publisher, series, note). NOT applied to url/doi/isbn,
+// where a backslash escape would corrupt the identifier.
+function escapeBibtex(value: string): string {
+  return value.replace(/([#$%&_{}])/g, '\\$1');
+}
+
+// Canonical mapping from a BiblioRecord to a Zotero item type. `document_type`
+// (computed by the SRU/OAI parsers) wins; otherwise fall back to heuristics.
+// ISBN is checked before ISSN so a book carrying a series ISSN is not
+// mis-classified as a journal article. Shared by the export and import paths.
+export function mapRecordToItemType(record: BiblioRecord): string {
+  const dt = (record.document_type || '').toLowerCase();
+  if (dt) {
+    if (dt.includes('article')) return 'journalArticle';
+    if (dt.includes('chapter') || dt.includes('section')) return 'bookSection';
+    if (dt.includes('thesis') || dt.includes('dissertation')) return 'thesis';
+    if (dt.includes('conference') || dt.includes('proceeding')) return 'conferencePaper';
+    if (dt.includes('report')) return 'report';
+    if (dt.includes('map')) return 'map';
+    if (dt.includes('video') || dt.includes('film') || dt.includes('movingimage'))
+      return 'videoRecording';
+    if (dt.includes('audio') || dt.includes('music') || dt.includes('sound'))
+      return 'audioRecording';
+    if (dt.includes('image') || dt.includes('artwork')) return 'artwork';
+    if (dt.includes('computer') || dt.includes('software') || dt.includes('dataset'))
+      return 'computerProgram';
+    if (dt.includes('book')) return 'book';
+    if (dt.includes('journal')) return record.journal_title ? 'journalArticle' : 'book';
+  }
+  if (record.journal_title) return 'journalArticle';
+  if (record.isbn) return 'book';
+  if (record.issn) return 'journalArticle';
+  return 'book';
+}
+
 // Format a record as BibTeX citation
 export function formatRecordBibtex(record: BiblioRecord): string {
   // Get citation key
@@ -89,26 +125,26 @@ export function formatRecordBibtex(record: BiblioRecord): string {
       // Remove trailing author information after '/'
       let title = record.title.replace(/\s*\/\s*[^/]+$/, '');
       // Escape special characters for BibTeX
-      title = title.replace(/([#$%&_{}])/g, '\\$1');
+      title = escapeBibtex(title);
       bibtex.push(`  title = {${title}},`);
       
       // Authors
       if (record.authors && record.authors.length > 0) {
         // Format authors properly for BibTeX
-        const authorsList = record.authors.join(" and ");
+        const authorsList = record.authors.map(escapeBibtex).join(" and ");
         bibtex.push(`  author = {${authorsList}},`);
       }
       
       // Editors
       if (record.editors && record.editors.length > 0) {
         // Format editors properly for BibTeX
-        const editorsList = record.editors.join(" and ");
+        const editorsList = record.editors.map(escapeBibtex).join(" and ");
         bibtex.push(`  editor = {${editorsList}},`);
       }
       
       // Translators (not a standard BibTeX field, but we'll include it as a note)
       if (record.translators && record.translators.length > 0) {
-        const translatorsList = record.translators.join(" and ");
+        const translatorsList = record.translators.map(escapeBibtex).join(" and ");
         bibtex.push(`  translator = {${translatorsList}},`);
       }
       
@@ -119,7 +155,7 @@ export function formatRecordBibtex(record: BiblioRecord): string {
       
       // Journal for articles
       if (entryType === "article" && record.journal_title) {
-        bibtex.push(`  journal = {${record.journal_title}},`);
+        bibtex.push(`  journal = {${escapeBibtex(record.journal_title)}},`);
         
         // Volume
         if (record.volume) {
@@ -134,17 +170,17 @@ export function formatRecordBibtex(record: BiblioRecord): string {
       
       // Publisher
       if (record.publisher_name) {
-        bibtex.push(`  publisher = {${record.publisher_name}},`);
+        bibtex.push(`  publisher = {${escapeBibtex(record.publisher_name)}},`);
       }
       
       // Address (place of publication)
       if (record.place_of_publication) {
-        bibtex.push(`  address = {${record.place_of_publication}},`);
+        bibtex.push(`  address = {${escapeBibtex(record.place_of_publication)}},`);
       }
       
       // Series
       if (record.series) {
-        bibtex.push(`  series = {${record.series}},`);
+        bibtex.push(`  series = {${escapeBibtex(record.series)}},`);
       }
       
       // ISBN
@@ -183,7 +219,7 @@ export function formatRecordBibtex(record: BiblioRecord): string {
       }
       
       // Add record ID in note field for reference
-      bibtex.push(`  note = {ID: ${record.id}}`);
+      bibtex.push(`  note = {ID: ${escapeBibtex(record.id)}}`);
       
       // Close the entry
       bibtex.push("}");
@@ -347,12 +383,13 @@ export function formatRecordRis(record: BiblioRecord): string {
 // Format a record for display or export in the specified format
 export function formatRecord(record: BiblioRecord, format: string = 'text', includeRaw: boolean = false): string {
   switch (format.toLowerCase()) {
-        case 'json':
+        case 'json': {
           const data = { ...record };
           if (!includeRaw) {
             delete data.raw_data;
           }
           return JSON.stringify(data, null, 2);
+        }
         
         case 'bibtex':
           return formatRecordBibtex(record);
@@ -360,10 +397,10 @@ export function formatRecord(record: BiblioRecord, format: string = 'text', incl
         case 'ris':
           return formatRecordRis(record);
         
-        case 'zotero':
+        case 'zotero': {
           // For Zotero, create a JSON structure with specific Zotero-compatible fields
           const zoteroData: any = {
-            itemType: record.issn ? "journalArticle" : "book",
+            itemType: mapRecordToItemType(record),
             title: record.title,
             creators: [],
             date: record.year,
@@ -429,8 +466,9 @@ export function formatRecord(record: BiblioRecord, format: string = 'text', incl
           }
           
           return JSON.stringify(zoteroData, null, 2);
-        
-        default: // text format
+        }
+
+        default: { // text format
           // Create a nicely formatted text representation
           const result: string[] = [];
           result.push(`Title: ${record.title}`);
@@ -544,5 +582,6 @@ export function formatRecord(record: BiblioRecord, format: string = 'text', incl
           }
           
           return result.join("\n");
+        }
       }
 }

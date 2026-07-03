@@ -2,6 +2,7 @@
 // Updated layout for results dialog
 
 import { BiblioRecord } from './models';
+import { mapRecordToItemType } from './formatters';
 import { openSearchDialog } from './searchDialog';
 import { createStyledDialog } from '../../utils/dialogUtils'; 
 import { SearchService } from './searchService';
@@ -316,18 +317,8 @@ export class LibrarySearchIntegration {
 
         // Convert to Zotero-compatible format
         const items = records.map(record => {
-            // Determine item type
-            let itemType = "book"; // Default
-            if (record.journal_title || record.issn) {
-                itemType = "journalArticle";
-            } else if (record.document_type) {
-                const docType = record.document_type.toLowerCase();
-                if (docType.includes("article")) { itemType = "journalArticle"; }
-                else if (docType.includes("chapter")) { itemType = "bookSection"; }
-                else if (docType.includes("thesis")) { itemType = "thesis"; }
-                else if (docType.includes("conference")) { itemType = "conferencePaper"; }
-                else if (docType.includes("report")) { itemType = "report"; }
-            }
+            // Determine item type — document_type wins; fall back to heuristics.
+            const itemType = mapRecordToItemType(record);
 
             // Format creators
             const creators: any[] = [];
@@ -373,34 +364,52 @@ export class LibrarySearchIntegration {
             const activePane = Zotero.getActiveZoteroPane();
             if (!activePane) { throw new Error("Could not get active Zotero pane."); }
             const collection = activePane.getSelectedCollection();
-            let libraryID = collection ? collection.libraryID : (activePane.getSelectedLibraryID() || Zotero.Libraries.userLibraryID);
+            const libraryID = collection ? collection.libraryID : (activePane.getSelectedLibraryID() || Zotero.Libraries.userLibraryID);
 
             const createdItems = [];
+            const failures: string[] = [];
             for (const itemData of items) {
-                const newItem = new Zotero.Item(itemData.itemType);
-                newItem.libraryID = libraryID;
+                // Per-item isolation: one bad record must not abort the whole batch.
+                try {
+                    const newItem = new Zotero.Item(itemData.itemType);
+                    newItem.libraryID = libraryID;
 
-                for (const field in itemData) {
-                    if (field === 'itemType' || field === '_creatorsData' || field === 'tags' || field === 'libraryID') continue;
-                    if (itemData[field]) newItem.setField(field, itemData[field]);
+                    for (const field in itemData) {
+                        if (field === 'itemType' || field === '_creatorsData' || field === 'tags' || field === 'libraryID') continue;
+                        if (!itemData[field]) continue;
+                        // Per-field isolation: a field that is invalid for this item
+                        // type (e.g. ISBN on a journalArticle) is skipped, not fatal.
+                        try {
+                            newItem.setField(field, itemData[field]);
+                        } catch (fieldErr) {
+                            Zotero.debug(`[LibrarySearch] Skipping field "${field}" for itemType "${itemData.itemType}": ${fieldErr}`);
+                        }
+                    }
+
+                    if (itemData._creatorsData && itemData._creatorsData.length > 0) {
+                        itemData._creatorsData.forEach((creator: any, i: number) => {
+                            const creatorTypeID = Zotero.CreatorTypes.getID(creator.creatorType);
+                            const validCreatorType = creatorTypeID !== 0 ? creator.creatorType : 'author';
+                            newItem.setCreator(i, { firstName: creator.firstName, lastName: creator.lastName, creatorType: validCreatorType });
+                        });
+                    }
+
+                    if (itemData.tags && itemData.tags.length > 0) { itemData.tags.forEach((tag: any) => newItem.addTag(tag.tag)); }
+                    if (collection) { newItem.setCollections([collection.id]); }
+
+                    await newItem.saveTx();
+                    createdItems.push(newItem);
+                } catch (itemErr: any) {
+                    const label = itemData.title || itemData.DOI || itemData.ISBN || '(untitled)';
+                    failures.push(`${label}: ${itemErr?.message || itemErr}`);
+                    console.error(`Error importing item "${label}":`, itemErr);
                 }
-
-                if (itemData._creatorsData && itemData._creatorsData.length > 0) {
-                    itemData._creatorsData.forEach((creator: any, i: number) => {
-                        const creatorTypeID = Zotero.CreatorTypes.getID(creator.creatorType);
-                        const validCreatorType = creatorTypeID !== 0 ? creator.creatorType : 'author';
-                        newItem.setCreator(i, { firstName: creator.firstName, lastName: creator.lastName, creatorType: validCreatorType });
-                    });
-                }
-
-                if (itemData.tags && itemData.tags.length > 0) { itemData.tags.forEach((tag: any) => newItem.addTag(tag.tag)); }
-                if (collection) { newItem.setCollections([collection.id]); }
-
-                await newItem.saveTx();
-                createdItems.push(newItem);
             }
 
-            console.log(`Successfully imported ${createdItems.length} items`);
+            console.log(`Imported ${createdItems.length}/${items.length} items` + (failures.length ? `, ${failures.length} failed` : ''));
+            if (failures.length > 0) {
+                ztoolkit.log(`[LibrarySearch] Import failures:\n${failures.join('\n')}`, 'warn');
+            }
             if (createdItems.length > 0 && activePane) { activePane.selectItems(createdItems.map(item => item.id as number)); }
             return createdItems.length;
         } catch (error) {
