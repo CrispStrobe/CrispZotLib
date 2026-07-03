@@ -1338,18 +1338,59 @@ export class SearchService {
    * Build SRU query string based on parameters and endpoint specifics.
    * (SAFER version 2 - Prioritize DNB/ZDB known indexes)
    */
+  // Per-endpoint CQL index families (PLAN 2.17). Declaring these as data
+  // replaces the scattered DNB/ZDB/BnF conditionals. `rel` is the relation
+  // between index and value ('=' or 'any'/'all'); `join` is the boolean joiner
+  // (default ' AND '); `allFields` builds the all-fields query (default
+  // 'cql.anywhere all "…"'). Endpoints NOT listed here fall back to the
+  // example-driven inference — their index family (bath.*, dc.*, alma.*,
+  // pica.*) is encoded in endpoints.json `examples` — then the generic default.
+  private static readonly SRU_INDEX_FAMILIES: Record<
+    string,
+    {
+      title: string;
+      author: string;
+      isbn?: string;
+      rel: "=" | "any" | "all";
+      join?: string;
+      allFields?: (term: string) => string;
+    }
+  > = {
+    dnb: {
+      title: "TIT",
+      author: "PER",
+      isbn: "NUM",
+      rel: "=",
+      allFields: (t) => `woe=${t}`,
+    },
+    zdb: {
+      title: "TIT",
+      author: "PER",
+      isbn: "ISS",
+      rel: "=",
+      allFields: (t) => `woe=${t}`,
+    },
+    bnf: {
+      title: "bib.title",
+      author: "bib.author",
+      isbn: "bib.isbn",
+      rel: "any",
+      join: " and ",
+    },
+  };
+
   private static buildSruQuery(
     params: import("./integration").SearchParams,
     endpointId: string,
   ): string {
-    const isDnbOrZdb = endpointId === "dnb" || endpointId === "zdb";
+    const family = this.SRU_INDEX_FAMILIES[endpointId];
 
     // Prioritize allFieldsTerm
     if (params.allFieldsTerm?.trim()) {
       const searchTerm = params.allFieldsTerm.trim();
-      return isDnbOrZdb
-        ? `woe=${searchTerm}`
-        : `cql.anywhere all "${searchTerm}"`; // Use woe for DNB/ZDB
+      return family?.allFields
+        ? family.allFields(searchTerm)
+        : `cql.anywhere all "${searchTerm}"`;
     }
 
     const queryParts: string[] = [];
@@ -1363,20 +1404,16 @@ export class SearchService {
       if (!value?.trim()) return null;
       const trimmedValue = value.trim();
 
-      // --- START FIX: Prioritize DNB/ZDB known indexes ---
-      if (isDnbOrZdb) {
-        switch (key) {
-          case "title":
-            return `TIT=${trimmedValue}`;
-          case "author":
-            return `PER=${trimmedValue}`;
-          case "isbn":
-            return endpointId === "zdb"
-              ? `ISS=${trimmedValue}`
-              : `NUM=${trimmedValue}`; // ZDB uses ISS for ISSN/ISBN? DNB uses NUM. Defaulting DNB to NUM.
+      // --- Data-driven index family for endpoints with a known CQL family ---
+      if (family) {
+        const index = family[key];
+        if (index) {
+          return family.rel === "="
+            ? `${index}=${trimmedValue}`
+            : `${index} ${family.rel} "${trimmedValue}"`;
         }
+        // No index defined for this key (e.g. no ISBN) — fall through to generic.
       }
-      // --- END FIX ---
 
       // --- Fallback to using examples object (with safer access) ---
       const example = examples[key];
@@ -1447,7 +1484,7 @@ export class SearchService {
     }
 
     // Join multiple parts (e.g., title AND author)
-    const joinOperator = endpointId === "bnf" ? " and " : " AND ";
+    const joinOperator = family?.join ?? " AND ";
     return queryParts.join(joinOperator);
   }
 } // End of SearchService class
