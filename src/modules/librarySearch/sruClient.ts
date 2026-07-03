@@ -389,6 +389,14 @@ export class SRUClient {
     record.issn = findData("022", "a")[0];
     findFields("024", "7").forEach(field => { if (findSub(field, "2")?.textContent?.trim().toLowerCase() === "doi") { record.doi = findSub(field, "a")?.textContent?.trim(); } });
     for (const tag of ["650", "651", "653"]) { findData(tag, "a").forEach(s => { if (!record.subjects.includes(s)) record.subjects.push(s); }); }
+    // DDC (082) / other classification (084) as subject tags
+    findData("082", "a").forEach(c => { const t = `DDC:${c}`; if (!record.subjects.includes(t)) record.subjects.push(t); });
+    findData("084", "a").forEach(c => { if (!record.subjects.includes(c)) record.subjects.push(c); });
+    // Abstract / summary (520)
+    record.abstract = record.abstract || findData("520", "a").join(' ').trim() || undefined;
+    // Corporate authors (110 main / 710 added) as single-field names
+    findData("110", "a").forEach(n => { const name = n.replace(/[,.;]$/, '').trim(); if (name && !seenNames.has(name)) { seenNames.add(name); record.authors.push(name); } });
+    findData("710", "a").forEach(n => { const name = n.replace(/[,.;]$/, '').trim(); if (name && !seenNames.has(name)) { seenNames.add(name); record.contributors.push({ name, role: 'corporate' }); } });
     record.language = findData("041", "a")[0];
     record.series = findData("490", "a")[0] || findData("830", "a")[0];
     record.extent = findData("300", "a")[0];
@@ -398,32 +406,58 @@ export class SRUClient {
 
     findFields("773").forEach(field => {
         const hostTitle = findSub(field, "t")?.textContent?.trim(); if (!hostTitle) return;
-        const volText = findSub(field, "g")?.textContent?.trim();
-        if (volText && /vol|issue|number|no\.|band/i.test(volText)) {
-            record.journal_title = hostTitle; record.document_type = 'Journal Article';
-            record.volume = volText.match(/vol(?:ume)?\.?\s*(\d+)/i)?.[1] || record.volume;
-            record.issue = volText.match(/(?:no|issue|num)\.?\s*(\d+)/i)?.[1] || record.issue;
-            const pm = volText.match(/p(?:age)?s?\.?\s*(\d+)(?:\s*[-–]\s*(\d+))?/i); if (pm) record.pages = pm[2] ? `${pm[1]}-${pm[2]}` : pm[1];
-        } else { record.series = hostTitle; if (!record.document_type) record.document_type = 'Book Chapter'; }
+        const volText = findSub(field, "g")?.textContent?.trim() || '';
+        const link7 = findSub(field, "7")?.textContent?.trim() || '';
+        const hostIssn = findSub(field, "x")?.textContent?.trim(); // 773$x = host ISSN
+        // Decide journal-vs-chapter by the host's bibliographic level in 773$7 position 3
+        // ('s' = serial -> journal, 'm' = monograph -> chapter). Fall back to sniffing
+        // $g for volume/issue markers in BOTH English and German (K10plus uses forms like
+        // "78(2024), 3, Seite 205-213" that carry no vol/no keyword at all).
+        const hostBibLevel = link7.length >= 4 ? link7[3].toLowerCase() : '';
+        let isJournal: boolean;
+        if (hostBibLevel === 's') isJournal = true;
+        else if (hostBibLevel === 'm') isJournal = false;
+        else isJournal = /vol|issue|no\.?|nr\.?|number|band|bd\.?|jg\.?|jahrg|heft|\(\d{4}\)/i.test(volText);
+
+        if (isJournal) {
+            // Type is decided authoritatively by the leader below; here we only
+            // record the host as the journal and pull volume/issue/pages/ISSN.
+            record.journal_title = hostTitle;
+            if (hostIssn && !record.issn) record.issn = hostIssn;
+            record.volume = volText.match(/(?:vol(?:ume)?|bd\.?|band|jg\.?|jahrg(?:ang)?)\.?\s*(\d+)/i)?.[1]
+                || volText.match(/(\d+)\s*\(\d{4}\)/)?.[1]   // "78(2024)"
+                || volText.match(/^\s*(\d+)\b/)?.[1]
+                || record.volume;
+            record.issue = volText.match(/(?:no|nr|issue|num|heft|h)\.?\s*(\d+)/i)?.[1]
+                || volText.match(/\)\s*,\s*(\d+)/)?.[1]      // "…(2024), 3,"
+                || record.issue;
+            const pm = volText.match(/\b(?:seite|pages?|pp?|s)\.?\s*(\d+)(?:\s*[-–]\s*(\d+))?/i);
+            if (pm) record.pages = pm[2] ? `${pm[1]}-${pm[2]}` : pm[1];
+        } else { record.series = hostTitle; }
     });
 
+    // Document type — the leader is authoritative (position 6 = material type,
+    // position 7 = bibliographic level). Non-text material wins; otherwise the
+    // bibliographic level decides monograph/serial/component.
     const leader = findLead();
-    if (!record.document_type && leader && leader.length >= 8) {
-        const materialType = leader[6]; const biblioLevel = leader[7];
-        if (materialType === 'a' && biblioLevel === 's') { record.document_type = 'Journal'; }
-        else if (materialType === 'a' && biblioLevel === 'm') { record.document_type = 'Book'; }
-        else if (materialType === 'a' && biblioLevel === 'a') { record.document_type = 'Journal Article'; }
-        else if (materialType === 'a' && biblioLevel === 'c') { record.document_type = 'Book Chapter'; }
-        else if (materialType === 'e') { record.document_type = 'Map'; }
-        else if (materialType === 'g') { record.document_type = 'Video'; }
-        else if (materialType === 'j') { record.document_type = 'Music'; }
-        else if (materialType === 'k') { record.document_type = 'Image'; }
-        else if (materialType === 'm') { record.document_type = 'Computer File'; }
+    const materialType = leader && leader.length >= 8 ? leader[6] : '';
+    const biblioLevel = leader && leader.length >= 8 ? leader[7] : '';
+    const NONTEXT: Record<string, string> = {
+        c: 'Score', d: 'Score', e: 'Map', f: 'Map', g: 'Video',
+        i: 'Audio Recording', j: 'Music', k: 'Image', m: 'Computer File', o: 'Kit', r: 'Object'
+    };
+    if (NONTEXT[materialType]) { record.document_type = NONTEXT[materialType]; }
+    else if (biblioLevel === 'm') { record.document_type = 'Book'; }        // monograph (even in a series)
+    else if (biblioLevel === 's') { record.document_type = 'Journal'; }     // the serial itself
+    else if (biblioLevel === 'a' || biblioLevel === 'b') {                   // component part
+        record.document_type = record.journal_title ? 'Journal Article' : 'Book Chapter';
     }
-    if (!record.document_type) { // Fallback type detection
+    else if (biblioLevel === 'c') { record.document_type = 'Book'; }        // collection
+    if (!record.document_type) { // Fallback when the leader is missing/uninformative
         if (record.journal_title) { record.document_type = 'Journal Article'; }
-        else if (record.issn) { record.document_type = 'Journal'; }
         else if (record.isbn) { record.document_type = 'Book'; }
+        else if (record.issn) { record.document_type = 'Journal'; }
+        else { record.document_type = 'Book'; }
     }
     record.format = record.document_type;
     return record;
