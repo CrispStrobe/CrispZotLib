@@ -5,8 +5,9 @@ This plugin allows you to search various library catalogs and repositories direc
 ## Features
 
 - Search multiple library catalogs using SRU, OAI-PMH, or IxTheo protocols.
-- Choose from various endpoints including national libraries and specialized repositories.
-- Import search results directly into your Zotero library.
+- Choose from various endpoints including national libraries, large union catalogues (K10plus, swisscovery), and specialized repositories.
+- Resolve a known identifier (DOI, PMID, ISBN, or URL) straight to a citation record.
+- Import search results directly into your Zotero library, with correct item-type detection and per-item error isolation.
 - Support for Zotero's dark and light themes.
 - Self-contained: No Python or external dependencies required.
 
@@ -51,19 +52,23 @@ Basic configuration options can be found in Zotero's preferences:
 
 (This list remains the same as the protocols/endpoints themselves haven't changed, only the implementation method)
 
+Endpoint URLs were verified live in July 2026; several stale endpoints were repaired or replaced.
+
 ### SRU (Search/Retrieve via URL) Endpoints:
 - **dnb**: German National Library
 - **bnf**: French National Library
 - **zdb**: Journal Database (Zeitschriftendatenbank)
-- **loc**: Library of Congress
-- **trove**: National Library of Australia
-- **kb**: National Library of the Netherlands
-- **bibsys**: Norwegian University Library (BIBSYS)
+- **k10plus**: GBV+SWB union catalogue (covers most German academic libraries)
+- **swisscovery**: SLSP, Swiss academic union catalogue
+- **loc**: Library of Congress (SRU gateway on port 210 — may be blocked on some networks)
+- **kb**: National Library of the Netherlands (GGC)
+- **bibsys**: Norwegian academic libraries (BIBSYS/Alma)
+
+*(Trove was removed: it no longer offers open SRU and now requires a personal API key.)*
 
 ### OAI-PMH (Open Archives Initiative) Endpoints:
-- **crossref**: CrossRef scholarly publishing
+- **crossref**: Crossref scholarly publishing (UNIXREF schema)
 - **dnb**: German National Library OAI
-- **dnb_digital**: German National Library Digital Collections
 - **loc**: Library of Congress OAI
 - **europeana**: European Digital Library
 - **ddb**: German Digital Library
@@ -72,6 +77,7 @@ Basic configuration options can be found in Zotero's preferences:
 - **kitopen**: Karlsruhe Institute of Technology
 - **arxiv**: ArXiv open access repository
 - **doaj**: Directory of Open Access Journals
+- **ezb**: Elektronische Zeitschriftenbibliothek (Regensburg), ZDB holdings
 
 ### IxTheo (Index Theologicus) Formats:
 *(Searches IxTheo via HTML scraping and fetches details in the chosen format)*
@@ -94,12 +100,20 @@ Basic configuration options can be found in Zotero's preferences:
 4.  Build the plugin: `npm run build`
 5.  The built `.xpi` file will be in the `build/` directory.
 
+### Testing
+
+- Unit tests: `npm test` (vitest — covers formatters, identifier detection, endpoint-table sanity).
+- Development: `npm start` launches Zotero with the plugin hot-reloaded (`zotero-plugin serve`).
+
 ## Known Issues
 
 - Still work in progress; not all endpoints may work perfectly with all query types or schemas.
 - IxTheo search relies on HTML scraping and specific export URLs, which might break if the IxTheo website changes significantly.
 - Very large result sets (especially with OAI-PMH over wide date ranges) might be slow or incomplete due to repository limitations.
-- Error handling for specific endpoint issues could be improved.
+- OAI-PMH pagination (Next/Previous across resumption tokens) and the Crossref UNIXREF parser are still being finished; see `PLAN.md`.
+- The Library of Congress SRU endpoint uses port 210, which some networks block.
+
+See `PLAN.md` for the full roadmap and the shared-endpoint work across the sibling CrispLib / citer projects.
 
 ## License
 
