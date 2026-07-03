@@ -93,12 +93,12 @@ New SRU added (verified live; the example-driven `buildSruQuery` handles their i
 - [x] **3.2 (SRU)** Applied loc/kb/bibsys fixes + wired `query_params` (KB x-collection) in `library_search.py`. Trove flagged out. **Live‑validated end‑to‑end through CrispLib CLI** (k10plus/kb/bibsys/swisscovery all return parsed records). CrispLib's OAI URLs were already correct (they were the source of the CrispZotLib OAI fixes).
 - [ ] **3.2 (OAI)** Optional: add crossref (`oai.crossref.org`) + ezb to CrispLib OAI for parity.
 - [x] **3.3** Added K10plus + swisscovery to CrispLib SRU table.
-- [ ] **3.4** MARC parser "invalid predicate" warning on Alma (bibsys/swisscovery) records — non‑fatal but should be fixed (XPath predicate issue in the custom parser).
+- [ ] **3.4** MARC parser "invalid predicate" warning (shared by CrispLib + citer). ROOT CAUSE: Python `ElementTree`/`defusedxml` do not support the XPath functions `contains()`, `text()`, `local-name()` used in the custom parser (e.g. `.//dc:identifier[contains(text(), "ISBN")]`, `.//*[local-name()="identifier"]`). The custom parser throws → falls back to `_generic_parse` (which works, so non‑fatal, but the richer custom parser is bypassed). FIX: replace those predicates with Python‑side filtering (find element, then test `.text`), or switch to `lxml.etree` which supports full XPath.
 
 ## Phase 4 — citer (Python) fixes
-- [ ] **4.1** citer SRU is DNB+BnF only (`app.py`, `search.py`, `lib/sru_client.py`) — both live, no change needed, but align the shared endpoint set if we widen citer's catalog coverage.
+- [x] **4.1** Widened `search.py` SRU_ENDPOINTS from DNB+BnF to the full working set (dnb, bnf, zdb, loc, kb+x-collection, bibsys, k10plus, swisscovery) + wired `query_params`. **Live‑validated k10plus end‑to‑end via citer CLI.** (The `SRU_ENDPOINTS` in `lib/sru_client.py` is dead/unused — left as‑is.)
 - [ ] **4.2** Verify IxTheo scraping still works (site‑redesign risk) in `lib/ixtheo_client.py`.
-- [ ] **4.3** Decide scope: does citer gain OAI + the wider catalog list, or stay identifier‑focused? (citer's strength is DOI/ISBN/PMID/OCLC resolution.)
+- [ ] **4.3** Decide scope: does citer gain OAI too, or stay identifier‑focused? (citer's strength is DOI/ISBN/PMID/OCLC resolution.)
 
 ## Phase 5 — Cross‑repo parity & tests
 - [ ] **5.1** Single shared **endpoint manifest** (JSON) consumed by all three, so an endpoint fix lands once. TS reads it directly; Python loads the same file.
