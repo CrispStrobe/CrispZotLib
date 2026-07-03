@@ -77,7 +77,7 @@ New SRU added (verified live; the example-driven `buildSruQuery` handles their i
 - [x] **2.13 Placeholder "records" imported as junk** — `oaiClient` returns synthetic `[DELETED RECORD]`/`[Error…]` records that pass import guards. Return null instead.
 
 ### Low
-- [ ] **2.14** `innerHTML` with remote catalog data in privileged window (`integration.ts:136,151‑153`) → `textContent`.
+- [x] **2.14** `innerHTML` with remote catalog data in privileged window (`integration.ts:136,151‑153`) → `textContent`.
 - [ ] **2.15** Title `/ Author` strip regex over‑greedy; year regex 1000–2099 only; RIS ISBN+ISSN both as `SN`.
 
 ### New capability

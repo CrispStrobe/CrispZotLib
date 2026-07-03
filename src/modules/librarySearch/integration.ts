@@ -148,7 +148,7 @@ export class LibrarySearchIntegration {
                 {
                     tag: "div", namespace: "html", styles: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "5px" },
                     children: [
-                        { tag: "h3", namespace: "html", styles: { margin: "0", flexGrow: 1, marginRight: '10px' }, properties: { innerHTML: title } }, // Allow title to grow
+                        { tag: "h3", namespace: "html", styles: { margin: "0", flexGrow: 1, marginRight: '10px' }, properties: { textContent: title } }, // textContent: title is untrusted remote data
                         {
                             tag: "input", namespace: "html", attributes: { type: "checkbox", "data-index": index.toString() },
                             listeners: [{
@@ -163,9 +163,10 @@ export class LibrarySearchIntegration {
                         }
                     ]
                 },
-                { tag: "div", namespace: "html", properties: { innerHTML: `<strong>Authors:</strong> ${authors}` }, styles: { fontSize: '0.9em', marginBottom: '3px'} },
-                { tag: "div", namespace: "html", properties: { innerHTML: `<strong>Year:</strong> ${year}` }, styles: { fontSize: '0.9em', marginBottom: '3px'} },
-                { tag: "div", namespace: "html", properties: { innerHTML: `<strong>Publisher:</strong> ${publisher}` }, styles: { fontSize: '0.9em'} }
+                // Labels via <strong>, values via textContent — the values are untrusted remote catalog data.
+                { tag: "div", namespace: "html", styles: { fontSize: '0.9em', marginBottom: '3px'}, children: [ { tag: "strong", namespace: "html", properties: { textContent: "Authors: " } }, { tag: "span", namespace: "html", properties: { textContent: authors } } ] },
+                { tag: "div", namespace: "html", styles: { fontSize: '0.9em', marginBottom: '3px'}, children: [ { tag: "strong", namespace: "html", properties: { textContent: "Year: " } }, { tag: "span", namespace: "html", properties: { textContent: year } } ] },
+                { tag: "div", namespace: "html", styles: { fontSize: '0.9em'}, children: [ { tag: "strong", namespace: "html", properties: { textContent: "Publisher: " } }, { tag: "span", namespace: "html", properties: { textContent: publisher } } ] }
             ]
         };
     };
