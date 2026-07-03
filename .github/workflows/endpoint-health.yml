@@ -1,0 +1,63 @@
+# Weekly live probe of every endpoint in the shared manifest (PLAN 7.2).
+# Endpoint rot is real — the 2026-07 audit found 7 silently dead/moved
+# endpoints. This turns the next one into an issue ping instead of a
+# user-facing breakage. Also canaries the IxTheo proof-of-work wall, which
+# already changed once and broke all three sibling repos at once.
+name: Endpoint health
+
+on:
+  schedule:
+    - cron: "17 5 * * 1" # Mondays 05:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Probe endpoints (live)
+        run: |
+          set -o pipefail
+          LIVE_PROBE=1 npx vitest run test/live/endpointHealth.test.ts --reporter=verbose 2>&1 | tee probe.log
+
+      - name: Open or refresh issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Endpoint health probe failing"
+          {
+            echo "The weekly live endpoint probe failed on $(date -u +%F)."
+            echo
+            echo '```'
+            grep -E '×|✗|FAIL|failed' probe.log | head -40 || true
+            echo '```'
+            echo
+            echo "Full log: $RUN_URL"
+            echo
+            echo "Triage: fix or replace the endpoint in src/modules/librarySearch/endpoints.json,"
+            echo "then run scripts/sync-endpoints.sh so CrispLib/citer pick up the fix (PLAN Phase 1 has precedents)."
+          } > body.md
+          existing=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number' || true)
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file body.md
+          else
+            gh issue create --title "$title" --body-file body.md
+          fi
