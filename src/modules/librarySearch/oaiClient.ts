@@ -122,55 +122,26 @@ export class OAIClient {
       // --- Handle Initial Search (No Resumption Token) ---
       const is_dnb = this.baseUrl.toLowerCase().includes("dnb");
 
-      // DNB Special Logic: Use ListIdentifiers + GetRecord if filtering locally
-      // If no filterQuery, DNB ListRecords might be okay with careful date ranges,
-      // but ListIdentifiers is generally safer for DNB.
-      if (is_dnb) {
-        console.log(
-          `${logPrefix} Using DNB-specific path (ListIdentifiers + GetRecord).`,
-        );
-        ztoolkit.log(`${logPrefix} Using DNB-specific path.`);
-        // DNB requires dates for ListIdentifiers/ListRecords
-        const { from, until } = this.ensureDateRange(
-          from_date,
-          until_date,
-          true,
-        ); // Force date range for DNB
+      // DNB needs a bounded date range (and a default set) or it rejects the
+      // harvest; otherwise it uses the same ListRecords path as every other
+      // endpoint. ListRecords returns full metadata in one request and pages
+      // via resumptionToken — verified live against services.dnb.de (50
+      // records/page + token, HTTP 200, no 413). This replaces the former
+      // ListIdentifiers + per-ID GetRecord path, which issued one GetRecord per
+      // identifier (N+1: ~51 requests for 50 records) and had no pagination.
+      const { from, until } = is_dnb
+        ? this.ensureDateRange(from_date, until_date, true) // force a range for DNB
+        : this.ensureDateRange(from_date, until_date, false);
+      const setToUse = is_dnb ? set_spec || "dnb" : set_spec;
 
-        // Use a default set if none provided, helps limit results
-        const setToUse = set_spec || "dnb"; // Use "dnb" (all without GND) or "dnb:reiheA" as a default
-
-        const [totalIdentifiers, finalRecords] =
-          await this.searchWithIdentifiers(
-            filterQuery,
-            prefixToUse,
-            setToUse,
-            from,
-            until,
-            max_results,
-          );
-        // ListIdentifiers + GetRecord path doesn't inherently support OAI pagination tokens
-        console.log(
-          `${logPrefix} DNB path finished. Found ${totalIdentifiers} potential records, returning ${finalRecords.length} after filtering.`,
-        );
-        ztoolkit.log(
-          `${logPrefix} DNB path finished. Returning ${finalRecords.length} records.`,
-        );
-        return [finalRecords.length, finalRecords, null]; // Return filtered count, no resumption token
-      }
-
-      // Standard Logic: Use ListRecords
-      console.log(`${logPrefix} Using standard path (ListRecords).`);
-      ztoolkit.log(`${logPrefix} Using standard path.`);
-      const { from, until } = this.ensureDateRange(
-        from_date,
-        until_date,
-        false,
-      ); // Don't force dates unless provided
+      console.log(
+        `${logPrefix} Using standard path (ListRecords).${is_dnb ? " [DNB: forced date range + default set]" : ""}`,
+      );
+      ztoolkit.log(`${logPrefix} Using standard path (ListRecords).`);
 
       const [total, records, nextToken] = await this.listOrResumeRecords(
         prefixToUse,
-        set_spec,
+        setToUse,
         from,
         until,
         undefined, // No resumption token for initial request
@@ -234,118 +205,6 @@ export class OAIClient {
       }
     }
     return { from: finalFrom, until: finalUntil };
-  }
-
-  /**
-   * Search using ListIdentifiers then GetRecord (primarily for repositories like DNB).
-   * This avoids potential 413 errors by fetching records individually.
-   * Applies filtering *after* fetching.
-   */
-  private async searchWithIdentifiers(
-    filterQuery: Record<string, string>,
-    metadataPrefix: string,
-    set_spec: string | undefined, // Made optional
-    from_date: string | undefined, // Made optional
-    until_date: string | undefined, // Made optional
-    max_results: number,
-  ): Promise<[number, BiblioRecord[]]> {
-    const logPrefix = "[OAIClient.searchWithIdentifiers]";
-    try {
-      // Step 1: Get identifiers - fetch more to allow for filtering
-      // Fetching up to 3x max_results or 100, whichever is larger, provides a buffer.
-      const maxIdentifiersToFetch = Math.max(100, max_results * 3);
-      console.log(
-        `${logPrefix} Fetching up to ${maxIdentifiersToFetch} identifiers...`,
-      );
-      ztoolkit.log(
-        `${logPrefix} Fetching up to ${maxIdentifiersToFetch} identifiers...`,
-      );
-
-      // Note: ListIdentifiers itself doesn't usually support resumption tokens well across implementations.
-      // We fetch one batch and work with that. If more are needed, a new ListIdentifiers might be required.
-      const identifiersResult = await this.listIdentifiers(
-        metadataPrefix,
-        set_spec,
-        from_date,
-        until_date,
-        maxIdentifiersToFetch, // Limit the number of identifiers fetched initially
-      );
-
-      // Filter out potential error objects
-      const validIdentifiers = identifiersResult.filter(
-        (id) => typeof id === "object" && id.identifier && !id.error,
-      );
-
-      console.log(
-        `${logPrefix} Received ${validIdentifiers.length} valid identifiers.`,
-      );
-      ztoolkit.log(
-        `${logPrefix} Received ${validIdentifiers.length} valid identifiers.`,
-      );
-
-      if (validIdentifiers.length === 0) {
-        return [0, []]; // No records found
-      }
-
-      // Step 2: Fetch individual records and filter concurrently
-      const filteredRecords: BiblioRecord[] = [];
-      let recordsProcessed = 0;
-      const batchSize = 10; // Fetch records in small batches
-
-      for (let i = 0; i < validIdentifiers.length; i += batchSize) {
-        const batchIdentifiers = validIdentifiers.slice(i, i + batchSize);
-        const promises = batchIdentifiers.map((idInfo) =>
-          this.getRecord(idInfo.identifier, metadataPrefix),
-        );
-
-        const fetchedBatch = await Promise.all(promises);
-        recordsProcessed += fetchedBatch.length;
-
-        for (const record of fetchedBatch) {
-          if (record) {
-            // Check if record fetching was successful
-            // Apply local filtering
-            if (
-              Object.keys(filterQuery).length === 0 ||
-              this.record_matches_query(record, filterQuery)
-            ) {
-              filteredRecords.push(record);
-              // Stop fetching if we have enough results
-              if (filteredRecords.length >= max_results) {
-                console.log(
-                  `${logPrefix} Reached max_results (${max_results}). Stopping fetching.`,
-                );
-                ztoolkit.log(
-                  `${logPrefix} Reached max_results (${max_results}).`,
-                );
-                // Return estimated total (number of valid identifiers found) and the filtered records
-                return [validIdentifiers.length, filteredRecords];
-              }
-            }
-          }
-        }
-        console.log(
-          `${logPrefix} Processed ${recordsProcessed}/${validIdentifiers.length} identifiers. Found ${filteredRecords.length} matching records.`,
-        );
-        ztoolkit.log(
-          `${logPrefix} Processed ${recordsProcessed}/${validIdentifiers.length}. Found ${filteredRecords.length} matching.`,
-        );
-      }
-
-      // If loop finishes without reaching max_results
-      console.log(
-        `${logPrefix} Finished processing all fetched identifiers. Total matching: ${filteredRecords.length}`,
-      );
-      ztoolkit.log(
-        `${logPrefix} Finished processing all identifiers. Total matching: ${filteredRecords.length}`,
-      );
-      // Return estimated total and the filtered records found
-      return [validIdentifiers.length, filteredRecords];
-    } catch (e: any) {
-      console.error(`${logPrefix} Error: ${e.message}`);
-      ztoolkit.log(`${logPrefix} Error: ${e.message}`, "error");
-      return [0, []]; // Return empty on error
-    }
   }
 
   /**
