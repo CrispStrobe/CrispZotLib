@@ -6,10 +6,13 @@
 // this file, so an endpoint fix lands once for all three projects. This module just
 // types and re-exports it.
 
-import { SRUEndpoint, OAIEndpoint, IxTheoEndpoint } from './models';
-import manifest from './endpoints.json';
+import { SRUEndpoint, OAIEndpoint, IxTheoEndpoint } from "./models";
+import manifest from "./endpoints.json";
 
 export const NAMESPACES: Record<string, string> = manifest.namespaces;
-export const SRU_ENDPOINTS: Record<string, SRUEndpoint> = manifest.sru as Record<string, SRUEndpoint>;
-export const OAI_ENDPOINTS: Record<string, OAIEndpoint> = manifest.oai as Record<string, OAIEndpoint>;
-export const IXTHEO_ENDPOINTS: Record<string, IxTheoEndpoint> = manifest.ixtheo as unknown as Record<string, IxTheoEndpoint>;
+export const SRU_ENDPOINTS: Record<string, SRUEndpoint> =
+  manifest.sru as Record<string, SRUEndpoint>;
+export const OAI_ENDPOINTS: Record<string, OAIEndpoint> =
+  manifest.oai as Record<string, OAIEndpoint>;
+export const IXTHEO_ENDPOINTS: Record<string, IxTheoEndpoint> =
+  manifest.ixtheo as unknown as Record<string, IxTheoEndpoint>;

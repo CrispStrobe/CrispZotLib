@@ -41,7 +41,7 @@ declare namespace Components {
     nsIFilePicker: any;
     nsIXULRuntime: any;
     nsIEnvironment: any;
-    nsIProperties: any;  
+    nsIProperties: any;
     nsIWindowMediator: any;
   };
   const utils: {
@@ -66,15 +66,19 @@ declare global {
     dispatchEvent: typeof window.dispatchEvent;
     _console?: Console;
     [key: string]: any;
-  }
+  };
 }
 
 interface MediaQueryList {
   matches: boolean;
   media: string;
   onchange: ((this: MediaQueryList, ev: MediaQueryListEvent) => any) | null;
-  addListener(callback: (this: MediaQueryList, ev: MediaQueryListEvent) => any): void;
-  removeListener(callback: (this: MediaQueryList, ev: MediaQueryListEvent) => any): void;
+  addListener(
+    callback: (this: MediaQueryList, ev: MediaQueryListEvent) => any,
+  ): void;
+  removeListener(
+    callback: (this: MediaQueryList, ev: MediaQueryListEvent) => any,
+  ): void;
 }
 
 interface MediaQueryListEvent {
@@ -111,7 +115,11 @@ declare namespace _ZoteroTypes {
       }): void;
     };
     Promise: {
-      defer(): { promise: Promise<any>; resolve: (value?: any) => void; reject: (reason?: any) => void };
+      defer(): {
+        promise: Promise<any>;
+        resolve: (value?: any) => void;
+        reject: (reason?: any) => void;
+      };
       delay(ms: number): Promise<void>;
     };
     Creators: {
@@ -119,7 +127,7 @@ declare namespace _ZoteroTypes {
       save(data: any): number;
     };
     CreatorData: {
-      new(): {
+      new (): {
         firstName: string;
         lastName: string;
         fieldMode: number;
@@ -145,19 +153,22 @@ declare namespace _ZoteroTypes {
         onShutdown: () => void;
         onMainWindowLoad: (win: Window) => Promise<void>;
         onMainWindowUnload: (win: Window) => Promise<void>;
-        onPrefsEvent: (type: string, data: { [key: string]: any }) => Promise<void>;
+        onPrefsEvent: (
+          type: string,
+          data: { [key: string]: any },
+        ) => Promise<void>;
         onDialogEvents: (type: string, data?: any) => Promise<any>;
       };
       data?: any;
     };
   }
-  
+
   interface ZoteroPane {
     getSelectedCollection(): { id: number; libraryID: number } | null;
     getSelectedLibraryID(): number;
     selectItems(itemIDs: number[]): void;
   }
-  
+
   interface Item {
     id?: number;
     itemType: string;

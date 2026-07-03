@@ -7,7 +7,7 @@ export interface BiblioRecord {
   authors: string[];
   editors: string[];
   translators: string[];
-  contributors: Array<{name: string; role: string}>;
+  contributors: Array<{ name: string; role: string }>;
   year?: string;
   publisher_name?: string;
   place_of_publication?: string;
@@ -42,7 +42,7 @@ export interface SRUEndpoint {
   availableSchemas?: Record<string, string>; // Maps schema key to display name
   // optional properties ---
   namespaces?: Record<string, string>; // Optional custom namespaces for the client
-  queryParams?: Record<string, string>;  // Optional fixed query parameters for the client
+  queryParams?: Record<string, string>; // Optional fixed query parameters for the client
 }
 
 export interface OAIEndpoint {
@@ -50,7 +50,7 @@ export interface OAIEndpoint {
   url: string;
   defaultMetadataPrefix?: string;
   description?: string;
-  sets?: Record<string, string>;  // Maps setSpec to setName
+  sets?: Record<string, string>; // Maps setSpec to setName
 }
 
 export interface IxTheoEndpoint {

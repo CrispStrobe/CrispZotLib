@@ -31,7 +31,7 @@ async function startup({ id, version, resourceURI, rootURI }, reason) {
   const ctx = { rootURI };
   try {
     const mainWin = Zotero.getMainWindow();
-    ctx.window  = mainWin;
+    ctx.window = mainWin;
     ctx.window2 = mainWin;
   } catch (e) {
     // Ignore if getMainWindow isn’t available yet
@@ -41,7 +41,7 @@ async function startup({ id, version, resourceURI, rootURI }, reason) {
   // 5. Load the compiled bundle into that sandbox
   Services.scriptloader.loadSubScript(
     `${rootURI}/content/scripts/__addonRef__.js`,
-    ctx
+    ctx,
   );
 
   // 6. Finally, kick off our TS hooks
@@ -62,8 +62,9 @@ function shutdown({ id, version, resourceURI, rootURI }, reason) {
 
   // Restore Zotero global if it was lost
   if (typeof Zotero === "undefined") {
-    Zotero = Components.classes["@zotero.org/Zotero;1"]
-      .getService(Components.interfaces.nsISupports).wrappedJSObject;
+    Zotero = Components.classes["@zotero.org/Zotero;1"].getService(
+      Components.interfaces.nsISupports,
+    ).wrappedJSObject;
   }
   Zotero.__addonInstance__?.hooks.onShutdown();
 

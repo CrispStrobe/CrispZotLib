@@ -1,11 +1,11 @@
 // src/modules/librarySearch/integration.ts
 // Updated layout for results dialog
 
-import { BiblioRecord } from './models';
-import { mapRecordToItemType, parseCreatorName } from './formatters';
-import { openSearchDialog } from './searchDialog';
-import { createStyledDialog } from '../../utils/dialogUtils'; 
-import { SearchService } from './searchService';
+import { BiblioRecord } from "./models";
+import { mapRecordToItemType, parseCreatorName } from "./formatters";
+import { openSearchDialog } from "./searchDialog";
+import { createStyledDialog } from "../../utils/dialogUtils";
+import { SearchService } from "./searchService";
 import { getString } from "../../utils/locale";
 import { config } from "../../../package.json";
 
@@ -17,7 +17,7 @@ export type SearchParams = {
   set?: string;
   metadataPrefix?: string;
   from?: string;
-  until?:string;
+  until?: string;
   // SRU Schema
   schema?: string;
   // Local Filtering Params (used by SRU query builder and OAI local filter)
@@ -50,7 +50,7 @@ export interface ResultsDialogData {
 
 /** True for protocols that paginate via OAI resumption tokens rather than startRecord. */
 function isOaiPagination(params: SearchParams): boolean {
-  return (params.protocol || '').toLowerCase() === 'oai';
+  return (params.protocol || "").toLowerCase() === "oai";
 }
 
 /**
@@ -67,12 +67,14 @@ export class LibrarySearchIntegration {
   /**
    * Execute a search with the given parameters
    */
-  static async executeSearch(params: SearchParams): Promise<[boolean, BiblioRecord[], number, string?]> {
+  static async executeSearch(
+    params: SearchParams,
+  ): Promise<[boolean, BiblioRecord[], number, string?]> {
     try {
       // Use our new SearchService (4th element = OAI resumption token for next page)
       return await SearchService.executeSearch(params);
     } catch (error) {
-      console.error('Error executing search:', error);
+      console.error("Error executing search:", error);
       throw error;
     }
   }
@@ -91,7 +93,7 @@ export class LibrarySearchIntegration {
     results: BiblioRecord[],
     totalRecords: number = results.length,
     searchParams: SearchParams, // Pass original search parameters
-    initialOaiToken?: string // OAI resumption token from the initial search (page 1 -> page 2)
+    initialOaiToken?: string, // OAI resumption token from the initial search (page 1 -> page 2)
   ): Promise<void> {
     if (!results || results.length === 0) {
       ztoolkit.log("No results to display");
@@ -117,11 +119,11 @@ export class LibrarySearchIntegration {
       loadCallback: (window: Window) => {
         console.log("Results dialog opened");
         if (window.document && window.document.body) {
-            window.document.body.classList.add('librarysearch-dialog');
-            // Add class to body for overall dialog styling if needed
-            window.document.body.style.display = 'flex';
-            window.document.body.style.flexDirection = 'column';
-            window.document.body.style.height = '100%';
+          window.document.body.classList.add("librarysearch-dialog");
+          // Add class to body for overall dialog styling if needed
+          window.document.body.style.display = "flex";
+          window.document.body.style.flexDirection = "column";
+          window.document.body.style.height = "100%";
         }
         // Initial update of status/buttons
         updatePaginationControls(window.document, dialogData);
@@ -131,44 +133,137 @@ export class LibrarySearchIntegration {
         if (addon.data.dialog === dialogHelper) {
           addon.data.dialog = undefined;
         }
-      }
+      },
     };
 
     // Function to generate HTML content for each result (remains the same)
-    const generateResultHTML = (result: BiblioRecord, index: number, currentDialogData: ResultsDialogData): any => {
-        const title = result.title || "Untitled";
-        const authors = result.authors?.join(", ") || "Unknown";
-        const year = result.year || "";
-        const publisher = result.publisher_name || "";
+    const generateResultHTML = (
+      result: BiblioRecord,
+      index: number,
+      currentDialogData: ResultsDialogData,
+    ): any => {
+      const title = result.title || "Untitled";
+      const authors = result.authors?.join(", ") || "Unknown";
+      const year = result.year || "";
+      const publisher = result.publisher_name || "";
 
-        return {
-            tag: "div", namespace: "html", attributes: { class: "result-item", "data-index": index.toString() },
-            styles: { marginBottom: '10px', padding: '10px', border: '1px solid var(--ls-border-color)', borderRadius: '4px' }, // Add some spacing/border
+      return {
+        tag: "div",
+        namespace: "html",
+        attributes: { class: "result-item", "data-index": index.toString() },
+        styles: {
+          marginBottom: "10px",
+          padding: "10px",
+          border: "1px solid var(--ls-border-color)",
+          borderRadius: "4px",
+        }, // Add some spacing/border
+        children: [
+          {
+            tag: "div",
+            namespace: "html",
+            styles: {
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "5px",
+            },
             children: [
-                {
-                    tag: "div", namespace: "html", styles: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "5px" },
-                    children: [
-                        { tag: "h3", namespace: "html", styles: { margin: "0", flexGrow: 1, marginRight: '10px' }, properties: { textContent: title } }, // textContent: title is untrusted remote data
-                        {
-                            tag: "input", namespace: "html", attributes: { type: "checkbox", "data-index": index.toString() },
-                            listeners: [{
-                                type: "change", listener: (e: Event) => {
-                                    const checkbox = e.target as HTMLInputElement;
-                                    const itemIndex = parseInt(checkbox.getAttribute("data-index") || "0");
-                                    if (checkbox.checked) { if (!currentDialogData.selectedResults.includes(itemIndex)) { currentDialogData.selectedResults.push(itemIndex); } }
-                                    else { currentDialogData.selectedResults = currentDialogData.selectedResults.filter((idx: number) => idx !== itemIndex); }
-                                    ztoolkit.log(`Selected indices: ${currentDialogData.selectedResults.join(', ')}`);
-                                }
-                            }]
-                        }
-                    ]
+              {
+                tag: "h3",
+                namespace: "html",
+                styles: { margin: "0", flexGrow: 1, marginRight: "10px" },
+                properties: { textContent: title },
+              }, // textContent: title is untrusted remote data
+              {
+                tag: "input",
+                namespace: "html",
+                attributes: {
+                  type: "checkbox",
+                  "data-index": index.toString(),
                 },
-                // Labels via <strong>, values via textContent — the values are untrusted remote catalog data.
-                { tag: "div", namespace: "html", styles: { fontSize: '0.9em', marginBottom: '3px'}, children: [ { tag: "strong", namespace: "html", properties: { textContent: "Authors: " } }, { tag: "span", namespace: "html", properties: { textContent: authors } } ] },
-                { tag: "div", namespace: "html", styles: { fontSize: '0.9em', marginBottom: '3px'}, children: [ { tag: "strong", namespace: "html", properties: { textContent: "Year: " } }, { tag: "span", namespace: "html", properties: { textContent: year } } ] },
-                { tag: "div", namespace: "html", styles: { fontSize: '0.9em'}, children: [ { tag: "strong", namespace: "html", properties: { textContent: "Publisher: " } }, { tag: "span", namespace: "html", properties: { textContent: publisher } } ] }
-            ]
-        };
+                listeners: [
+                  {
+                    type: "change",
+                    listener: (e: Event) => {
+                      const checkbox = e.target as HTMLInputElement;
+                      const itemIndex = parseInt(
+                        checkbox.getAttribute("data-index") || "0",
+                      );
+                      if (checkbox.checked) {
+                        if (
+                          !currentDialogData.selectedResults.includes(itemIndex)
+                        ) {
+                          currentDialogData.selectedResults.push(itemIndex);
+                        }
+                      } else {
+                        currentDialogData.selectedResults =
+                          currentDialogData.selectedResults.filter(
+                            (idx: number) => idx !== itemIndex,
+                          );
+                      }
+                      ztoolkit.log(
+                        `Selected indices: ${currentDialogData.selectedResults.join(", ")}`,
+                      );
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+          // Labels via <strong>, values via textContent — the values are untrusted remote catalog data.
+          {
+            tag: "div",
+            namespace: "html",
+            styles: { fontSize: "0.9em", marginBottom: "3px" },
+            children: [
+              {
+                tag: "strong",
+                namespace: "html",
+                properties: { textContent: "Authors: " },
+              },
+              {
+                tag: "span",
+                namespace: "html",
+                properties: { textContent: authors },
+              },
+            ],
+          },
+          {
+            tag: "div",
+            namespace: "html",
+            styles: { fontSize: "0.9em", marginBottom: "3px" },
+            children: [
+              {
+                tag: "strong",
+                namespace: "html",
+                properties: { textContent: "Year: " },
+              },
+              {
+                tag: "span",
+                namespace: "html",
+                properties: { textContent: year },
+              },
+            ],
+          },
+          {
+            tag: "div",
+            namespace: "html",
+            styles: { fontSize: "0.9em" },
+            children: [
+              {
+                tag: "strong",
+                namespace: "html",
+                properties: { textContent: "Publisher: " },
+              },
+              {
+                tag: "span",
+                namespace: "html",
+                properties: { textContent: publisher },
+              },
+            ],
+          },
+        ],
+      };
     };
 
     const rowsPerPage = searchParams.maxRecords;
@@ -184,102 +279,168 @@ export class LibrarySearchIntegration {
 
     // Row 1: Results Container (Allow it to grow)
     const resultsContainerSpec = {
-      tag: "div", namespace: "html", id: "results-container", attributes: { class: "results-container" },
+      tag: "div",
+      namespace: "html",
+      id: "results-container",
+      attributes: { class: "results-container" },
       styles: {
         // gridColumn: "1 / span 1", // Not needed
         flexGrow: 1, // Allow this container to take up available vertical space
         overflowY: "auto",
-        border: '1px solid var(--ls-border-color)', // Add border for clarity
-        padding: '5px',
-        margin: '10px 0' // Add vertical margin
+        border: "1px solid var(--ls-border-color)", // Add border for clarity
+        padding: "5px",
+        margin: "10px 0", // Add vertical margin
       },
-      children: results.map((result, index) => generateResultHTML(result, index, dialogData))
+      children: results.map((result, index) =>
+        generateResultHTML(result, index, dialogData),
+      ),
     };
     dialogHelper.addCell(1, 0, resultsContainerSpec);
 
     // Row 2: Pagination Controls Area
     dialogHelper.addCell(2, 0, {
-        tag: "div", namespace: "html", id: "pagination-controls",
-        styles: {
-            // gridColumn: "1 / span 1", // Not needed
-            display: 'flex',
-            justifyContent: 'space-between', // Space out buttons and status
-            alignItems: 'center',
-            padding: '10px 0', // Add padding
-            borderTop: '1px solid var(--ls-border-color)', // Separator line
-            marginTop: '10px'
+      tag: "div",
+      namespace: "html",
+      id: "pagination-controls",
+      styles: {
+        // gridColumn: "1 / span 1", // Not needed
+        display: "flex",
+        justifyContent: "space-between", // Space out buttons and status
+        alignItems: "center",
+        padding: "10px 0", // Add padding
+        borderTop: "1px solid var(--ls-border-color)", // Separator line
+        marginTop: "10px",
+      },
+      children: [
+        // Previous Button (defined inline)
+        {
+          tag: "button",
+          id: "prev-button",
+          properties: { innerHTML: "< Previous" },
+          listeners: [
+            {
+              type: "click",
+              listener: async () => {
+                if (dialogData.isLoading) return;
+                const newStartRecord =
+                  dialogData.currentStartRecord -
+                  dialogData.searchParams.maxRecords;
+                if (isOaiPagination(dialogData.searchParams)) {
+                  const stack = dialogData.oaiTokenStack || [undefined];
+                  if (stack.length <= 1) return; // already on page 1
+                  stack.pop(); // discard the token that reached the current page
+                  const prevToken = stack[stack.length - 1]; // token that reached the previous page
+                  if (newStartRecord >= 1) {
+                    await fetchAndDisplayPage(
+                      newStartRecord,
+                      dialogData,
+                      dialogHelper.window.document,
+                      prevToken,
+                    );
+                  }
+                } else if (newStartRecord >= 1) {
+                  await fetchAndDisplayPage(
+                    newStartRecord,
+                    dialogData,
+                    dialogHelper.window.document,
+                  );
+                }
+              },
+            },
+          ],
         },
-        children: [
-            // Previous Button (defined inline)
+        // Status Label (centered)
+        {
+          tag: "div",
+          id: "pagination-status",
+          properties: {
+            innerHTML: `Showing results ${dialogData.currentStartRecord}-${Math.min(dialogData.currentStartRecord + rowsPerPage - 1, dialogData.totalRecords)} of ${dialogData.totalRecords}`,
+          },
+          styles: { textAlign: "center", flexGrow: 1, margin: "0 10px" }, // Allow status to grow and add margin
+        },
+        // Next Button (defined inline)
+        {
+          tag: "button",
+          id: "next-button",
+          properties: { innerHTML: "Next >" },
+          listeners: [
             {
-                tag: "button", id: "prev-button", properties: { innerHTML: "< Previous" },
-                listeners: [{
-                    type: "click", listener: async () => {
-                        if (dialogData.isLoading) return;
-                        const newStartRecord = dialogData.currentStartRecord - dialogData.searchParams.maxRecords;
-                        if (isOaiPagination(dialogData.searchParams)) {
-                            const stack = dialogData.oaiTokenStack || [undefined];
-                            if (stack.length <= 1) return; // already on page 1
-                            stack.pop(); // discard the token that reached the current page
-                            const prevToken = stack[stack.length - 1]; // token that reached the previous page
-                            if (newStartRecord >= 1) {
-                                await fetchAndDisplayPage(newStartRecord, dialogData, dialogHelper.window.document, prevToken);
-                            }
-                        } else if (newStartRecord >= 1) {
-                            await fetchAndDisplayPage(newStartRecord, dialogData, dialogHelper.window.document);
-                        }
-                    }
-                }]
+              type: "click",
+              listener: async () => {
+                if (dialogData.isLoading) return;
+                const newStartRecord =
+                  dialogData.currentStartRecord +
+                  dialogData.searchParams.maxRecords;
+                if (isOaiPagination(dialogData.searchParams)) {
+                  const token = dialogData.oaiNextToken;
+                  if (!token) return; // no more pages
+                  (dialogData.oaiTokenStack ||= [undefined]).push(token); // token used to reach the next page
+                  await fetchAndDisplayPage(
+                    newStartRecord,
+                    dialogData,
+                    dialogHelper.window.document,
+                    token,
+                  );
+                } else if (newStartRecord <= dialogData.totalRecords) {
+                  await fetchAndDisplayPage(
+                    newStartRecord,
+                    dialogData,
+                    dialogHelper.window.document,
+                  );
+                }
+              },
             },
-            // Status Label (centered)
-            {
-                tag: "div", id: "pagination-status",
-                properties: { innerHTML: `Showing results ${dialogData.currentStartRecord}-${Math.min(dialogData.currentStartRecord + rowsPerPage - 1, dialogData.totalRecords)} of ${dialogData.totalRecords}` },
-                styles: { textAlign: "center", flexGrow: 1, margin: '0 10px' } // Allow status to grow and add margin
-            },
-            // Next Button (defined inline)
-            {
-                tag: "button", id: "next-button", properties: { innerHTML: "Next >" },
-                listeners: [{
-                    type: "click", listener: async () => {
-                        if (dialogData.isLoading) return;
-                        const newStartRecord = dialogData.currentStartRecord + dialogData.searchParams.maxRecords;
-                        if (isOaiPagination(dialogData.searchParams)) {
-                            const token = dialogData.oaiNextToken;
-                            if (!token) return; // no more pages
-                            (dialogData.oaiTokenStack ||= [undefined]).push(token); // token used to reach the next page
-                            await fetchAndDisplayPage(newStartRecord, dialogData, dialogHelper.window.document, token);
-                        } else if (newStartRecord <= dialogData.totalRecords) {
-                            await fetchAndDisplayPage(newStartRecord, dialogData, dialogHelper.window.document);
-                        }
-                    }
-                }]
-            }
-        ]
+          ],
+        },
+      ],
     });
 
     // Row 3: Main Action Buttons (Import/Cancel) - Use addButton
     // These will be moved to the final button row by createStyledDialog override
-    dialogHelper.addButton(getString("results-dialog-import-selected"), "import", {
+    dialogHelper.addButton(
+      getString("results-dialog-import-selected"),
+      "import",
+      {
         callback: async () => {
-            const selectedItems = dialogData.selectedResults.map(idx => dialogData.searchResults[idx]);
-            if (selectedItems.length === 0) { dialogHelper.window?.alert(getString("results-dialog-no-selection")); return; }
-            try {
-                const count = await LibrarySearchIntegration.importToZotero(selectedItems);
-                dialogHelper.window?.alert(`Successfully imported ${count} items`);
-                dialogHelper.window?.close();
-            } catch (error) { dialogHelper.window?.alert(`Error importing items: ${error}`); }
-        }, noClose: true
-    });
-    dialogHelper.addButton(getString("results-dialog-import-all"), "importAll", {
+          const selectedItems = dialogData.selectedResults.map(
+            (idx) => dialogData.searchResults[idx],
+          );
+          if (selectedItems.length === 0) {
+            dialogHelper.window?.alert(
+              getString("results-dialog-no-selection"),
+            );
+            return;
+          }
+          try {
+            const count =
+              await LibrarySearchIntegration.importToZotero(selectedItems);
+            dialogHelper.window?.alert(`Successfully imported ${count} items`);
+            dialogHelper.window?.close();
+          } catch (error) {
+            dialogHelper.window?.alert(`Error importing items: ${error}`);
+          }
+        },
+        noClose: true,
+      },
+    );
+    dialogHelper.addButton(
+      getString("results-dialog-import-all"),
+      "importAll",
+      {
         callback: async () => {
-            try {
-                const count = await LibrarySearchIntegration.importToZotero(dialogData.searchResults);
-                dialogHelper.window?.alert(`Successfully imported ${count} items`);
-                dialogHelper.window?.close();
-            } catch (error) { dialogHelper.window?.alert(`Error importing items: ${error}`); }
-        }, noClose: true
-    });
+          try {
+            const count = await LibrarySearchIntegration.importToZotero(
+              dialogData.searchResults,
+            );
+            dialogHelper.window?.alert(`Successfully imported ${count} items`);
+            dialogHelper.window?.close();
+          } catch (error) {
+            dialogHelper.window?.alert(`Error importing items: ${error}`);
+          }
+        },
+        noClose: true,
+      },
+    );
     dialogHelper.addButton(getString("results-dialog-cancel"), "cancel", {});
 
     // --- End Dialog Structure ---
@@ -295,190 +456,271 @@ export class LibrarySearchIntegration {
       startRecord: number,
       dialogData: ResultsDialogData,
       doc: Document, // Pass the document context
-      oaiToken?: string // For OAI: the resumption token that fetches this page
+      oaiToken?: string, // For OAI: the resumption token that fetches this page
     ): Promise<void> {
-        dialogData.isLoading = true;
-        updatePaginationControls(doc, dialogData, "Loading..."); // Update status/buttons
+      dialogData.isLoading = true;
+      updatePaginationControls(doc, dialogData, "Loading..."); // Update status/buttons
 
-        try {
-            const params = { ...dialogData.searchParams, startRecord: startRecord };
-            if (isOaiPagination(dialogData.searchParams)) {
-                params.resumptionToken = oaiToken; // undefined => first page
-            }
-            const [success, newResults, totalRecords, nextToken] = await LibrarySearchIntegration.executeSearch(params);
-
-            if (success && newResults) {
-                dialogData.searchResults = newResults;
-                dialogData.currentStartRecord = startRecord;
-                dialogData.totalRecords = totalRecords;
-                // Token to fetch the page *after* this one (undefined => no more pages).
-                dialogData.oaiNextToken = nextToken;
-                dialogData.selectedResults = []; // Clear selection
-
-                const resultsContainer = doc.getElementById("results-container");
-                if (resultsContainer) {
-                    while (resultsContainer.firstChild) { resultsContainer.removeChild(resultsContainer.firstChild); }
-                    const resultElements = newResults.map((res, idx) => generateResultHTML(res, idx, dialogData));
-                    resultElements.forEach(spec => {
-                        const elem = ztoolkit.UI.createElement(doc, spec.tag, spec);
-                        resultsContainer.appendChild(elem);
-                    });
-                    resultsContainer.scrollTop = 0; // Scroll to top of results
-                }
-            } else {
-                const statusEl = doc.getElementById("pagination-status");
-                if (statusEl) statusEl.textContent = "Error loading results.";
-            }
-        } catch (error) {
-            console.error("Error fetching page:", error);
-            const statusEl = doc.getElementById("pagination-status");
-            if (statusEl) statusEl.textContent = "Error loading results.";
-        } finally {
-            dialogData.isLoading = false;
-            updatePaginationControls(doc, dialogData); // Update status/buttons
+      try {
+        const params = { ...dialogData.searchParams, startRecord: startRecord };
+        if (isOaiPagination(dialogData.searchParams)) {
+          params.resumptionToken = oaiToken; // undefined => first page
         }
+        const [success, newResults, totalRecords, nextToken] =
+          await LibrarySearchIntegration.executeSearch(params);
+
+        if (success && newResults) {
+          dialogData.searchResults = newResults;
+          dialogData.currentStartRecord = startRecord;
+          dialogData.totalRecords = totalRecords;
+          // Token to fetch the page *after* this one (undefined => no more pages).
+          dialogData.oaiNextToken = nextToken;
+          dialogData.selectedResults = []; // Clear selection
+
+          const resultsContainer = doc.getElementById("results-container");
+          if (resultsContainer) {
+            while (resultsContainer.firstChild) {
+              resultsContainer.removeChild(resultsContainer.firstChild);
+            }
+            const resultElements = newResults.map((res, idx) =>
+              generateResultHTML(res, idx, dialogData),
+            );
+            resultElements.forEach((spec) => {
+              const elem = ztoolkit.UI.createElement(doc, spec.tag, spec);
+              resultsContainer.appendChild(elem);
+            });
+            resultsContainer.scrollTop = 0; // Scroll to top of results
+          }
+        } else {
+          const statusEl = doc.getElementById("pagination-status");
+          if (statusEl) statusEl.textContent = "Error loading results.";
+        }
+      } catch (error) {
+        console.error("Error fetching page:", error);
+        const statusEl = doc.getElementById("pagination-status");
+        if (statusEl) statusEl.textContent = "Error loading results.";
+      } finally {
+        dialogData.isLoading = false;
+        updatePaginationControls(doc, dialogData); // Update status/buttons
+      }
     }
   }
 
   // --- importToZotero function remains the same ---
   static async importToZotero(records: BiblioRecord[]): Promise<number> {
-        if (!records || records.length === 0) {
-            console.error("No records to import");
-            return 0;
-        }
-
-        console.log(`Importing ${records.length} records to Zotero`);
-
-        // Convert to Zotero-compatible format
-        const items = records.map(record => {
-            // Determine item type — document_type wins; fall back to heuristics.
-            const itemType = mapRecordToItemType(record);
-
-            // Format creators (corporate/mononym names kept single-field).
-            const creators: any[] = [];
-            (record.authors || []).forEach(author => {
-                creators.push({ creatorType: "author", ...parseCreatorName(author) });
-            });
-            (record.editors || []).forEach(editor => {
-                creators.push({ creatorType: "editor", ...parseCreatorName(editor) });
-            });
-            (record.translators || []).forEach(translator => {
-                creators.push({ creatorType: "translator", ...parseCreatorName(translator) });
-            });
-
-            // Create base Zotero item
-            const item: any = {
-                itemType, title: record.title, _creatorsData: creators, // Store raw creator data temporarily
-                date: record.year, publisher: record.publisher_name, place: record.place_of_publication,
-                ISBN: record.isbn, ISSN: record.issn, language: record.language,
-                url: record.urls && record.urls.length > 0 ? record.urls[0] : "",
-                abstractNote: record.abstract, DOI: record.doi,
-                tags: record.subjects ? record.subjects.map(subject => ({ tag: subject })) : []
-            };
-
-            // Add itemType-specific fields
-            if (itemType === "journalArticle") { item.publicationTitle = record.journal_title; item.volume = record.volume; item.issue = record.issue; item.pages = record.pages; }
-            else if (itemType === "bookSection") { item.bookTitle = record.series; item.pages = record.pages; }
-            else if (itemType === "book") { item.series = record.series; item.edition = record.edition; }
-
-            // Clean up undefined/null/empty values
-            Object.keys(item).forEach(key => { if (item[key] === undefined || item[key] === null || item[key] === "") { delete item[key]; } });
-            return item;
-        });
-
-        // Use Zotero API to create items
-        try {
-            const activePane = Zotero.getActiveZoteroPane();
-            if (!activePane) { throw new Error("Could not get active Zotero pane."); }
-            const collection = activePane.getSelectedCollection();
-            const libraryID = collection ? collection.libraryID : (activePane.getSelectedLibraryID() || Zotero.Libraries.userLibraryID);
-
-            const createdItems = [];
-            const failures: string[] = [];
-            for (const itemData of items) {
-                // Per-item isolation: one bad record must not abort the whole batch.
-                try {
-                    const newItem = new Zotero.Item(itemData.itemType);
-                    newItem.libraryID = libraryID;
-
-                    for (const field in itemData) {
-                        if (field === 'itemType' || field === '_creatorsData' || field === 'tags' || field === 'libraryID') continue;
-                        if (!itemData[field]) continue;
-                        // Per-field isolation: a field that is invalid for this item
-                        // type (e.g. ISBN on a journalArticle) is skipped, not fatal.
-                        try {
-                            newItem.setField(field, itemData[field]);
-                        } catch (fieldErr) {
-                            Zotero.debug(`[LibrarySearch] Skipping field "${field}" for itemType "${itemData.itemType}": ${fieldErr}`);
-                        }
-                    }
-
-                    if (itemData._creatorsData && itemData._creatorsData.length > 0) {
-                        itemData._creatorsData.forEach((creator: any, i: number) => {
-                            const creatorTypeID = Zotero.CreatorTypes.getID(creator.creatorType);
-                            const validCreatorType = creatorTypeID !== 0 ? creator.creatorType : 'author';
-                            // Single-field (corporate/mononym) vs two-field personal name.
-                            const zc: any =
-                                creator.fieldMode === 1 || creator.name
-                                    ? { creatorType: validCreatorType, name: creator.name, fieldMode: 1 }
-                                    : { creatorType: validCreatorType, firstName: creator.firstName, lastName: creator.lastName };
-                            newItem.setCreator(i, zc);
-                        });
-                    }
-
-                    if (itemData.tags && itemData.tags.length > 0) { itemData.tags.forEach((tag: any) => newItem.addTag(tag.tag)); }
-                    if (collection) { newItem.setCollections([collection.id]); }
-
-                    await newItem.saveTx();
-                    createdItems.push(newItem);
-                } catch (itemErr: any) {
-                    const label = itemData.title || itemData.DOI || itemData.ISBN || '(untitled)';
-                    failures.push(`${label}: ${itemErr?.message || itemErr}`);
-                    console.error(`Error importing item "${label}":`, itemErr);
-                }
-            }
-
-            console.log(`Imported ${createdItems.length}/${items.length} items` + (failures.length ? `, ${failures.length} failed` : ''));
-            if (failures.length > 0) {
-                ztoolkit.log(`[LibrarySearch] Import failures:\n${failures.join('\n')}`, 'warn');
-            }
-            if (createdItems.length > 0 && activePane) { activePane.selectItems(createdItems.map(item => item.id as number)); }
-            return createdItems.length;
-        } catch (error) {
-            console.error("Error importing items:", error);
-            throw error;
-        }
+    if (!records || records.length === 0) {
+      console.error("No records to import");
+      return 0;
     }
 
+    console.log(`Importing ${records.length} records to Zotero`);
+
+    // Convert to Zotero-compatible format
+    const items = records.map((record) => {
+      // Determine item type — document_type wins; fall back to heuristics.
+      const itemType = mapRecordToItemType(record);
+
+      // Format creators (corporate/mononym names kept single-field).
+      const creators: any[] = [];
+      (record.authors || []).forEach((author) => {
+        creators.push({ creatorType: "author", ...parseCreatorName(author) });
+      });
+      (record.editors || []).forEach((editor) => {
+        creators.push({ creatorType: "editor", ...parseCreatorName(editor) });
+      });
+      (record.translators || []).forEach((translator) => {
+        creators.push({
+          creatorType: "translator",
+          ...parseCreatorName(translator),
+        });
+      });
+
+      // Create base Zotero item
+      const item: any = {
+        itemType,
+        title: record.title,
+        _creatorsData: creators, // Store raw creator data temporarily
+        date: record.year,
+        publisher: record.publisher_name,
+        place: record.place_of_publication,
+        ISBN: record.isbn,
+        ISSN: record.issn,
+        language: record.language,
+        url: record.urls && record.urls.length > 0 ? record.urls[0] : "",
+        abstractNote: record.abstract,
+        DOI: record.doi,
+        tags: record.subjects
+          ? record.subjects.map((subject) => ({ tag: subject }))
+          : [],
+      };
+
+      // Add itemType-specific fields
+      if (itemType === "journalArticle") {
+        item.publicationTitle = record.journal_title;
+        item.volume = record.volume;
+        item.issue = record.issue;
+        item.pages = record.pages;
+      } else if (itemType === "bookSection") {
+        item.bookTitle = record.series;
+        item.pages = record.pages;
+      } else if (itemType === "book") {
+        item.series = record.series;
+        item.edition = record.edition;
+      }
+
+      // Clean up undefined/null/empty values
+      Object.keys(item).forEach((key) => {
+        if (item[key] === undefined || item[key] === null || item[key] === "") {
+          delete item[key];
+        }
+      });
+      return item;
+    });
+
+    // Use Zotero API to create items
+    try {
+      const activePane = Zotero.getActiveZoteroPane();
+      if (!activePane) {
+        throw new Error("Could not get active Zotero pane.");
+      }
+      const collection = activePane.getSelectedCollection();
+      const libraryID = collection
+        ? collection.libraryID
+        : activePane.getSelectedLibraryID() || Zotero.Libraries.userLibraryID;
+
+      const createdItems = [];
+      const failures: string[] = [];
+      for (const itemData of items) {
+        // Per-item isolation: one bad record must not abort the whole batch.
+        try {
+          const newItem = new Zotero.Item(itemData.itemType);
+          newItem.libraryID = libraryID;
+
+          for (const field in itemData) {
+            if (
+              field === "itemType" ||
+              field === "_creatorsData" ||
+              field === "tags" ||
+              field === "libraryID"
+            )
+              continue;
+            if (!itemData[field]) continue;
+            // Per-field isolation: a field that is invalid for this item
+            // type (e.g. ISBN on a journalArticle) is skipped, not fatal.
+            try {
+              newItem.setField(field, itemData[field]);
+            } catch (fieldErr) {
+              Zotero.debug(
+                `[LibrarySearch] Skipping field "${field}" for itemType "${itemData.itemType}": ${fieldErr}`,
+              );
+            }
+          }
+
+          if (itemData._creatorsData && itemData._creatorsData.length > 0) {
+            itemData._creatorsData.forEach((creator: any, i: number) => {
+              const creatorTypeID = Zotero.CreatorTypes.getID(
+                creator.creatorType,
+              );
+              const validCreatorType =
+                creatorTypeID !== 0 ? creator.creatorType : "author";
+              // Single-field (corporate/mononym) vs two-field personal name.
+              const zc: any =
+                creator.fieldMode === 1 || creator.name
+                  ? {
+                      creatorType: validCreatorType,
+                      name: creator.name,
+                      fieldMode: 1,
+                    }
+                  : {
+                      creatorType: validCreatorType,
+                      firstName: creator.firstName,
+                      lastName: creator.lastName,
+                    };
+              newItem.setCreator(i, zc);
+            });
+          }
+
+          if (itemData.tags && itemData.tags.length > 0) {
+            itemData.tags.forEach((tag: any) => newItem.addTag(tag.tag));
+          }
+          if (collection) {
+            newItem.setCollections([collection.id]);
+          }
+
+          await newItem.saveTx();
+          createdItems.push(newItem);
+        } catch (itemErr: any) {
+          const label =
+            itemData.title || itemData.DOI || itemData.ISBN || "(untitled)";
+          failures.push(`${label}: ${itemErr?.message || itemErr}`);
+          console.error(`Error importing item "${label}":`, itemErr);
+        }
+      }
+
+      console.log(
+        `Imported ${createdItems.length}/${items.length} items` +
+          (failures.length ? `, ${failures.length} failed` : ""),
+      );
+      if (failures.length > 0) {
+        ztoolkit.log(
+          `[LibrarySearch] Import failures:\n${failures.join("\n")}`,
+          "warn",
+        );
+      }
+      if (createdItems.length > 0 && activePane) {
+        activePane.selectItems(createdItems.map((item) => item.id as number));
+      }
+      return createdItems.length;
+    } catch (error) {
+      console.error("Error importing items:", error);
+      throw error;
+    }
+  }
 } // End LibrarySearchIntegration class
 
 // --- updatePaginationControls helper function remains the same ---
-function updatePaginationControls(doc: Document, dialogData: ResultsDialogData, statusText?: string): void {
-  const prevButton = doc.getElementById("prev-button") as HTMLButtonElement | null;
-  const nextButton = doc.getElementById("next-button") as HTMLButtonElement | null;
+function updatePaginationControls(
+  doc: Document,
+  dialogData: ResultsDialogData,
+  statusText?: string,
+): void {
+  const prevButton = doc.getElementById(
+    "prev-button",
+  ) as HTMLButtonElement | null;
+  const nextButton = doc.getElementById(
+    "next-button",
+  ) as HTMLButtonElement | null;
   const statusLabel = doc.getElementById("pagination-status");
 
   if (statusLabel) {
     if (statusText) {
       statusLabel.textContent = statusText;
     } else {
-      const endRecord = Math.min(dialogData.currentStartRecord + dialogData.searchParams.maxRecords - 1, dialogData.totalRecords);
+      const endRecord = Math.min(
+        dialogData.currentStartRecord + dialogData.searchParams.maxRecords - 1,
+        dialogData.totalRecords,
+      );
       statusLabel.textContent = `Showing ${dialogData.currentStartRecord}-${endRecord} of ${dialogData.totalRecords}`; // Simplified text
     }
   }
 
-  const oai = (dialogData.searchParams.protocol || '').toLowerCase() === 'oai';
+  const oai = (dialogData.searchParams.protocol || "").toLowerCase() === "oai";
   if (prevButton) {
     // OAI: Previous is available only if we have earlier tokens on the stack.
-    prevButton.disabled = dialogData.isLoading ||
-      (oai ? (dialogData.oaiTokenStack?.length || 1) <= 1 : dialogData.currentStartRecord <= 1);
+    prevButton.disabled =
+      dialogData.isLoading ||
+      (oai
+        ? (dialogData.oaiTokenStack?.length || 1) <= 1
+        : dialogData.currentStartRecord <= 1);
   }
   if (nextButton) {
     // OAI pagination is token-driven (totalRecords is only an estimate), so gate
     // Next on whether the server returned a resumption token for the next page.
-    nextButton.disabled = dialogData.isLoading ||
+    nextButton.disabled =
+      dialogData.isLoading ||
       (oai
         ? !dialogData.oaiNextToken
-        : dialogData.currentStartRecord + dialogData.searchParams.maxRecords > dialogData.totalRecords);
+        : dialogData.currentStartRecord + dialogData.searchParams.maxRecords >
+          dialogData.totalRecords);
   }
 }

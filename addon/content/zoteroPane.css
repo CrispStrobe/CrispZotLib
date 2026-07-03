@@ -95,7 +95,8 @@ input[type="checkbox"] {
 }
 
 /* XUL dialog style fixes */
-dialog, window {
+dialog,
+window {
   background-color: var(--ls-dialog-bg) !important;
   color: var(--ls-dialog-text) !important;
 }

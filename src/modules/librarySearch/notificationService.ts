@@ -16,21 +16,24 @@ export class NotificationService {
 
       if (!alreadyNotified) {
         // Create a progress window for notification
-        const progressWin = new ztoolkit.ProgressWindow("Library Search Update", {
-          closeOnClick: true,
-          closeTime: 8000 // Show for 8 seconds
-        });
+        const progressWin = new ztoolkit.ProgressWindow(
+          "Library Search Update",
+          {
+            closeOnClick: true,
+            closeTime: 8000, // Show for 8 seconds
+          },
+        );
 
         progressWin.createLine({
           text: "Now using direct search implementation",
           type: "success",
-          progress: 100
+          progress: 100,
         });
 
         progressWin.createLine({
           text: "Python script is no longer required",
           type: "default",
-          progress: 100
+          progress: 100,
         });
 
         progressWin.show();
@@ -51,13 +54,13 @@ export class NotificationService {
     try {
       const progressWin = new ztoolkit.ProgressWindow("Library Search", {
         closeOnClick: true,
-        closeTime: 3000
+        closeTime: 3000,
       });
 
       progressWin.createLine({
-        text: `Found ${count} result${count === 1 ? '' : 's'}`,
+        text: `Found ${count} result${count === 1 ? "" : "s"}`,
         type: "success",
-        progress: 100
+        progress: 100,
       });
 
       progressWin.show();
@@ -74,19 +77,19 @@ export class NotificationService {
     try {
       const progressWin = new ztoolkit.ProgressWindow("Library Search", {
         closeOnClick: true,
-        closeTime: 5000
+        closeTime: 5000,
       });
 
       progressWin.createLine({
         text: "Search failed",
         type: "error",
-        progress: 100
+        progress: 100,
       });
 
       progressWin.createLine({
         text: error.substring(0, 100), // Limit length to avoid UI issues
         type: "default",
-        progress: 100
+        progress: 100,
       });
 
       progressWin.show();
@@ -103,13 +106,13 @@ export class NotificationService {
     try {
       const progressWin = new ztoolkit.ProgressWindow("Library Search", {
         closeOnClick: true,
-        closeTime: 3000
+        closeTime: 3000,
       });
 
       progressWin.createLine({
-        text: `Imported ${count} item${count === 1 ? '' : 's'}`,
+        text: `Imported ${count} item${count === 1 ? "" : "s"}`,
         type: "success",
-        progress: 100
+        progress: 100,
       });
 
       progressWin.show();

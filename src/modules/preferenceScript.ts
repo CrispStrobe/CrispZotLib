@@ -25,12 +25,12 @@ export async function registerPrefsScripts(_window: Window) {
       rows: [
         {
           setting: "Enabled",
-          value: getPref("enable") ? "Yes" : "No"
+          value: getPref("enable") ? "Yes" : "No",
         },
         {
           setting: "Debug Mode",
-          value: getPref("debugMode") ? "Enabled" : "Disabled"
-        }
+          value: getPref("debugMode") ? "Enabled" : "Disabled",
+        },
         // You can add other plugin settings here
       ],
     };
@@ -56,8 +56,8 @@ export async function registerPrefsScripts(_window: Window) {
 }
 
 /**
-* Update the preferences UI with current values
-*/
+ * Update the preferences UI with current values
+ */
 async function updatePrefsUI() {
   try {
     const win = addon.data.prefs?.window;
@@ -65,7 +65,7 @@ async function updatePrefsUI() {
 
     // Update the enabled checkbox
     const enableCheckbox = win.document.getElementById(
-      "zotero-prefpane-__addonRef__-enable"
+      "zotero-prefpane-__addonRef__-enable",
     ) as HTMLInputElement | null; // Keep the null check possibility
 
     if (enableCheckbox) {
@@ -75,11 +75,13 @@ async function updatePrefsUI() {
       // Add event listener (check if it already exists to avoid duplicates if called multiple times)
       // A simple way is to remove first, then add. Or use a flag.
       enableCheckbox.removeEventListener("change", handleEnableChange); // Use named function
-      enableCheckbox.addEventListener("change", handleEnableChange);    // Use named function
+      enableCheckbox.addEventListener("change", handleEnableChange); // Use named function
     }
 
     // Add debug mode checkbox (Consider checking if it already exists)
-    let debugCheckbox = win.document.getElementById("zotero-prefpane-__addonRef__-debug") as HTMLInputElement | null;
+    let debugCheckbox = win.document.getElementById(
+      "zotero-prefpane-__addonRef__-debug",
+    ) as HTMLInputElement | null;
     let checkboxContainer = debugCheckbox?.parentElement; // Try to find existing container
 
     if (!debugCheckbox) {
@@ -91,7 +93,6 @@ async function updatePrefsUI() {
       (checkboxContainer as HTMLElement).style.margin = "10px 0";
       // Or more specifically:
       // (checkboxContainer as HTMLDivElement).style.margin = "10px 0";
-
 
       debugCheckbox = win.document.createElement("input");
       debugCheckbox.type = "checkbox";
@@ -110,32 +111,39 @@ async function updatePrefsUI() {
       const container = win.document.querySelector(".prefpane-container");
       if (container) {
         // Insert after the enable checkbox if possible, or append
-        const enableContainer = enableCheckbox?.closest('div, p, setting'); // Find enable checkbox container
-        if (enableContainer?.parentNode === container && enableContainer.nextSibling) {
-          container.insertBefore(checkboxContainer, enableContainer.nextSibling);
+        const enableContainer = enableCheckbox?.closest("div, p, setting"); // Find enable checkbox container
+        if (
+          enableContainer?.parentNode === container &&
+          enableContainer.nextSibling
+        ) {
+          container.insertBefore(
+            checkboxContainer,
+            enableContainer.nextSibling,
+          );
         } else {
           container.appendChild(checkboxContainer);
         }
       }
     } else if (checkboxContainer instanceof HTMLElement) {
-        // Optional: If you need to style the existing container found via parentElement
-        // checkboxContainer.style.margin = "10px 0"; // Apply style if needed
+      // Optional: If you need to style the existing container found via parentElement
+      // checkboxContainer.style.margin = "10px 0"; // Apply style if needed
     }
-
 
     // --- FIX 2: Explicitly convert to boolean ---
     // Ensure debugCheckbox is not null here before accessing checked
     if (debugCheckbox) {
-        debugCheckbox.checked = Boolean(getPref("debugMode"));
+      debugCheckbox.checked = Boolean(getPref("debugMode"));
 
-        // Add event listener (check if it already exists)
-        debugCheckbox.removeEventListener("change", handleDebugChange); // Use named function
-        debugCheckbox.addEventListener("change", handleDebugChange);    // Use named function
+      // Add event listener (check if it already exists)
+      debugCheckbox.removeEventListener("change", handleDebugChange); // Use named function
+      debugCheckbox.addEventListener("change", handleDebugChange); // Use named function
     }
 
     // Display settings in a simple table instead of VirtualizedTable
     if (addon.data.prefs) {
-      const tableContainer = win.document.getElementById("__addonRef__-table-container");
+      const tableContainer = win.document.getElementById(
+        "__addonRef__-table-container",
+      );
       if (tableContainer) {
         // Remove any existing content
         while (tableContainer.firstChild) {
@@ -170,16 +178,17 @@ async function updatePrefsUI() {
         table.appendChild(thead);
 
         // Create body with rows (Update rows based on current prefs)
-        addon.data.prefs.rows = [ // Rebuild rows data here
-           {
-             setting: "Enabled", // Consider using getString()
-             value: getPref("enable") ? "Yes" : "No" // Use Boolean() here too
-           },
-           {
-             setting: "Debug Mode", // Consider using getString()
-             value: getPref("debugMode") ? "Enabled" : "Disabled" // Use Boolean() here too
-           }
-           // Add other settings dynamically if needed
+        addon.data.prefs.rows = [
+          // Rebuild rows data here
+          {
+            setting: "Enabled", // Consider using getString()
+            value: getPref("enable") ? "Yes" : "No", // Use Boolean() here too
+          },
+          {
+            setting: "Debug Mode", // Consider using getString()
+            value: getPref("debugMode") ? "Enabled" : "Disabled", // Use Boolean() here too
+          },
+          // Add other settings dynamically if needed
         ];
 
         const tbody = win.document.createElement("tbody");
@@ -189,7 +198,7 @@ async function updatePrefsUI() {
           for (const column of addon.data.prefs.columns) {
             const td = win.document.createElement("td");
             // Ensure dataKey exists and handle potential undefined
-            td.textContent = String(rowData[column.dataKey] ?? '');
+            td.textContent = String(rowData[column.dataKey] ?? "");
             td.style.padding = "8px";
             td.style.borderBottom = "1px solid var(--border-color-light, #eee)"; // Use CSS variable
             tr.appendChild(td);
@@ -224,44 +233,49 @@ function handleDebugChange(event: Event) {
 
 // --- Helper function to update table data ---
 function updatePrefsTable() {
-   const win = addon.data.prefs?.window;
-   if (!win || !addon.data.prefs) return;
+  const win = addon.data.prefs?.window;
+  if (!win || !addon.data.prefs) return;
 
-   const tableContainer = win.document.getElementById("__addonRef__-table-container");
-   const tbody = tableContainer?.querySelector("tbody");
-   if (!tbody) return;
+  const tableContainer = win.document.getElementById(
+    "__addonRef__-table-container",
+  );
+  const tbody = tableContainer?.querySelector("tbody");
+  if (!tbody) return;
 
-   // Update rows data source
-   addon.data.prefs.rows = [
-      { setting: "Enabled", value: getPref("enable") ? "Yes" : "No" },
-      { setting: "Debug Mode", value: getPref("debugMode") ? "Enabled" : "Disabled" }
-   ];
+  // Update rows data source
+  addon.data.prefs.rows = [
+    { setting: "Enabled", value: getPref("enable") ? "Yes" : "No" },
+    {
+      setting: "Debug Mode",
+      value: getPref("debugMode") ? "Enabled" : "Disabled",
+    },
+  ];
 
-   // Find and update corresponding cells in the existing table
-   const rows = tbody.querySelectorAll("tr");
-   for (const tr of rows) {
-     const cells = tr.querySelectorAll("td");
-     if (cells.length > 1) {
-       const settingName = cells[0].textContent;
-       const correspondingRowData = addon.data.prefs.rows.find(r => r.setting === settingName);
-       if (correspondingRowData) {
-         cells[1].textContent = String(correspondingRowData.value ?? '');
-       }
-     }
-   }
+  // Find and update corresponding cells in the existing table
+  const rows = tbody.querySelectorAll("tr");
+  for (const tr of rows) {
+    const cells = tr.querySelectorAll("td");
+    if (cells.length > 1) {
+      const settingName = cells[0].textContent;
+      const correspondingRowData = addon.data.prefs.rows.find(
+        (r) => r.setting === settingName,
+      );
+      if (correspondingRowData) {
+        cells[1].textContent = String(correspondingRowData.value ?? "");
+      }
+    }
+  }
 }
 
-
 /**
-* Bind event handlers to preference UI elements
-*/
+ * Bind event handlers to preference UI elements
+ */
 function bindPrefEvents() {
   try {
     const win = addon.data.prefs?.window;
     if (!win) return;
 
     // Add any additional event bindings here
-
   } catch (e) {
     ztoolkit.log("Error binding preference events:", e);
   }

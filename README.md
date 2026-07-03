@@ -35,18 +35,18 @@ Basic configuration options can be found in Zotero's preferences:
 
 1.  Click the "Search Libraries" button in the Zotero toolbar (icon looks like a magnifying glass over books) or go to `Tools` → `Library Search`.
 2.  In the "Library Search" dialog:
-    *   Select the `Protocol` (SRU, OAI-PMH, or IxTheo).
-    *   Select the `Endpoint` (e.g., dnb, loc, crossref).
-    *   For SRU, you can optionally select a specific `Schema Format` or leave it as "Endpoint Default".
-    *   Enter your search terms (Title, Author, ISBN/ISSN).
-    *   Set the `Max Results` you want to retrieve per page.
+    - Select the `Protocol` (SRU, OAI-PMH, or IxTheo).
+    - Select the `Endpoint` (e.g., dnb, loc, crossref).
+    - For SRU, you can optionally select a specific `Schema Format` or leave it as "Endpoint Default".
+    - Enter your search terms (Title, Author, ISBN/ISSN).
+    - Set the `Max Results` you want to retrieve per page.
 3.  Click "Search".
 4.  A "Search Results" dialog will appear.
-    *   Use the checkboxes to select items.
-    *   Use the `< Previous` and `Next >` buttons to navigate through results if more than one page was found.
-    *   Click "Import Selected" to import only the checked items.
-    *   Click "Import All" to import all items currently displayed on the page.
-    *   Click "Cancel" to close the dialog without importing.
+    - Use the checkboxes to select items.
+    - Use the `< Previous` and `Next >` buttons to navigate through results if more than one page was found.
+    - Click "Import Selected" to import only the checked items.
+    - Click "Import All" to import all items currently displayed on the page.
+    - Click "Cancel" to close the dialog without importing.
 
 ## Supported Protocols and Endpoints
 
@@ -55,6 +55,7 @@ Basic configuration options can be found in Zotero's preferences:
 Endpoint URLs were verified live in July 2026; several stale endpoints were repaired or replaced.
 
 ### SRU (Search/Retrieve via URL) Endpoints:
+
 - **dnb**: German National Library
 - **bnf**: French National Library
 - **zdb**: Journal Database (Zeitschriftendatenbank)
@@ -64,9 +65,10 @@ Endpoint URLs were verified live in July 2026; several stale endpoints were repa
 - **kb**: National Library of the Netherlands (GGC)
 - **bibsys**: Norwegian academic libraries (BIBSYS/Alma)
 
-*(Trove was removed: it no longer offers open SRU and now requires a personal API key.)*
+_(Trove was removed: it no longer offers open SRU and now requires a personal API key.)_
 
 ### OAI-PMH (Open Archives Initiative) Endpoints:
+
 - **crossref**: Crossref scholarly publishing (UNIXREF schema)
 - **dnb**: German National Library OAI
 - **loc**: Library of Congress OAI
@@ -80,7 +82,9 @@ Endpoint URLs were verified live in July 2026; several stale endpoints were repa
 - **ezb**: Elektronische Zeitschriftenbibliothek (Regensburg), ZDB holdings
 
 ### IxTheo (Index Theologicus) Formats:
-*(Searches IxTheo via HTML scraping and fetches details in the chosen format)*
+
+_(Searches IxTheo via HTML scraping and fetches details in the chosen format)_
+
 - **ris**: RIS format export
 - **marc**: MARC format export
 - **html**: HTML detail page parsing

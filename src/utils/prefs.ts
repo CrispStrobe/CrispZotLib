@@ -25,17 +25,24 @@ export function getPref(key: string): PrefValue | undefined {
       return undefined;
     }
 
-    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-        return value;
+    if (
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean"
+    ) {
+      return value;
     } else {
-        // Use console.warn for unexpected situations
-        console.warn(`${LOG_PREFIX} Warning: Pref '${key}' has unexpected type: ${typeof value}`);
-        return undefined; // Return undefined for safety
+      // Use console.warn for unexpected situations
+      console.warn(
+        `${LOG_PREFIX} Warning: Pref '${key}' has unexpected type: ${typeof value}`,
+      );
+      return undefined; // Return undefined for safety
     }
-
   } catch (e) {
     // Use console.error for actual errors
-    console.error(`${LOG_PREFIX} Error getting pref '${key}': ${e instanceof Error ? e.message : String(e)}`);
+    console.error(
+      `${LOG_PREFIX} Error getting pref '${key}': ${e instanceof Error ? e.message : String(e)}`,
+    );
     return undefined;
   }
 }
@@ -52,9 +59,10 @@ export function setPref(key: string, value: PrefValue): void {
     Zotero.Prefs.set(fullKey, value, true);
     // Use Zotero.debug for successful operations (often useful during development)
     // _globalThis.Zotero?.debug?.(`${LOG_PREFIX} Set pref '${key}' to: ${value}`); // Optional: Uncomment if needed
-
   } catch (e) {
-    console.error(`${LOG_PREFIX} Error setting pref '${key}' to '${value}': ${e instanceof Error ? e.message : String(e)}`);
+    console.error(
+      `${LOG_PREFIX} Error setting pref '${key}' to '${value}': ${e instanceof Error ? e.message : String(e)}`,
+    );
   }
 }
 
@@ -69,8 +77,9 @@ export function clearPref(key: string): void {
     Zotero.Prefs.clear(fullKey, true);
     // Use Zotero.debug for successful operations
     // _globalThis.Zotero?.debug?.(`${LOG_PREFIX} Cleared pref '${key}'.`); // Optional: Uncomment if needed
-
   } catch (e) {
-    console.error(`${LOG_PREFIX} Error clearing pref '${key}': ${e instanceof Error ? e.message : String(e)}`);
+    console.error(
+      `${LOG_PREFIX} Error clearing pref '${key}': ${e instanceof Error ? e.message : String(e)}`,
+    );
   }
 }

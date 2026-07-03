@@ -9,12 +9,19 @@ export { initLocale, getString, getLocaleID };
 // Type for addon.data.locale
 interface LocaleData {
   current: {
-    formatMessagesSync: (messages: Array<{ id: string; args?: Record<string, unknown> }>) => Array<{
+    formatMessagesSync: (
+      messages: Array<{ id: string; args?: Record<string, unknown> }>,
+    ) => Array<{
       value: string;
-      attributes?: Array<{ name: string; value: string }> | Record<string, string>;
+      attributes?:
+        | Array<{ name: string; value: string }>
+        | Record<string, string>;
     }>;
   };
-  fallbackMap: Record<string, string | ((name?: string, version?: string, time?: string) => string)>;
+  fallbackMap: Record<
+    string,
+    string | ((name?: string, version?: string, time?: string) => string)
+  >;
 }
 
 /**
@@ -26,9 +33,9 @@ function initLocale() {
     const localePaths = [
       `${config.addonRef}-addon.ftl`,
       `${config.addonRef}-preferences.ftl`,
-      `${config.addonRef}-mainWindow.ftl`
+      `${config.addonRef}-mainWindow.ftl`,
     ];
-    
+
     // Get localization service
     // Note the explicit any type to avoid the reference error
     let localizer: any;
@@ -37,32 +44,32 @@ function initLocale() {
     } else {
       localizer = Localization;
     }
-    
+
     // Initialize l10n with all paths
     const l10n = new localizer(localePaths, true);
-    
+
     // Create the locale object with proper typing
     const localeData: LocaleData = {
       current: l10n,
-      fallbackMap: createFallbacks()
+      fallbackMap: createFallbacks(),
     };
 
     // Store in addon data
     addon.data.locale = localeData;
-    
+
     // Add fallbacks separately to avoid type errors
     // localeData.fallbackMap = createFallbacks();
-    
+
     ztoolkit.log("Locale initialized with paths:", localePaths.join(", "));
   } catch (e) {
-    ztoolkit.log('Error initializing locale:', e);
-    
+    ztoolkit.log("Error initializing locale:", e);
+
     // Create a dummy locale object with fallbacks for critical UI elements
     const dummyLocale: LocaleData = {
       current: {
-        formatMessagesSync: () => [{ value: "", attributes: [] }]
+        formatMessagesSync: () => [{ value: "", attributes: [] }],
       },
-      fallbackMap: createFallbacks()
+      fallbackMap: createFallbacks(),
     };
 
     addon.data.locale = dummyLocale;
@@ -73,7 +80,10 @@ function initLocale() {
  * Create fallback values for critical UI strings
  * This ensures the UI is usable even if locale files fail to load
  */
-function createFallbacks(): Record<string, string | ((name?: string, version?: string, time?: string) => string)> {
+function createFallbacks(): Record<
+  string,
+  string | ((name?: string, version?: string, time?: string) => string)
+> {
   return {
     // Preferences strings
     "prefs-title": "Library Search",
@@ -83,19 +93,20 @@ function createFallbacks(): Record<string, string | ((name?: string, version?: s
     "prefs-browse": "Browse...",
     "prefs-table-setting": "Setting",
     "prefs-table-value": "Value",
-    "prefs-help": (name?: string, version?: string, time?: string) => 
+    "prefs-help": (name?: string, version?: string, time?: string) =>
       `${name || "Library Search"} ${version || ""}, built ${time || ""}`,
-    
+
     // Main window strings
     "startup-begin": "Library Search: Starting plugin...",
     "startup-finish": "Library Search: Plugin ready",
     "toolbar-button-label": "Search Libraries",
     "toolbar-button-tooltip": "Search library catalogs and repositories",
     "menu-item-label": "Library Search",
-    
+
     // Dialog strings
     "search-dialog-title": "Library Search",
-    "search-dialog-description": "Search libraries and repositories for items to import into Zotero.",
+    "search-dialog-description":
+      "Search libraries and repositories for items to import into Zotero.",
     "search-dialog-config-section": "Configuration",
     "search-dialog-python-path": "Python Path:",
     "search-dialog-script-path": "Script Path:",
@@ -111,7 +122,7 @@ function createFallbacks(): Record<string, string | ((name?: string, version?: s
     "search-dialog-searching": "Searching...",
     "search-dialog-no-results": "No results found",
     "search-dialog-error": "An error occurred during search",
-    
+
     // Results dialog strings
     "results-dialog-title": "Search Results",
     "results-dialog-import-selected": "Import Selected",
@@ -120,13 +131,15 @@ function createFallbacks(): Record<string, string | ((name?: string, version?: s
     "results-dialog-no-selection": "Please select at least one item to import",
     "results-dialog-import-success": "Items successfully imported",
     "results-dialog-import-error": "Error importing items",
-    
+
     // Error messages
     "search-error-missing-paths": "Python path and script path must be set",
     "search-error-missing-endpoint": "Endpoint must be specified",
-    "search-error-missing-search-terms": "At least one search term must be provided",
+    "search-error-missing-search-terms":
+      "At least one search term must be provided",
     "search-error-script-failed": "Search script execution failed",
-    "search-error-invalid-results": "Invalid results returned from search script"
+    "search-error-invalid-results":
+      "Invalid results returned from search script",
   };
 }
 
@@ -165,12 +178,12 @@ function _getString(
     if (!addon?.data?.locale?.current) {
       return getFallbackString(localeString, options);
     }
-    
+
     // Add prefix if needed
     const localStringWithPrefix = ensurePrefix(localeString);
-    
+
     const { branch, args } = options;
-    
+
     // Try to get localized string
     let pattern;
     try {
@@ -178,15 +191,18 @@ function _getString(
         { id: localStringWithPrefix, args },
       ])[0];
     } catch (e) {
-      ztoolkit.log(`Error formatting locale string ${localStringWithPrefix}:`, e);
+      ztoolkit.log(
+        `Error formatting locale string ${localStringWithPrefix}:`,
+        e,
+      );
       return getFallbackString(localeString, options);
     }
-    
+
     // Handle null/undefined pattern
     if (!pattern || !pattern.value) {
       return getFallbackString(localeString, options);
     }
-    
+
     // Handle branch attribute if needed
     if (branch && pattern.attributes) {
       // Try to find the attribute directly
@@ -197,17 +213,17 @@ function _getString(
           }
         }
       }
-      
+
       // Try to access as object property
       const attrObj = pattern.attributes as Record<string, string>;
       if (attrObj[branch]) {
         return attrObj[branch];
       }
-      
+
       // Fall back to main value if no attribute found
       return pattern.value;
     }
-    
+
     // Return the main value
     return pattern.value;
   } catch (e) {
@@ -220,30 +236,30 @@ function _getString(
  * Get fallback string when locale lookup fails
  */
 function getFallbackString(
-  localeString: string, 
-  options: { branch?: string | undefined; args?: Record<string, unknown> } = {}
+  localeString: string,
+  options: { branch?: string | undefined; args?: Record<string, unknown> } = {},
 ): string {
   try {
     // Try to get from fallbacks using fallbackMap
     const fallbackMap = addon?.data?.locale?.fallbackMap;
-    
+
     if (fallbackMap && fallbackMap[localeString]) {
       const fallback = fallbackMap[localeString];
-      if (typeof fallback === 'function') {
+      if (typeof fallback === "function") {
         // Handle function fallbacks with args
         const { args } = options;
         if (args) {
           return fallback(
-            args.name as string, 
-            args.version as string, 
-            args.time as string
+            args.name as string,
+            args.version as string,
+            args.time as string,
           );
         }
         return fallback();
       }
       return fallback;
     }
-    
+
     // Last resort: convert ID to readable text
     return prettifyString(localeString);
   } catch (e) {
@@ -256,8 +272,8 @@ function getFallbackString(
  * Ensure string has the addon reference prefix
  */
 function ensurePrefix(str: string): string {
-  return str.startsWith(`${config.addonRef}-`) 
-    ? str 
+  return str.startsWith(`${config.addonRef}-`)
+    ? str
     : `${config.addonRef}-${str}`;
 }
 
@@ -266,9 +282,9 @@ function ensurePrefix(str: string): string {
  */
 function prettifyString(str: string): string {
   return str
-    .replace(new RegExp(`^${config.addonRef}-`), '')
-    .replace(/-/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase());
+    .replace(new RegExp(`^${config.addonRef}-`), "")
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /**

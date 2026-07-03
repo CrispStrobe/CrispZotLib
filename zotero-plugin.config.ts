@@ -3,7 +3,9 @@ import pkg from "./package.json";
 
 // Safe accessor for optional package.json keys
 const getSafe = (obj: any, key: string, defaultValue: any = undefined) =>
-  obj && Object.prototype.hasOwnProperty.call(obj, key) ? obj[key] : defaultValue;
+  obj && Object.prototype.hasOwnProperty.call(obj, key)
+    ? obj[key]
+    : defaultValue;
 
 export default defineConfig({
   source: ["src", "addon"],
@@ -23,7 +25,7 @@ export default defineConfig({
   build: {
     assets: [
       "addon/**/*.*",
-      "addon/bootstrap.js",  // always include your bootstrap entry point
+      "addon/bootstrap.js", // always include your bootstrap entry point
     ],
     define: {
       ...pkg.config,

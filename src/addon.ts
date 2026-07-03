@@ -13,7 +13,10 @@ class Addon {
     ztoolkit: ZToolkit;
     locale?: {
       current: any;
-      fallbackMap?: Record<string, string | ((name?: string, version?: string, time?: string) => string)>;
+      fallbackMap?: Record<
+        string,
+        string | ((name?: string, version?: string, time?: string) => string)
+      >;
     };
     prefs?: {
       window: Window;
@@ -22,7 +25,7 @@ class Addon {
     };
     dialog?: DialogHelper;
     lastSearchResults?: BiblioRecord[];
-    
+
     // Fields for theme support
     mainThemeObserver?: MutationObserver;
     themeObserver?: MutationObserver;
@@ -40,7 +43,7 @@ class Addon {
       config,
       env: __env__,
       ztoolkit: createZToolkit(),
-      lastSearchResults: []
+      lastSearchResults: [],
     };
     this.hooks = hooks;
     this.api = {};
