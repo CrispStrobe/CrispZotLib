@@ -133,6 +133,32 @@
         "isbn": "alma.isbn=9783658310844",
         "advanced": "alma.title=Python and alma.creator=Rossum"
       }
+    },
+    "b3kat": {
+      "name": "B3Kat (Bibliotheksverbund Bayern + KOBV)",
+      "url": "http://bvbr.bib-bvb.de:5661/bvb01sru",
+      "defaultSchema": "marcxml",
+      "description": "Bavarian + Berlin-Brandenburg union catalogue (B3Kat)",
+      "version": "1.1",
+      "examples": {
+        "title": "marcxml.title=Python",
+        "author": "marcxml.creator=Einstein",
+        "isbn": "marcxml.isbn=9783658310844",
+        "advanced": "marcxml.title=Python and marcxml.creator=Rossum"
+      }
+    },
+    "obv": {
+      "name": "ÖBV (Austrian Library Network / OBVSG)",
+      "url": "https://obv-at-obvsg.userservices.exlibrisgroup.com/view/sru/43ACC_NETWORK",
+      "defaultSchema": "marcxml",
+      "description": "Austrian academic libraries (OBVSG / Alma network zone)",
+      "version": "1.2",
+      "examples": {
+        "title": "alma.title=Python",
+        "author": "alma.creator=Einstein",
+        "isbn": "alma.isbn=9783658310844",
+        "advanced": "alma.title=Python and alma.creator=Rossum"
+      }
     }
   },
   "oai": {

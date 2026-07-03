@@ -29,36 +29,37 @@ Repos (siblings under `~/code`):
 
 ### SRU
 
-| id     | status                       | action                                                                                                                             |
-| ------ | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| dnb    | ✅ works                     | keep                                                                                                                               |
-| bnf    | ✅ works                     | keep                                                                                                                               |
-| zdb    | ✅ works                     | keep                                                                                                                               |
-| loc    | ❌ lccn.loc.gov/sru = 404    | [x] repoint → `http://lx2.loc.gov:210/lcdb` (bath.\* CQL) — **verify from Zotero; port 210 was blocked in sandbox**                |
-| kb     | ❌ jsru.kb.nl/sru = 301      | [x] fix → `http://jsru.kb.nl/sru/sru` + `x-collection=GGC`, v1.2 (verified 102 hits)                                               |
-| bibsys | ❌ host NXDOMAIN             | [x] fix → Alma `bibsys-network.alma.exlibrisgroup.com/view/sru/47BIBSYS_NETWORK`, alma.\* CQL, marcxml, v1.2 (verified 3,732 hits) |
-| trove  | ❌ geo‑blocked, key‑only now | [x] flagged out — Trove v3 is a keyed REST API, not SRU                                                                            |
+| id     | status                       | action                                                                                                                                         |
+| ------ | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| dnb    | ✅ works                     | keep                                                                                                                                           |
+| bnf    | ✅ works                     | keep                                                                                                                                           |
+| zdb    | ✅ works                     | keep                                                                                                                                           |
+| loc    | ✅ works                     | [x] repoint → `http://lx2.loc.gov:210/lcdb` (bath.\* CQL) — **verified live 2026-07-03: port 210 reachable, `bath.title=Python` → 1,370 hits** |
+| kb     | ❌ jsru.kb.nl/sru = 301      | [x] fix → `http://jsru.kb.nl/sru/sru` + `x-collection=GGC`, v1.2 (verified 102 hits)                                                           |
+| bibsys | ❌ host NXDOMAIN             | [x] fix → Alma `bibsys-network.alma.exlibrisgroup.com/view/sru/47BIBSYS_NETWORK`, alma.\* CQL, marcxml, v1.2 (verified 3,732 hits)             |
+| trove  | ❌ geo‑blocked, key‑only now | [x] flagged out — Trove v3 is a keyed REST API, not SRU                                                                                        |
 
 New SRU added (verified live; the example-driven `buildSruQuery` handles their index families):
 
 - [x] **K10plus** (GBV+SWB union) `https://sru.k10plus.de/opac-de-627`, `pica.*` — title/author/isbn all verified.
 - [x] **SLSP swisscovery** `https://swisscovery.slsp.ch/view/sru/41SLSP_NETWORK`, `alma.*`, v1.2 — title/author/isbn all verified.
-- [ ] B3Kat (Bavaria) + ÖBV (Austria): find correct Alma/port URLs (my guesses didn't connect), then add.
+- [x] **B3Kat** (Bibliotheksverbund Bayern + KOBV) `http://bvbr.bib-bvb.de:5661/bvb01sru`, `marcxml.*`, v1.1 — verified live 2026-07-03 (title 3764 / creator 1564 / isbn 4 / title+creator 9).
+- [x] **ÖBV** (OBVSG / Austrian Library Network) `https://obv-at-obvsg.userservices.exlibrisgroup.com/view/sru/43ACC_NETWORK`, `alma.*`, v1.2 — verified live 2026-07-03 (title 5560 / creator 1264 / isbn 4 / title+creator 3).
 
 ### OAI‑PMH
 
-| id                          | status                       | action                                                                                                           |
-| --------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| dnb                         | ✅                           | keep                                                                                                             |
-| europeana, mit, doaj, arxiv | ✅                           | keep (arxiv slow)                                                                                                |
-| crossref                    | ✅ (fixed)                   | [x] `api.crossref.org/oai` → `https://oai.crossref.org/oai`, prefix `cr_unixsd` (needs UNIXREF parser — see 2.7) |
-| ddb                         | ✅ (fixed)                   | [x] → `https://oai.deutsche-digitale-bibliothek.de`                                                              |
-| harvard                     | ✅ (fixed)                   | [x] → `https://dash.harvard.edu/oai/request`                                                                     |
-| kitopen                     | ✅ (fixed)                   | [x] → `https://dbkit.bibliothek.kit.edu/oai/`                                                                    |
-| dnb_digital                 | ❌ /repository_digital = 404 | [ ] remove or repoint (DNB digital sub‑repo appears discontinued)                                                |
-| loc (OAI)                   | ❌ memory.loc.gov = 503      | [ ] remove (LoC OAI discontinued)                                                                                |
-| **ezb**                     | ✅ added                     | [x] `https://ezb-oai.ur.de/zdb/oai2.php`, oai_dc+MARC21, sets `ezb:holdings:<ISIL>` (verified 2,500/page)        |
-| UB Leipzig                  | ⚠️ METS/MODS only            | [ ] add only after MODS parser support (no oai_dc)                                                               |
+| id                          | status                       | action                                                                                                                                                                                                     |
+| --------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| dnb                         | ✅                           | keep                                                                                                                                                                                                       |
+| europeana, mit, doaj, arxiv | ✅                           | keep (arxiv slow)                                                                                                                                                                                          |
+| crossref                    | ❌ UNIXREF only              | [x] removed in `1c866e4` (serves only `cr_unixsd`/UNIXREF, not oai_dc — see 2.7). Crossref DOIs covered by `resolveDoi`.                                                                                   |
+| ddb                         | ✅ (fixed)                   | [x] → `https://oai.deutsche-digitale-bibliothek.de`                                                                                                                                                        |
+| harvard                     | ✅ (fixed)                   | [x] → `https://dash.harvard.edu/oai/request`                                                                                                                                                               |
+| kitopen                     | ✅ (fixed)                   | [x] → `https://dbkit.bibliothek.kit.edu/oai/`                                                                                                                                                              |
+| dnb_digital                 | ❌ /repository_digital = 404 | [x] removed in `91aac30` (DNB digital sub‑repo discontinued)                                                                                                                                               |
+| loc (OAI)                   | ❌ memory.loc.gov = 503      | [x] removed in `91aac30` (LoC OAI discontinued)                                                                                                                                                            |
+| **ezb**                     | ✅ added                     | [x] `https://ezb-oai.ur.de/zdb/oai2.php`, oai_dc+MARC21, sets `ezb:holdings:<ISIL>` (verified 2,500/page)                                                                                                  |
+| UB Leipzig                  | ⚠️ METS/MODS only            | [!] deferred — needs a MODS parser (no oai_dc) AND a working host (probed digital/www/nubbon `.ub.uni-leipzig.de` OAI 2026-07-03: NXDOMAIN/404/503). Revisit if a reachable oai_dc/MODS endpoint is found. |
 
 ---
 
