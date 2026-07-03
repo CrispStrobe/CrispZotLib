@@ -83,49 +83,80 @@ export const NAMESPACES: Record<string, string> = {
     },
     'loc': {
       name: 'Library of Congress',
-      url: 'https://lccn.loc.gov/sru',
+      // Old lccn.loc.gov/sru is gone (404). Canonical SRU is the Z39.50-over-SRU
+      // gateway on port 210. NOTE: verify from within Zotero — some networks
+      // block outbound port 210 (it was unreachable from the audit sandbox).
+      url: 'http://lx2.loc.gov:210/lcdb',
       defaultSchema: 'marcxml',
-      description: 'Library of Congress catalog',
+      description: 'Library of Congress catalog (SRU gateway, port 210)',
       version: '1.1',
       examples: {
-        'title': 'title="Python"',
-        'author': 'author="Einstein"',
-        'isbn': 'isbn=9781234567890',
-        'advanced': 'title="Python" and author="Rossum"'
+        'title': 'bath.title=Python',
+        'author': 'bath.author=Einstein',
+        'isbn': 'bath.isbn=9781234567890',
+        'advanced': 'bath.title=Python and bath.author=Rossum'
       }
     },
-    'trove': {
-      name: 'Trove (National Library of Australia)',
-      url: 'http://www.nla.gov.au/apps/srw/search/peopleaustralia',
-      defaultSchema: 'dc',
-      description: 'Australia\'s cultural collections',
-      version: '1.1',
-      examples: {
-        'name': 'bath.name="Smith"',
-        'advanced': 'pa.surname="Smith" and pa.firstname="John"'
-      }
-    },
+    // NOTE: Trove no longer offers open SRU. The old peopleaustralia SRW endpoint
+    // is geo-blocked/defunct and was a people-search, not a book catalog. Trove v3
+    // is a REST API that REQUIRES a personal API key (api.trove.nla.gov.au/v3) and
+    // does not fit the SRU client. Left out until key-based support is added.
     'kb': {
       name: 'KB - National Library of the Netherlands',
-      url: 'http://jsru.kb.nl/sru',
+      // Correct path is /sru/sru; the GGC collection must be selected via x-collection.
+      url: 'http://jsru.kb.nl/sru/sru',
       defaultSchema: 'dc',
-      description: 'Dutch National Library',
-      version: '1.1',
+      description: 'Dutch National Library (GGC union catalogue)',
+      version: '1.2',
+      queryParams: { 'x-collection': 'GGC' },
       examples: {
         'title': 'dc.title=Python',
+        'author': 'dc.creator=Einstein',
         'advanced': 'dc.title=Python and dc.date=2023'
       }
     },
     'bibsys': {
-      name: 'BIBSYS - Norwegian Library Service',
-      url: 'http://sru.bibsys.no/search/biblio',
-      defaultSchema: 'dc',
-      description: 'Norwegian academic libraries',
+      name: 'BIBSYS - Norwegian Academic Libraries',
+      // sru.bibsys.no was decommissioned (BIBSYS migrated to Alma). This is the
+      // Alma network-zone SRU. Verified live: alma.* CQL indexes, marcxml, v1.2.
+      url: 'https://bibsys-network.alma.exlibrisgroup.com/view/sru/47BIBSYS_NETWORK',
+      defaultSchema: 'marcxml',
+      description: 'Norwegian academic libraries (BIBSYS/Alma network zone)',
+      version: '1.2',
+      examples: {
+        'title': 'alma.title=Python',
+        'author': 'alma.creator=Einstein',
+        'isbn': 'alma.isbn=9781234567890',
+        'advanced': 'alma.title=Python and alma.creator=Rossum'
+      }
+    },
+    'k10plus': {
+      name: 'K10plus (GBV + SWB union catalogue)',
+      // Verified live (10,996 hits). The largest German union catalogue —
+      // covers most German academic libraries plus CH/AT participants. PICA indexes.
+      url: 'https://sru.k10plus.de/opac-de-627',
+      defaultSchema: 'marcxml',
+      description: 'German union catalogue (GBV+SWB), most academic libraries',
       version: '1.1',
       examples: {
-        'title': 'title="Python"',
-        'author': 'author="Einstein"',
-        'advanced': 'title="Python" and date="2023"'
+        'title': 'pica.tit=Python',
+        'author': 'pica.per=Einstein',
+        'isbn': 'pica.isb=9783658310844',
+        'advanced': 'pica.tit=Python and pica.jhr=2023'
+      }
+    },
+    'swisscovery': {
+      name: 'swisscovery (SLSP, Swiss academic union)',
+      // Verified live (6,340 hits). Swiss Library Service Platform (Alma network).
+      url: 'https://swisscovery.slsp.ch/view/sru/41SLSP_NETWORK',
+      defaultSchema: 'marcxml',
+      description: 'Swiss academic libraries union catalogue (SLSP/Alma)',
+      version: '1.2',
+      examples: {
+        'title': 'alma.title=Python',
+        'author': 'alma.creator=Einstein',
+        'isbn': 'alma.isbn=9783658310844',
+        'advanced': 'alma.title=Python and alma.creator=Rossum'
       }
     }
   };
@@ -133,10 +164,15 @@ export const NAMESPACES: Record<string, string> = {
   export const OAI_ENDPOINTS: Record<string, OAIEndpoint> = {
     'crossref': {
       name: 'Crossref',
-      url: 'https://api.crossref.org/oai',
-      defaultMetadataPrefix: 'crossref',
-      description: 'Crossref metadata database',
-      sets: {}
+      // Correct host is oai.crossref.org (NOT api.crossref.org/oai, which 404s).
+      url: 'https://oai.crossref.org/oai',
+      // Crossref only serves its own UNIXREF schemas (cr_unixsd/cr_unixml/cr_citedby);
+      // it does NOT support oai_dc. Parsing cr_unixsd needs dedicated handling.
+      defaultMetadataPrefix: 'cr_unixsd',
+      description: 'Crossref metadata database (OAI-PMH, UNIXREF schema)',
+      sets: {
+        'J': 'Journals'
+      }
     },
     'dnb': {
       name: 'Deutsche Nationalbibliothek OAI',
@@ -172,14 +208,14 @@ export const NAMESPACES: Record<string, string> = {
     },
     'ddb': {
       name: 'Deutsche Digitale Bibliothek',
-      url: 'https://api.deutsche-digitale-bibliothek.de/oai',
+      url: 'https://oai.deutsche-digitale-bibliothek.de',
       defaultMetadataPrefix: 'oai_dc',
       description: 'German Digital Library',
       sets: {}
     },
     'harvard': {
       name: 'Harvard Library',
-      url: 'https://iiif.lib.harvard.edu/oai/oai2.php',
+      url: 'https://dash.harvard.edu/oai/request',
       defaultMetadataPrefix: 'oai_dc',
       description: 'Harvard Library collections',
       sets: {}
@@ -193,7 +229,7 @@ export const NAMESPACES: Record<string, string> = {
     },
     'kitopen': {
       name: 'KITopen',
-      url: 'https://www.bibliothek.kit.edu/oai/kit.php',
+      url: 'https://dbkit.bibliothek.kit.edu/oai/',
       defaultMetadataPrefix: 'oai_dc',
       description: 'KIT (Karlsruhe Institute of Technology) repository',
       sets: {}
@@ -218,6 +254,17 @@ export const NAMESPACES: Record<string, string> = {
       defaultMetadataPrefix: 'oai_dc',
       description: 'Directory of Open Access Journals',
       sets: {}
+    },
+    'ezb': {
+      name: 'EZB (Elektronische Zeitschriftenbibliothek, Regensburg)',
+      // Verified live. Serves oai_dc and MARC21-xml. Records are ZDB serials
+      // holdings; sets follow the pattern ezb:holdings:<ISIL> for a given library.
+      url: 'https://ezb-oai.ur.de/zdb/oai2.php',
+      defaultMetadataPrefix: 'oai_dc',
+      description: 'German electronic journals library (ZDB holdings, CC0)',
+      sets: {
+        'ezb:holdings:DE-355': 'Universitätsbibliothek Regensburg (DE-355)'
+      }
     }
   };
   
