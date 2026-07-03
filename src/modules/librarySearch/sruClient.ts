@@ -716,6 +716,10 @@ export class SRUClient {
         if (roleText) {
           if (/edit|hrsg|hg/.test(roleText)) role = "editor";
           else if (/transl|übers/.test(roleText)) role = "translator";
+          // Author relator terms across languages (DNB/K10plus use "Verfasser").
+          // Without this, a primary 100 $e="Verfasser" was mis-filed as a
+          // contributor with role "verfasser" instead of an author.
+          else if (/verf|author|autor|creator/.test(roleText)) role = "author";
           else role = roleText;
         }
         cleanName = cleanName.replace(/[,.;]$/, "").trim();
