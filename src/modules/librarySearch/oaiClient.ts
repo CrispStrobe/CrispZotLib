@@ -2,7 +2,8 @@
 // OAI-PMH protocol client implementation - Fixed version
 
 import { BiblioRecord } from "./models";
-import { fetchWithTimeout } from "./httpUtils";
+import { fetchWithTimeout, readXml } from "./httpUtils";
+import { extractIsbn, extractIssn } from "./recordUtils";
 
 // OAI-PMH Client class
 export class OAIClient {
@@ -30,6 +31,24 @@ export class OAIClient {
     this.parser = new DOMParser();
     this.defaultMetadataPrefix = _defaultMetadataPrefix;
     this.timeout = _timeout;
+  }
+
+  /**
+   * Parse an XML string, throwing on a <parsererror> (PLAN 2.5). DOMParser
+   * reports malformed/truncated XML by injecting a <parsererror> element into
+   * the document rather than throwing, so without this check a broken response
+   * is silently indistinguishable from a legitimate empty result. Each caller's
+   * try/catch turns the throw into a logged failure instead of "0 results".
+   */
+  private parseXml(xmlText: string): Document {
+    const doc = this.parser.parseFromString(xmlText, "application/xml");
+    const errs = doc.getElementsByTagName("parsererror");
+    if (errs && errs.length > 0) {
+      const detail = (errs[0].textContent || "").slice(0, 200);
+      ztoolkit.log(`OAI response was not well-formed XML: ${detail}`, "error");
+      throw new Error("OAI response was not well-formed XML");
+    }
+    return doc;
   }
 
   /**
@@ -264,8 +283,8 @@ export class OAIClient {
         );
       }
 
-      const xmlText = await response.text();
-      const xmlDoc = this.parser.parseFromString(xmlText, "application/xml");
+      const xmlText = await readXml(response);
+      const xmlDoc = this.parseXml(xmlText);
 
       // Check for OAI-PMH protocol level errors
       const oaiError = this.checkForErrors(xmlDoc);
@@ -395,8 +414,8 @@ export class OAIClient {
         );
       }
 
-      const xmlText = await response.text();
-      const xmlDoc = this.parser.parseFromString(xmlText, "application/xml");
+      const xmlText = await readXml(response);
+      const xmlDoc = this.parseXml(xmlText);
 
       // Check for OAI-PMH protocol level errors first
       const oaiError = this.checkForErrors(xmlDoc);
@@ -517,8 +536,8 @@ export class OAIClient {
         );
       }
 
-      const xmlText = await response.text();
-      const xmlDoc = this.parser.parseFromString(xmlText, "application/xml");
+      const xmlText = await readXml(response);
+      const xmlDoc = this.parseXml(xmlText);
 
       // Check for OAI-PMH protocol level errors
       const oaiError = this.checkForErrors(xmlDoc);
@@ -649,8 +668,8 @@ export class OAIClient {
         );
       }
 
-      const xmlText = await response.text();
-      const xmlDoc = this.parser.parseFromString(xmlText, "application/xml");
+      const xmlText = await readXml(response);
+      const xmlDoc = this.parseXml(xmlText);
 
       // Check for OAI-PMH protocol level errors
       const oaiError = this.checkForErrors(xmlDoc);
@@ -810,8 +829,8 @@ export class OAIClient {
         return null; // Return null on error
       }
 
-      const xmlText = await response.text();
-      const xmlDoc = this.parser.parseFromString(xmlText, "application/xml");
+      const xmlText = await readXml(response);
+      const xmlDoc = this.parseXml(xmlText);
 
       // Check for OAI-PMH protocol level errors
       const oaiError = this.checkForErrors(xmlDoc);
@@ -1237,25 +1256,15 @@ export class OAIClient {
             record.urls.push(idText);
           }
         }
-        // Extract ISBN
-        else if (
-          idTextLower.startsWith("isbn") ||
-          /\d[\d\-X]{9,}/.test(idText)
-        ) {
-          const isbnMatch = idText.match(/(\d[\d\-X]{9,})/); // Find sequence of digits/X
-          if (isbnMatch && !record.isbn) {
-            record.isbn = isbnMatch[1].replace(/-/g, ""); // Store cleaned ISBN
-          }
+        // Extract ISBN (validated: correct length + checksum, rejects DOIs/URNs)
+        else if (idTextLower.startsWith("isbn") || extractIsbn(idText)) {
+          const isbn = extractIsbn(idText);
+          if (isbn && !record.isbn) record.isbn = isbn;
         }
-        // Extract ISSN
-        else if (
-          idTextLower.startsWith("issn") ||
-          /\d{4}-\d{3}[\dX]/.test(idText)
-        ) {
-          const issnMatch = idText.match(/(\d{4}-\d{3}[\dX])/i); // Find ISSN pattern
-          if (issnMatch && !record.issn) {
-            record.issn = issnMatch[1];
-          }
+        // Extract ISSN (validated checksum, rejects date-like strings)
+        else if (idTextLower.startsWith("issn") || extractIssn(idText)) {
+          const issn = extractIssn(idText);
+          if (issn && !record.issn) record.issn = issn;
         }
         // Extract DOI (if not a URL)
         else if (
@@ -1457,12 +1466,11 @@ export class OAIClient {
         if (idText.startsWith("http")) {
           if (!record.urls.includes(idText)) record.urls.push(idText);
         } else if (typeAttr === "isbn" || idTextLower.startsWith("isbn")) {
-          const isbnMatch = idText.match(/(\d[\d\-X]{9,})/);
-          if (isbnMatch && !record.isbn)
-            record.isbn = isbnMatch[1].replace(/-/g, "");
+          const isbn = extractIsbn(idText);
+          if (isbn && !record.isbn) record.isbn = isbn;
         } else if (typeAttr === "issn" || idTextLower.startsWith("issn")) {
-          const issnMatch = idText.match(/(\d{4}-\d{3}[\dX])/i);
-          if (issnMatch && !record.issn) record.issn = issnMatch[1];
+          const issn = extractIssn(idText);
+          if (issn && !record.issn) record.issn = issn;
         } else if (
           typeAttr === "doi" ||
           idTextLower.startsWith("doi:") ||

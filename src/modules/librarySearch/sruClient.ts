@@ -2,7 +2,7 @@
 
 import { BiblioRecord } from "./models";
 import { NAMESPACES } from "./endpoints";
-import { fetchWithTimeout } from "./httpUtils";
+import { fetchWithTimeout, readXml } from "./httpUtils";
 
 // Helper function to escape special characters in a query string
 export function escapeQueryString(query: string): string {
@@ -257,7 +257,7 @@ export class SRUClient {
           `SRU request failed: ${response.status} ${response.statusText}`,
         );
 
-      const xmlText = await response.text();
+      const xmlText = await readXml(response); // charset-aware (PLAN 2.12)
       const parser = new domParserConst(); // Use passed DOMParser
       const xmlDoc = parser.parseFromString(xmlText, "application/xml");
 
