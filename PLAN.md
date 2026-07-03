@@ -101,21 +101,21 @@ New SRU added (verified live; the example-driven `buildSruQuery` handles their i
 
 ## Phase 3 — CrispLib (Python) fixes
 
-- [ ] **3.1** Commit the pending working‑tree edits (defusedxml XXE hardening, BibTeX editor‑ordering fix, type hygiene, new `identifier_resolver.py`) — user's own edits; review then commit. (LEFT TO USER)
+- [x] **3.1** Committed the pending working‑tree edits: ported `identifier_resolver.py` (DOI/PMID/ISBN/URL → metadata; commit `d07a9b2`) + readme, and the `ixtheo_library.py` type‑hygiene cleanups (folded into `7fe2438`).
 - [x] **3.2 (SRU)** Applied loc/kb/bibsys fixes + wired `query_params` (KB x-collection) in `library_search.py`. Trove flagged out. **Live‑validated end‑to‑end through CrispLib CLI** (k10plus/kb/bibsys/swisscovery all return parsed records). CrispLib's OAI URLs were already correct (they were the source of the CrispZotLib OAI fixes).
-- [ ] **3.2 (OAI)** Optional: add crossref (`oai.crossref.org`) + ezb to CrispLib OAI for parity.
+- [x] **3.2 (OAI)** Parity reached via the shared manifest — CrispLib loads OAI from `endpoints.json` (commit `161ac65`), so `ezb` is already present and `crossref` correctly absent (removed as UNIXREF‑only). Nothing repo‑specific to add.
 - [x] **3.3** Added K10plus + swisscovery to CrispLib SRU table.
-- [ ] **3.4** MARC parser "invalid predicate" warning (shared by CrispLib + citer). ROOT CAUSE: Python `ElementTree`/`defusedxml` do not support the XPath functions `contains()`, `text()`, `local-name()` used in the custom parser (e.g. `.//dc:identifier[contains(text(), "ISBN")]`, `.//*[local-name()="identifier"]`). The custom parser throws → falls back to `_generic_parse` (which works, so non‑fatal, but the richer custom parser is bypassed). FIX: replace those predicates with Python‑side filtering (find element, then test `.text`), or switch to `lxml.etree` which supports full XPath.
+- [x] **3.4** Fixed in CrispLib (`10f8e58`). The broken `contains()`/`text()`/`local-name()` XPath was confined to `_generic_parse` (the rich `parse_marcxml`/`parse_dublin_core`/`parse_rdfxml` already iterate). Those predicates silently raised "invalid predicate" (caught), so DC records whose ISBN/ISSN/URL lived in `<dc:identifier>` text got none — replaced with Python‑side iteration over namespace‑agnostic `<identifier>` elements + a namespace‑agnostic `<title>` fallback. New offline test (7 pass).
 
 ## Phase 4 — citer (Python) fixes
 
 - [x] **4.1** Widened `search.py` SRU_ENDPOINTS from DNB+BnF to the full working set (dnb, bnf, zdb, loc, kb+x-collection, bibsys, k10plus, swisscovery) + wired `query_params`. **Live‑validated k10plus end‑to‑end via citer CLI.** (The `SRU_ENDPOINTS` in `lib/sru_client.py` is dead/unused — left as‑is.)
-- [ ] **4.2** Verify IxTheo scraping still works (site‑redesign risk) in `lib/ixtheo_client.py`.
-- [ ] **4.3** Decide scope: does citer gain OAI too, or stay identifier‑focused? (citer's strength is DOI/ISBN/PMID/OCLC resolution.)
+- [x] **4.2** IxTheo added a JS **proof‑of‑work** anti‑bot wall (`sha256(nonce+ts+i)` startswith `0000` → `pow_token` cookie, 30 min) that broke scraping in **all three** repos (plain requests get the challenge page). Fixed in citer (`cd6c739`), CrispLib (`7fe2438`), and CrispZotLib (`54e0d3b`, `ixtheoPow.ts` via Web Crypto). Verified live end‑to‑end through CrispLib's `IxTheoClient` (`search('Habermas')` → 2181 hits, was 0).
+- [!] **4.3** Decided: citer **stays identifier‑focused** (DOI/ISBN/PMID/OCLC resolution) — no OAI harvest added. OAI is a bulk‑harvest protocol that doesn't fit citer's single‑citation model; the SRU set already covers catalogue search there.
 
 ## Phase 5 — Cross‑repo parity & tests
 
-- [ ] **5.1** Single shared **endpoint manifest** (JSON) consumed by all three, so an endpoint fix lands once. TS reads it directly; Python loads the same file.
+- [x] **5.1** Shared **endpoint manifest** live: CrispZotLib is canonical (`endpoints.ts` re‑exports `endpoints.json`), CrispLib + citer load the same file, and `scripts/sync-endpoints.sh` keeps all three byte‑identical (`--check` verifies parity — now clean across all repos after the B3Kat/ÖBV sync).
 - [~] **5.2** Adopt citer's offline **record/replay** test pattern in CrispZotLib: cache real SRU/OAI XML fixtures, assert TS parsers offline. SRU MARC path no longer needs an `@xmldom` XPath shim — `indexMarcRecord` (6.2) is `doc.evaluate`-free and offline-tested; OAI/DC paths still need the shim.
 - [ ] **5.3** Parity checklist: same endpoints, same query‑index mapping, same parse fields, same BibTeX/RIS output across all three.
 
