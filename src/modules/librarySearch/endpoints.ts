@@ -162,18 +162,10 @@ export const NAMESPACES: Record<string, string> = {
   };
   
   export const OAI_ENDPOINTS: Record<string, OAIEndpoint> = {
-    'crossref': {
-      name: 'Crossref',
-      // Correct host is oai.crossref.org (NOT api.crossref.org/oai, which 404s).
-      url: 'https://oai.crossref.org/oai',
-      // Crossref only serves its own UNIXREF schemas (cr_unixsd/cr_unixml/cr_citedby);
-      // it does NOT support oai_dc. Parsing cr_unixsd needs dedicated handling.
-      defaultMetadataPrefix: 'cr_unixsd',
-      description: 'Crossref metadata database (OAI-PMH, UNIXREF schema)',
-      sets: {
-        'J': 'Journals'
-      }
-    },
+    // NOTE: Crossref OAI (oai.crossref.org) is intentionally NOT listed. It only
+    // serves its UNIXREF schemas (cr_unixsd/…), rejects oai_dc that this client
+    // sends, and OAI-PMH is date-range harvesting — not the title/author search
+    // this plugin does. Crossref is resolved by DOI instead (see identifierResolver).
     'dnb': {
       name: 'Deutsche Nationalbibliothek OAI',
       url: 'https://services.dnb.de/oai/repository',

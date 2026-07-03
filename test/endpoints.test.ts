@@ -29,10 +29,10 @@ describe('endpoint tables', () => {
     }
   });
 
-  // Regression guard: Crossref OAI lives at oai.crossref.org (NOT api.crossref.org/oai,
-  // which 404s) and serves UNIXREF schemas, not oai_dc.
-  it('points crossref at the correct OAI host and schema', () => {
-    expect(OAI_ENDPOINTS.crossref.url).toBe('https://oai.crossref.org/oai');
-    expect(OAI_ENDPOINTS.crossref.defaultMetadataPrefix).toMatch(/^cr_/);
+  // Regression guard: Crossref OAI is intentionally not listed — it only serves
+  // UNIXREF (not the oai_dc this client sends) and OAI is harvest-not-search.
+  // Crossref is resolved by DOI (identifierResolver) instead.
+  it('does not list a crossref OAI endpoint', () => {
+    expect(OAI_ENDPOINTS.crossref).toBeUndefined();
   });
 });
