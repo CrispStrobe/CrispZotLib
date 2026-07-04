@@ -136,7 +136,7 @@ Internal optimization pass — no endpoint or user‑facing behaviour changes. G
 - [x] **6.4 Dead code / dedup.** Removed the duplicated `createStyledDialog` from `searchDialog.ts` (now imports `utils/dialogUtils`), dead `showDebugDialog`, and the `find_script*.sh` scratch scripts. Bundle 397,453 → 393,394 B.
 - [x] **6.5 CI.** Added a `test` job (`npm test` was never run in CI); fixed the build artifact path (`build` → `.scaffold/build/*.xpi`, which was archiving nothing); `npm install` → `npm ci` across all workflows.
 - [x] **6.6 OAI DNB N+1.** Done: live‑verified against services.dnb.de that `ListRecords` returns full metadata (50/page) + resumptionToken in ONE request (HTTP 200, no 413, even on a wider date window) — the 413 fear was misattributed (413 = request‑too‑large, irrelevant to GET‑verb OAI). Rerouted DNB through the standard `ListRecords` path (forced date range + default `dnb` set retained), gaining pagination and cutting ~51 requests → 1. Removed the dead `searchWithIdentifiers` (‑112 lines).
-- [!] **6.7 Repo‑wide Prettier drift.** `prettier --check .` flags 45 files incl. ones untouched by this pass (`tsconfig.json`, `typings/`), so the `lint` CI job is red on its own baseline. Left alone (a repo‑wide `--write` would fight the intentional dense one‑liners). Decide: reformat all vs. scope via `.prettierignore`.
+- [x] **6.7 Repo‑wide Prettier drift.** Resolved: `prettier --check .` passes (repo reformatted along the way; `coverage/` added to `.prettierignore` in 7.5) and the `lint` CI job is green on main (verified 2026‑07‑04).
 
 ---
 
