@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/"><version>1.1</version><numberOfRecords>2829</numberOfRecords><records><record><recordSchema>RDFxml</recordSchema><recordPacking>xml</recordPacking><recordData><rdf:RDF xmlns:schema="http://schema.org/" xmlns:gndo="https://d-nb.info/standards/elementset/gnd#" xmlns:lib="http://purl.org/library/" xmlns:owl="http://www.w3.org/2002/07/owl#" xmlns:xsd="http://www.w3.org/2001/XMLSchema#" xmlns:skos="http://www.w3.org/2004/02/skos/core#" xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" xmlns:editeur="https://ns.editeur.org/thema/" xmlns:geo="http://www.opengis.net/ont/geosparql#" xmlns:umbel="http://umbel.org/umbel#" xmlns:naf="https://id.loc.gov/authorities/names/" xmlns:sf="http://www.opengis.net/ont/sf#" xmlns:rdau="http://rdaregistry.info/Elements/u/" xmlns:bflc="http://id.loc.gov/ontologies/bflc/" xmlns:thesoz="http://lod.gesis.org/thesoz/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:isbd="http://iflastandards.info/ns/isbd/elements/" xmlns:foaf="http://xmlns.com/foaf/0.1/" xmlns:mesh="http://id.nlm.nih.gov/mesh/vocab#" xmlns:ram="https://data.bnf.fr/ark:/12148/" xmlns:mo="http://purl.org/ontology/mo/" xmlns:marcRole="http://id.loc.gov/vocabulary/relators/" xmlns:agrelon="https://d-nb.info/standards/elementset/agrelon#" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:nsogg="https://purl.org/bncf/tid/" xmlns:dnbt="https://d-nb.info/standards/elementset/dnb#" xmlns:dbp="http://dbpedia.org/property/" xmlns:embne="https://datos.bne.es/resource/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dnb_intern="http://dnb.de/" xmlns:madsrdf="http://www.loc.gov/mads/rdf/v1#" xmlns:v="http://www.w3.org/2006/vcard/ns#" xmlns:cidoc="http://www.cidoc-crm.org/cidoc-crm/" xmlns:dcatde="http://dcat-ap.de/def/dcatde/" xmlns:ebu="http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#" xmlns:wdrs="http://www.w3.org/2007/05/powder-s#" xmlns:bibo="http://purl.org/ontology/bibo/" xmlns:gbv="http://purl.org/ontology/gbv/" xmlns:agrovoc="https://aims.fao.org/aos/agrovoc/" xmlns:lcsh="https://id.loc.gov/authorities/subjects/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<rdf:Description rdf:about="https://d-nb.info/1323313125">
+	<rdf:type rdf:resource="http://purl.org/ontology/bibo/Document"/>
+	<dcterms:medium rdf:resource="http://rdaregistry.info/termList/RDACarrierType/1044"/>
+	<rdau:P60049 rdf:resource="http://rdaregistry.info/termList/RDAContentType/1020"/>
+	<rdau:P60050 rdf:resource="http://rdaregistry.info/termList/RDAMediaType/1007"/>
+	<rdau:P60048 rdf:resource="http://rdaregistry.info/termList/RDACarrierType/1049"/>
+	<dc:identifier rdf:datatype="http://www.w3.org/2001/XMLSchema#string">(DE-101)1323313125</dc:identifier>
+	<bibo:isbn13 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">9783527414284</bibo:isbn13>
+	<rdau:P60521 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">: circa EUR 34.90 (DE), circa EUR 35.90 (AT)</rdau:P60521>
+	<bibo:isbn10 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">3527414282</bibo:isbn10>
+	<bibo:gtin14 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">9783527414284</bibo:gtin14>
+	<dc:identifier rdf:datatype="http://www.w3.org/2001/XMLSchema#string">(OCoLC)1427368101</dc:identifier>
+	<dcterms:language rdf:resource="http://id.loc.gov/vocabulary/iso639-2/ger"/>
+	<bflc:projectedProvisionDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2030-12-31</bflc:projectedProvisionDate>
+	<rdau:P60327 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Jörg Bünemann, Jan Kierfeld</rdau:P60327>
+	<dc:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Computational Physics</dc:title>
+	<dcterms:creator>
+		<rdf:Description rdf:nodeID="node1jrf5vkmpx27452372">
+			<gndo:preferredName rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Bünemann, Jörg</gndo:preferredName>
+		</rdf:Description>
+	</dcterms:creator>
+	<marcRole:aut>
+		<rdf:Description rdf:nodeID="node1jrf5vkmpx27452373">
+			<gndo:preferredName rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Bünemann, Jörg</gndo:preferredName>
+		</rdf:Description>
+	</marcRole:aut>
+	<marcRole:aut>
+		<rdf:Description rdf:nodeID="node1jrf5vkmpx27452374">
+			<gndo:preferredName rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Kierfeld, Jan</gndo:preferredName>
+		</rdf:Description>
+	</marcRole:aut>
+	<marcRole:pbl rdf:resource="https://d-nb.info/gnd/16179388-5"/>
+	<bibo:edition rdf:datatype="http://www.w3.org/2001/XMLSchema#string">1. Auflage</bibo:edition>
+	<dc:publisher rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Wiley-VCH</dc:publisher>
+	<rdau:P60163 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Weinheim</rdau:P60163>
+	<rdau:P60333 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Weinheim : Wiley-VCH</rdau:P60333>
+	<rdau:P60539 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">24.4 cm</rdau:P60539>
+	<rdau:P60470 xml:lang="de">200 Illustrationen</rdau:P60470>
+	<dcterms:subject rdf:resource="https://ns.editeur.org/thema/PHU"/>
+	<wdrs:describedby>
+		<rdf:Description rdf:about="https://d-nb.info/1323313125/about">
+			<dcterms:license rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/"/>
+			<dcterms:modified rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2025-10-10T13:04:46.000</dcterms:modified>
+		</rdf:Description>
+	</wdrs:describedby>
+	<dcterms:issued rdf:datatype="http://www.w3.org/2001/XMLSchema#string">2030</dcterms:issued>
+	<rdau:P60493 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Numerische Methoden und computergestützte Verfahren mit Python</rdau:P60493>
+	<isbd:P1053 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">350 Seiten</isbd:P1053>
+	<owl:sameAs rdf:resource="http://hub.culturegraph.org/resource/DNB-1323313125"/>
+</rdf:Description>
+
+</rdf:RDF></recordData><recordPosition>1</recordPosition></record><record><recordSchema>RDFxml</recordSchema><recordPacking>xml</recordPacking><recordData><rdf:RDF xmlns:schema="http://schema.org/" xmlns:gndo="https://d-nb.info/standards/elementset/gnd#" xmlns:lib="http://purl.org/library/" xmlns:owl="http://www.w3.org/2002/07/owl#" xmlns:xsd="http://www.w3.org/2001/XMLSchema#" xmlns:skos="http://www.w3.org/2004/02/skos/core#" xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" xmlns:editeur="https://ns.editeur.org/thema/" xmlns:geo="http://www.opengis.net/ont/geosparql#" xmlns:umbel="http://umbel.org/umbel#" xmlns:naf="https://id.loc.gov/authorities/names/" xmlns:sf="http://www.opengis.net/ont/sf#" xmlns:rdau="http://rdaregistry.info/Elements/u/" xmlns:bflc="http://id.loc.gov/ontologies/bflc/" xmlns:thesoz="http://lod.gesis.org/thesoz/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:isbd="http://iflastandards.info/ns/isbd/elements/" xmlns:foaf="http://xmlns.com/foaf/0.1/" xmlns:mesh="http://id.nlm.nih.gov/mesh/vocab#" xmlns:ram="https://data.bnf.fr/ark:/12148/" xmlns:mo="http://purl.org/ontology/mo/" xmlns:marcRole="http://id.loc.gov/vocabulary/relators/" xmlns:agrelon="https://d-nb.info/standards/elementset/agrelon#" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:nsogg="https://purl.org/bncf/tid/" xmlns:dnbt="https://d-nb.info/standards/elementset/dnb#" xmlns:dbp="http://dbpedia.org/property/" xmlns:embne="https://datos.bne.es/resource/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dnb_intern="http://dnb.de/" xmlns:madsrdf="http://www.loc.gov/mads/rdf/v1#" xmlns:v="http://www.w3.org/2006/vcard/ns#" xmlns:cidoc="http://www.cidoc-crm.org/cidoc-crm/" xmlns:dcatde="http://dcat-ap.de/def/dcatde/" xmlns:ebu="http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#" xmlns:wdrs="http://www.w3.org/2007/05/powder-s#" xmlns:bibo="http://purl.org/ontology/bibo/" xmlns:gbv="http://purl.org/ontology/gbv/" xmlns:agrovoc="https://aims.fao.org/aos/agrovoc/" xmlns:lcsh="https://id.loc.gov/authorities/subjects/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<rdf:Description rdf:about="https://d-nb.info/1395736383">
+	<rdf:type rdf:resource="http://purl.org/ontology/bibo/Document"/>
+	<dcterms:medium rdf:resource="http://rdaregistry.info/termList/RDACarrierType/1044"/>
+	<rdau:P60049 rdf:resource="http://rdaregistry.info/termList/RDAContentType/1020"/>
+	<rdau:P60050 rdf:resource="http://rdaregistry.info/termList/RDAMediaType/1007"/>
+	<rdau:P60048 rdf:resource="http://rdaregistry.info/termList/RDACarrierType/1049"/>
+	<dc:identifier rdf:datatype="http://www.w3.org/2001/XMLSchema#string">(DE-101)1395736383</dc:identifier>
+	<bibo:isbn13 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">9783527724970</bibo:isbn13>
+	<rdau:P60521 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">: circa EUR 29.99 (DE), circa EUR 30.90 (AT)</rdau:P60521>
+	<bibo:isbn10 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">3527724974</bibo:isbn10>
+	<bibo:gtin14 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">9783527724970</bibo:gtin14>
+	<dc:identifier rdf:datatype="http://www.w3.org/2001/XMLSchema#string">(OCoLC)1585495523</dc:identifier>
+	<dcterms:language rdf:resource="http://id.loc.gov/vocabulary/iso639-2/ger"/>
+	<bflc:projectedProvisionDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2027-02-10</bflc:projectedProvisionDate>
+	<rdau:P60327 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">John Shovic</rdau:P60327>
+	<dc:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Python &amp; KI für Dummies</dc:title>
+	<dcterms:creator>
+		<rdf:Description rdf:nodeID="node1jrf5vkmpx27452375">
+			<gndo:preferredName rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Shovic, John</gndo:preferredName>
+		</rdf:Description>
+	</dcterms:creator>
+	<marcRole:aut>
+		<rdf:Description rdf:nodeID="node1jrf5vkmpx27452376">
+			<gndo:preferredName rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Shovic, John</gndo:preferredName>
+		</rdf:Description>
+	</marcRole:aut>
+	<marcRole:trl>
+		<rdf:Description rdf:nodeID="node1jrf5vkmpx27452377">
+			<gndo:preferredName rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Abend, Judith</gndo:preferredName>
+		</rdf:Description>
+	</marcRole:trl>
+	<marcRole:pbl rdf:resource="https://d-nb.info/gnd/16179388-5"/>
+	<bibo:edition rdf:datatype="http://www.w3.org/2001/XMLSchema#string">1. Auflage</bibo:edition>
+	<dc:publisher rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Wiley-VCH</dc:publisher>
+	<dc:publisher rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Wiley-VCH</dc:publisher>
+	<rdau:P60163 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Weinheim</rdau:P60163>
+	<rdau:P60333 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Weinheim : Wiley-VCH</rdau:P60333>
+	<rdau:P60539 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">24 cm</rdau:P60539>
+	<dcterms:isPartOf rdf:datatype="http://www.w3.org/2001/XMLSchema#string">... für Dummies</dcterms:isPartOf>
+	<dcterms:subject rdf:resource="https://ns.editeur.org/thema/UM"/>
+	<rdau:P60372 rdf:resource="https://deposit.dnb.de/cgi-bin/dokserv?id=5d83f9b2d9624941adecf0e85b886f28"/>
+	<rdau:P60372 rdf:resource="http://www.wiley-vch.de"/>
+	<rdau:P60372 rdf:resource="http://www.wiley-vch.de/ISBN978-3-527-72497-0"/>
+	<wdrs:describedby>
+		<rdf:Description rdf:about="https://d-nb.info/1395736383/about">
+			<dcterms:license rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/"/>
+			<dcterms:modified rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2026-06-24T13:00:08.000</dcterms:modified>
+		</rdf:Description>
+	</wdrs:describedby>
+	<dcterms:issued rdf:datatype="http://www.w3.org/2001/XMLSchema#string">2027</dcterms:issued>
+	<isbd:P1053 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">448 Seiten</isbd:P1053>
+	<owl:sameAs rdf:resource="http://hub.culturegraph.org/resource/DNB-1395736383"/>
+</rdf:Description>
+
+</rdf:RDF></recordData><recordPosition>2</recordPosition></record><record><recordSchema>RDFxml</recordSchema><recordPacking>xml</recordPacking><recordData><rdf:RDF xmlns:schema="http://schema.org/" xmlns:gndo="https://d-nb.info/standards/elementset/gnd#" xmlns:lib="http://purl.org/library/" xmlns:owl="http://www.w3.org/2002/07/owl#" xmlns:xsd="http://www.w3.org/2001/XMLSchema#" xmlns:skos="http://www.w3.org/2004/02/skos/core#" xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" xmlns:editeur="https://ns.editeur.org/thema/" xmlns:geo="http://www.opengis.net/ont/geosparql#" xmlns:umbel="http://umbel.org/umbel#" xmlns:naf="https://id.loc.gov/authorities/names/" xmlns:sf="http://www.opengis.net/ont/sf#" xmlns:rdau="http://rdaregistry.info/Elements/u/" xmlns:bflc="http://id.loc.gov/ontologies/bflc/" xmlns:thesoz="http://lod.gesis.org/thesoz/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:isbd="http://iflastandards.info/ns/isbd/elements/" xmlns:foaf="http://xmlns.com/foaf/0.1/" xmlns:mesh="http://id.nlm.nih.gov/mesh/vocab#" xmlns:ram="https://data.bnf.fr/ark:/12148/" xmlns:mo="http://purl.org/ontology/mo/" xmlns:marcRole="http://id.loc.gov/vocabulary/relators/" xmlns:agrelon="https://d-nb.info/standards/elementset/agrelon#" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:nsogg="https://purl.org/bncf/tid/" xmlns:dnbt="https://d-nb.info/standards/elementset/dnb#" xmlns:dbp="http://dbpedia.org/property/" xmlns:embne="https://datos.bne.es/resource/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dnb_intern="http://dnb.de/" xmlns:madsrdf="http://www.loc.gov/mads/rdf/v1#" xmlns:v="http://www.w3.org/2006/vcard/ns#" xmlns:cidoc="http://www.cidoc-crm.org/cidoc-crm/" xmlns:dcatde="http://dcat-ap.de/def/dcatde/" xmlns:ebu="http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#" xmlns:wdrs="http://www.w3.org/2007/05/powder-s#" xmlns:bibo="http://purl.org/ontology/bibo/" xmlns:gbv="http://purl.org/ontology/gbv/" xmlns:agrovoc="https://aims.fao.org/aos/agrovoc/" xmlns:lcsh="https://id.loc.gov/authorities/subjects/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<rdf:Description rdf:about="https://d-nb.info/140211625X">
+	<rdf:type rdf:resource="http://purl.org/ontology/bibo/Document"/>
+	<dcterms:medium rdf:resource="http://rdaregistry.info/termList/RDACarrierType/1044"/>
+	<rdau:P60049 rdf:resource="http://rdaregistry.info/termList/RDAContentType/1020"/>
+	<rdau:P60050 rdf:resource="http://rdaregistry.info/termList/RDAMediaType/1007"/>
+	<rdau:P60048 rdf:resource="http://rdaregistry.info/termList/RDACarrierType/1049"/>
+	<dc:identifier rdf:datatype="http://www.w3.org/2001/XMLSchema#string">(DE-101)140211625X</dc:identifier>
+	<bibo:isbn13 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">9782322841004</bibo:isbn13>
+	<rdau:P60521 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Paperback : EUR 36.50 (DE) (freier Preis), EUR 37.60 (AT) (freier Preis)</rdau:P60521>
+	<bibo:isbn10 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">2322841005</bibo:isbn10>
+	<bibo:gtin14 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">9782322841004</bibo:gtin14>
+	<dc:identifier rdf:datatype="http://www.w3.org/2001/XMLSchema#string">(OCoLC)1596682529</dc:identifier>
+	<dcterms:language rdf:resource="http://id.loc.gov/vocabulary/iso639-2/fre"/>
+	<bflc:projectedProvisionDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-06-07</bflc:projectedProvisionDate>
+	<rdau:P60327 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">patrice rey</rdau:P60327>
+	<dc:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string">100 énigmes mathématiques résolues avec Python</dc:title>
+	<dcterms:creator>
+		<rdf:Description rdf:nodeID="node1jrf5vkmpx27452378">
+			<gndo:preferredName rdf:datatype="http://www.w3.org/2001/XMLSchema#string">rey, patrice</gndo:preferredName>
+		</rdf:Description>
+	</dcterms:creator>
+	<marcRole:aut>
+		<rdf:Description rdf:nodeID="node1jrf5vkmpx27452379">
+			<gndo:preferredName rdf:datatype="http://www.w3.org/2001/XMLSchema#string">rey, patrice</gndo:preferredName>
+		</rdf:Description>
+	</marcRole:aut>
+	<bibo:edition rdf:datatype="http://www.w3.org/2001/XMLSchema#string">1. Auflage</bibo:edition>
+	<dc:publisher rdf:datatype="http://www.w3.org/2001/XMLSchema#string">BoD – Books on Demand – Frankreich</dc:publisher>
+	<rdau:P60163 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Hamburg</rdau:P60163>
+	<rdau:P60333 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Hamburg : BoD – Books on Demand – Frankreich</rdau:P60333>
+	<rdau:P60539 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">22 cm, 408 g</rdau:P60539>
+	<rdau:P60470 xml:lang="de">72 Illustrationen</rdau:P60470>
+	<dcterms:subject rdf:resource="https://ns.editeur.org/thema/UM"/>
+	<wdrs:describedby>
+		<rdf:Description rdf:about="https://d-nb.info/140211625X/about">
+			<dcterms:license rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/"/>
+			<dcterms:modified rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2026-06-17T22:05:29.000</dcterms:modified>
+		</rdf:Description>
+	</wdrs:describedby>
+	<dcterms:issued rdf:datatype="http://www.w3.org/2001/XMLSchema#string">2026</dcterms:issued>
+	<rdau:P60493 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">edition 2026</rdau:P60493>
+	<isbd:P1053 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">230 Seiten</isbd:P1053>
+	<owl:sameAs rdf:resource="http://hub.culturegraph.org/resource/DNB-140211625X"/>
+</rdf:Description>
+
+</rdf:RDF></recordData><recordPosition>3</recordPosition></record><record><recordSchema>RDFxml</recordSchema><recordPacking>xml</recordPacking><recordData><rdf:RDF xmlns:schema="http://schema.org/" xmlns:gndo="https://d-nb.info/standards/elementset/gnd#" xmlns:lib="http://purl.org/library/" xmlns:owl="http://www.w3.org/2002/07/owl#" xmlns:xsd="http://www.w3.org/2001/XMLSchema#" xmlns:skos="http://www.w3.org/2004/02/skos/core#" xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" xmlns:editeur="https://ns.editeur.org/thema/" xmlns:geo="http://www.opengis.net/ont/geosparql#" xmlns:umbel="http://umbel.org/umbel#" xmlns:naf="https://id.loc.gov/authorities/names/" xmlns:sf="http://www.opengis.net/ont/sf#" xmlns:rdau="http://rdaregistry.info/Elements/u/" xmlns:bflc="http://id.loc.gov/ontologies/bflc/" xmlns:thesoz="http://lod.gesis.org/thesoz/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:isbd="http://iflastandards.info/ns/isbd/elements/" xmlns:foaf="http://xmlns.com/foaf/0.1/" xmlns:mesh="http://id.nlm.nih.gov/mesh/vocab#" xmlns:ram="https://data.bnf.fr/ark:/12148/" xmlns:mo="http://purl.org/ontology/mo/" xmlns:marcRole="http://id.loc.gov/vocabulary/relators/" xmlns:agrelon="https://d-nb.info/standards/elementset/agrelon#" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:nsogg="https://purl.org/bncf/tid/" xmlns:dnbt="https://d-nb.info/standards/elementset/dnb#" xmlns:dbp="http://dbpedia.org/property/" xmlns:embne="https://datos.bne.es/resource/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dnb_intern="http://dnb.de/" xmlns:madsrdf="http://www.loc.gov/mads/rdf/v1#" xmlns:v="http://www.w3.org/2006/vcard/ns#" xmlns:cidoc="http://www.cidoc-crm.org/cidoc-crm/" xmlns:dcatde="http://dcat-ap.de/def/dcatde/" xmlns:ebu="http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#" xmlns:wdrs="http://www.w3.org/2007/05/powder-s#" xmlns:bibo="http://purl.org/ontology/bibo/" xmlns:gbv="http://purl.org/ontology/gbv/" xmlns:agrovoc="https://aims.fao.org/aos/agrovoc/" xmlns:lcsh="https://id.loc.gov/authorities/subjects/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<rdf:Description rdf:about="https://d-nb.info/1390224791">
+	<rdf:type rdf:resource="http://purl.org/ontology/bibo/Document"/>
+	<dcterms:medium rdf:resource="http://rdaregistry.info/termList/RDACarrierType/1044"/>
+	<rdau:P60049 rdf:resource="http://rdaregistry.info/termList/RDAContentType/1020"/>
+	<rdau:P60050 rdf:resource="http://rdaregistry.info/termList/RDAMediaType/1007"/>
+	<rdau:P60048 rdf:resource="http://rdaregistry.info/termList/RDACarrierType/1049"/>
+	<dc:identifier rdf:datatype="http://www.w3.org/2001/XMLSchema#string">(DE-101)1390224791</dc:identifier>
+	<bibo:isbn13 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">9782322640829</bibo:isbn13>
+	<rdau:P60521 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Paperback : EUR 33.40 (DE) (freier Preis), EUR 34.40 (AT) (freier Preis)</rdau:P60521>
+	<bibo:isbn10 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">2322640824</bibo:isbn10>
+	<bibo:gtin14 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">9782322640829</bibo:gtin14>
+	<dc:identifier rdf:datatype="http://www.w3.org/2001/XMLSchema#string">(OCoLC)1573644902</dc:identifier>
+	<dcterms:language rdf:resource="http://id.loc.gov/vocabulary/iso639-2/fre"/>
+	<bflc:projectedProvisionDate rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2026-02-11</bflc:projectedProvisionDate>
+	<rdau:P60327 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Patrice Rey</rdau:P60327>
+	<dc:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string">105 Fonctions Intégrées Essentielles En Python</dc:title>
+	<dcterms:creator>
+		<rdf:Description rdf:nodeID="node1jrf5vkmpx27452380">
+			<gndo:preferredName rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Rey, Patrice</gndo:preferredName>
+		</rdf:Description>
+	</dcterms:creator>
+	<marcRole:aut>
+		<rdf:Description rdf:nodeID="node1jrf5vkmpx27452381">
+			<gndo:preferredName rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Rey, Patrice</gndo:preferredName>
+		</rdf:Description>
+	</marcRole:aut>
+	<bibo:edition rdf:datatype="http://www.w3.org/2001/XMLSchema#string">1. Auflage</bibo:edition>
+	<dc:publisher rdf:datatype="http://www.w3.org/2001/XMLSchema#string">BoD – Books on Demand – Frankreich</dc:publisher>
+	<rdau:P60163 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Hamburg</rdau:P60163>
+	<rdau:P60333 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Hamburg : BoD – Books on Demand – Frankreich</rdau:P60333>
+	<rdau:P60539 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">22 cm, 1292 g</rdau:P60539>
+	<rdau:P60470 xml:lang="de">9 Illustrationen</rdau:P60470>
+	<dcterms:subject rdf:resource="https://ns.editeur.org/thema/UM"/>
+	<rdau:P60372 rdf:resource="https://deposit.dnb.de/cgi-bin/dokserv?id=5e8f643d7ece48fa9165708b0731270c"/>
+	<wdrs:describedby>
+		<rdf:Description rdf:about="https://d-nb.info/1390224791/about">
+			<dcterms:license rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/"/>
+			<dcterms:modified rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2026-04-08T22:04:23.000</dcterms:modified>
+		</rdf:Description>
+	</wdrs:describedby>
+	<dcterms:issued rdf:datatype="http://www.w3.org/2001/XMLSchema#string">2026</dcterms:issued>
+	<rdau:P60493 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">edition 2026</rdau:P60493>
+	<isbd:P1053 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">754 Seiten</isbd:P1053>
+	<owl:sameAs rdf:resource="http://hub.culturegraph.org/resource/DNB-1390224791"/>
+</rdf:Description>
+
+</rdf:RDF></recordData><recordPosition>4</recordPosition></record><record><recordSchema>RDFxml</recordSchema><recordPacking>xml</recordPacking><recordData><rdf:RDF xmlns:schema="http://schema.org/" xmlns:gndo="https://d-nb.info/standards/elementset/gnd#" xmlns:lib="http://purl.org/library/" xmlns:owl="http://www.w3.org/2002/07/owl#" xmlns:xsd="http://www.w3.org/2001/XMLSchema#" xmlns:skos="http://www.w3.org/2004/02/skos/core#" xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" xmlns:editeur="https://ns.editeur.org/thema/" xmlns:geo="http://www.opengis.net/ont/geosparql#" xmlns:umbel="http://umbel.org/umbel#" xmlns:naf="https://id.loc.gov/authorities/names/" xmlns:sf="http://www.opengis.net/ont/sf#" xmlns:rdau="http://rdaregistry.info/Elements/u/" xmlns:bflc="http://id.loc.gov/ontologies/bflc/" xmlns:thesoz="http://lod.gesis.org/thesoz/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:isbd="http://iflastandards.info/ns/isbd/elements/" xmlns:foaf="http://xmlns.com/foaf/0.1/" xmlns:mesh="http://id.nlm.nih.gov/mesh/vocab#" xmlns:ram="https://data.bnf.fr/ark:/12148/" xmlns:mo="http://purl.org/ontology/mo/" xmlns:marcRole="http://id.loc.gov/vocabulary/relators/" xmlns:agrelon="https://d-nb.info/standards/elementset/agrelon#" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:nsogg="https://purl.org/bncf/tid/" xmlns:dnbt="https://d-nb.info/standards/elementset/dnb#" xmlns:dbp="http://dbpedia.org/property/" xmlns:embne="https://datos.bne.es/resource/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dnb_intern="http://dnb.de/" xmlns:madsrdf="http://www.loc.gov/mads/rdf/v1#" xmlns:v="http://www.w3.org/2006/vcard/ns#" xmlns:cidoc="http://www.cidoc-crm.org/cidoc-crm/" xmlns:dcatde="http://dcat-ap.de/def/dcatde/" xmlns:ebu="http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#" xmlns:wdrs="http://www.w3.org/2007/05/powder-s#" xmlns:bibo="http://purl.org/ontology/bibo/" xmlns:gbv="http://purl.org/ontology/gbv/" xmlns:agrovoc="https://aims.fao.org/aos/agrovoc/" xmlns:lcsh="https://id.loc.gov/authorities/subjects/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<rdf:Description rdf:about="https://d-nb.info/1388404702">
+	<rdf:type rdf:resource="http://purl.org/ontology/bibo/Document"/>
+	<dcterms:medium rdf:resource="http://rdaregistry.info/termList/RDACarrierType/1018"/>
+	<rdau:P60049 rdf:resource="http://rdaregistry.info/termList/RDAContentType/1020"/>
+	<rdau:P60050 rdf:resource="http://rdaregistry.info/termList/RDAMediaType/1003"/>
+	<rdau:P60048 rdf:resource="http://rdaregistry.info/termList/RDACarrierType/1018"/>
+	<dc:identifier rdf:datatype="http://www.w3.org/2001/XMLSchema#string">(DE-101)1388404702</dc:identifier>
+	<umbel:isLike rdf:resource="https://doi.org/10.48548/pubdata-2893"/>
+	<umbel:isLike rdf:resource="http://hdl.handle.net/20.500.14123/12245"/>
+	<umbel:isLike rdf:resource="https://nbn-resolving.org/urn:nbn:de:gbv:luen4-dspace-20.500.14123/12245-7"/>
+	<dc:identifier rdf:datatype="http://www.w3.org/2001/XMLSchema#string">(OCoLC)1571090658</dc:identifier>
+	<foaf:primaryTopic rdf:resource="https://pubdata.leuphana.de/handle/20.500.14123/12245"/>
+	<dcterms:language rdf:resource="http://id.loc.gov/vocabulary/iso639-2/eng"/>
+	<rdau:P60327 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Julio Urizarna Carasa, Daniel Ruprecht, Alexandra von Kameke, Kathrin Padberg-Gehle</rdau:P60327>
+	<dc:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A Python toolbox for the numerical solution of the Maxey‐Riley equation</dc:title>
+	<dcterms:creator rdf:resource="https://d-nb.info/gnd/1285479831"/>
+	<marcRole:aut rdf:resource="https://d-nb.info/gnd/1285479831"/>
+	<marcRole:aut rdf:resource="https://d-nb.info/gnd/142930059"/>
+	<marcRole:aut rdf:resource="https://d-nb.info/gnd/1209512920"/>
+	<marcRole:aut>
+		<rdf:Description rdf:nodeID="node1jrf5vkmpx27452382">
+			<gndo:preferredName rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Padberg-Gehle, Kathrin</gndo:preferredName>
+			<owl:sameAs rdf:resource="https://orcid.org/0000-0002-1761-213X"/>
+		</rdf:Description>
+	</marcRole:aut>
+	<dc:publisher rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Medien- und Informationszentrum, Leuphana Universität Lüneburg</dc:publisher>
+	<rdau:P60163 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Lüneburg</rdau:P60163>
+	<rdau:P60333 rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Lüneburg : Medien- und Informationszentrum, Leuphana Universität Lüneburg</rdau:P60333>
+	<rdau:P60470 xml:lang="de">In: DOI: 10.1002/pamm.202200242, Urizarna-Carasa, J., Ruprecht, D., von Kameke, A., Padberg-Gehle, K. (2023). A Python toolbox for the numerical solution of the Maxey‐Riley equation. PAMM, 22(1).</rdau:P60470>
+	<rdau:P60470 xml:lang="de">In: ISSN: 1617-7061, Proceedings in Applied Mathematics and Mechanics</rdau:P60470>
+	<wdrs:describedby>
+		<rdf:Description rdf:about="https://d-nb.info/1388404702/about">
+			<dcterms:license rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/"/>
+			<dcterms:modified rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2026-02-05T10:42:23.000</dcterms:modified>
+		</rdf:Description>
+	</wdrs:describedby>
+	<dcterms:issued rdf:datatype="http://www.w3.org/2001/XMLSchema#string">2026</dcterms:issued>
+	<owl:sameAs rdf:resource="http://hub.culturegraph.org/resource/DNB-1388404702"/>
+</rdf:Description>
+
+</rdf:RDF></recordData><recordPosition>5</recordPosition></record></records><nextRecordPosition>6</nextRecordPosition><echoedSearchRetrieveRequest><version>1.1</version><query>TIT=Python</query><xQuery xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/><startRecord>1</startRecord><maximumRecords>5</maximumRecords><recordSchema>RDFxml</recordSchema></echoedSearchRetrieveRequest></searchRetrieveResponse>

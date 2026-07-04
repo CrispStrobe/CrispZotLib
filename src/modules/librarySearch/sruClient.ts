@@ -3,6 +3,15 @@
 import { BiblioRecord } from "./models";
 import { NAMESPACES } from "./endpoints";
 import { fetchWithTimeout, readXml } from "./httpUtils";
+import {
+  parseSruDublinCore,
+  parseSruGeneric,
+  parseSruRdfXml,
+} from "./sruRecordParser";
+
+// cleanPersonName moved to the pure sruRecordParser module (PLAN 7.4); re-export
+// so existing importers (tests, callers) keep working.
+export { cleanPersonName } from "./sruRecordParser";
 
 // Helper function to escape special characters in a query string
 export function escapeQueryString(query: string): string {
@@ -11,20 +20,6 @@ export function escapeQueryString(query: string): string {
     .replace(/\)/g, "%29")
     .replace(/\*/g, "%2A")
     .replace(/%20/g, "+");
-}
-
-// Strip life dates and role phrases that DC/RDF sources (esp. BnF) append to
-// creator names, e.g. "Habermas, Jürgen (1929-2026). Auteur du texte".
-export function cleanPersonName(name: string): string {
-  if (!name) return name;
-  let n = name.trim();
-  n = n.replace(
-    /\.\s*(?:Auteur|[ÉE]diteur|Traducteur|Pr[ée]facier|Collaborateur|Illustrateur|Annotateur|Directeur|Author|Editor|Translator|Contributor)[^.]*$/i,
-    "",
-  );
-  n = n.replace(/\s*\(\s*\d{3,4}\s*-\s*\d{0,4}\.?\s*\)\s*$/, "");
-  n = n.replace(/,?\s*\d{4}\s*-\s*\d{0,4}\s*$/, "");
-  return n.trim().replace(/,\s*$/, "").trim();
 }
 
 /** Fast lookups over a single MARCXML record. */
@@ -442,12 +437,11 @@ export class SRUClient {
         case "dublincore":
         case "dc":
         case "info:srw/schema/1/dc-v1.1":
-          return this.parseDublinCore(
+          return parseSruDublinCore(
             recordDataElement,
             recordId,
             rawXml,
-            nodeConst,
-            xpathResultConst,
+            this.namespaces,
           );
         case "marcxml":
         case "MARC21-xml":
@@ -460,24 +454,22 @@ export class SRUClient {
             xpathResultConst,
           );
         case "RDFxml":
-          return this.parseRdfXml(
+          return parseSruRdfXml(
             recordDataElement,
             recordId,
             rawXml,
-            nodeConst,
-            xpathResultConst,
+            this.namespaces,
           );
         default:
           ztoolkit.log(
             `Parsing record ${recordId} with generic parser (schema: ${schema || "unknown"})`,
             "warn",
           );
-          return this.parseGeneric(
+          return parseSruGeneric(
             recordDataElement,
             recordId,
             rawXml,
-            nodeConst,
-            xpathResultConst,
+            this.namespaces,
           );
       }
     } catch (e: any) {
@@ -498,173 +490,6 @@ export class SRUClient {
         schema: schema,
       };
     }
-  }
-
-  /**
-   * Parse Dublin Core formatted records
-   * Accepts Node/XPathResult
-   */
-  private parseDublinCore(
-    element: Element,
-    recordId: string,
-    rawXml: string | undefined,
-    nodeConst: typeof Node,
-    xpathResultConst: typeof XPathResult,
-  ): BiblioRecord {
-    const record: BiblioRecord = {
-      id: recordId,
-      title: "Untitled",
-      authors: [],
-      editors: [],
-      translators: [],
-      contributors: [],
-      urls: [],
-      subjects: [],
-      raw_data: rawXml,
-      schema: "dublincore",
-    };
-    const find = (xpath: string) =>
-      this.findElement(element, xpath, nodeConst, xpathResultConst);
-    const findAll = (xpath: string) =>
-      this.findElements(element, xpath, nodeConst, xpathResultConst);
-    const seenNames = new Set<string>();
-
-    // --- REINSTATED parseSourceString helper ---
-    const parseSourceString = (
-      source: string,
-    ): {
-      journal_title?: string;
-      volume?: string;
-      issue?: string;
-      pages?: string;
-      series?: string;
-    } => {
-      const result: {
-        journal_title?: string;
-        volume?: string;
-        issue?: string;
-        pages?: string;
-        series?: string;
-      } = {};
-      const journalMatch =
-        /([^,]+),\s*(?:Vol(?:ume)?\.?\s*(\d+))?,?\s*(?:No\.?\s*(\d+))?,?\s*(?:pp\.?\s*(\d+(?:-\d+)?))?/.exec(
-          source,
-        );
-      if (journalMatch) {
-        result.journal_title = journalMatch[1]?.trim();
-        result.volume = journalMatch[2];
-        result.issue = journalMatch[3];
-        result.pages = journalMatch[4];
-        return result;
-      }
-      if (/in:?/i.test(source)) {
-        const bookMatch = /in:?\s*([^,]+)/i.exec(source);
-        if (bookMatch) result.series = bookMatch[1]?.trim();
-      }
-      return result;
-    };
-    // --- END REINSTATED parseSourceString helper ---
-
-    record.title = find(".//dc:title")?.textContent?.trim() || "Untitled";
-
-    const processName = (
-      name: string | null | undefined,
-      list: string[],
-      roleList?: { name: string; role: string }[],
-      defaultRole?: string,
-    ) => {
-      if (!name) return;
-      name = cleanPersonName(name.trim());
-      if (!name) return;
-      let role = defaultRole || "author";
-      let cleanName = name;
-      if (/\b(?:ed(?:itor)?|hrsg|hg)\b|\(ed|\(hg/i.test(name)) {
-        role = "editor";
-      } else if (
-        /\b(?:trans|transl|translator|übersetz|übers)\b|\(trans|\(übers/i.test(
-          name,
-        )
-      ) {
-        role = "translator";
-      }
-      cleanName = cleanName
-        .replace(
-          /\s*[([][^)]*(?:ed|hrsg|edit|hg|trans|übersetz)[^)]*[)\]]/g,
-          "",
-        )
-        .replace(
-          /\s*(?:ed|hrsg|edit|hg|trans|transl|translator|übersetz|übers)\.?\s*$/g,
-          "",
-        )
-        .trim();
-      if (!cleanName || seenNames.has(cleanName)) return;
-      seenNames.add(cleanName);
-      if (role === "editor") record.editors.push(cleanName);
-      else if (role === "translator") record.translators.push(cleanName);
-      else if (role === "author") record.authors.push(cleanName);
-      else if (roleList) roleList.push({ name: cleanName, role: role });
-    };
-
-    findAll(".//dc:creator").forEach((elem) =>
-      processName(elem.textContent, record.authors),
-    );
-    findAll(".//dc:contributor").forEach((elem) =>
-      processName(
-        elem.textContent,
-        record.authors,
-        record.contributors,
-        "contributor",
-      ),
-    );
-
-    record.year =
-      find(".//dc:date")?.textContent?.match(/\b(1\d{3}|20\d{2})\b/)?.[1];
-    record.publisher_name = find(".//dc:publisher")?.textContent?.trim();
-    findAll(".//dc:identifier").forEach((elem) => {
-      const idText = elem.textContent?.trim().toLowerCase();
-      if (!idText) return;
-      if (idText.includes("isbn")) {
-        record.isbn =
-          idText.match(/(?:isbn[:\s]*)?(\d[\d\-X]+)/)?.[1] || record.isbn;
-      } else if (idText.includes("issn")) {
-        record.issn =
-          idText.match(/(?:issn[:\s]*)?(\d{4}-\d{3}[\dX])/)?.[1] || record.issn;
-      } else if (idText.includes("doi") || idText.includes("doi.org")) {
-        record.doi =
-          idText.match(
-            /(?:doi[:\s]*)?(?:https?:\/\/doi\.org\/)?(\d+\.\d+\/[^\s]+)/,
-          )?.[1] || record.doi;
-      } else if (idText.startsWith("http")) {
-        record.urls.push(idText);
-      }
-    });
-    findAll(".//dc:subject").forEach((elem) => {
-      if (elem.textContent?.trim())
-        record.subjects.push(elem.textContent.trim());
-    });
-    record.abstract = find(".//dc:description")?.textContent?.trim();
-    record.language = find(".//dc:language")?.textContent?.trim();
-    record.format = find(".//dc:format")?.textContent?.trim();
-    const source = find(".//dc:source")?.textContent?.trim();
-    if (source) {
-      const parsedSource = parseSourceString(source);
-      Object.assign(record, parsedSource);
-    } // Use the local helper
-
-    // Determine document type logic
-    if (record.journal_title && (record.volume || record.issue)) {
-      record.document_type = "Journal Article";
-    } else if (record.series) {
-      record.document_type = "Book Chapter";
-    } else if (record.format?.toLowerCase().includes("book")) {
-      record.document_type = "Book";
-    } else if (record.issn) {
-      record.document_type = "Journal";
-    } else if (record.isbn) {
-      record.document_type = "Book";
-    }
-
-    return record;
   }
 
   /**
@@ -895,424 +720,6 @@ export class SRUClient {
   }
 
   /**
-   * Generic record parser
-   * Accepts Node/XPathResult
-   */
-  private parseGeneric(
-    element: Element,
-    recordId: string,
-    rawXml: string | undefined,
-    nodeConst: typeof Node,
-    xpathResultConst: typeof XPathResult,
-  ): BiblioRecord {
-    const record: BiblioRecord = {
-      id: recordId,
-      title: "Untitled",
-      authors: [],
-      editors: [],
-      translators: [],
-      contributors: [],
-      urls: [],
-      subjects: [],
-      raw_data: rawXml,
-      schema: "generic",
-    };
-    const find = (xpath: string) =>
-      this.findElement(element, xpath, nodeConst, xpathResultConst);
-    const findAll = (xpath: string) =>
-      this.findElements(element, xpath, nodeConst, xpathResultConst);
-
-    // Title
-    const titlePaths = [
-      ".//dc:title",
-      ".//dcterms:title",
-      ".//title",
-      './/marc:datafield[@tag="245"]/marc:subfield[@code="a"]',
-      './/mxc:datafield[@tag="245"]/mxc:subfield[@code="a"]',
-    ];
-    for (const path of titlePaths) {
-      const el = find(path);
-      if (el?.textContent) {
-        record.title = el.textContent.trim();
-        break;
-      }
-    }
-    // Authors/Contributors (basic)
-    const creatorPaths = [
-      ".//dc:creator",
-      ".//dcterms:creator",
-      ".//creator",
-      './/marc:datafield[@tag="100"]/marc:subfield[@code="a"]',
-      './/mxc:datafield[@tag="100"]/mxc:subfield[@code="a"]',
-      './/marc:datafield[@tag="700"]/marc:subfield[@code="a"]',
-      './/mxc:datafield[@tag="700"]/mxc:subfield[@code="a"]',
-    ];
-    findAll(creatorPaths.join(" | ")).forEach((el) => {
-      if (el.textContent?.trim()) record.authors.push(el.textContent.trim());
-    }); // Simplified: puts all as authors
-    // Year
-    const yearPaths = [
-      ".//dc:date",
-      ".//dcterms:date",
-      ".//dcterms:issued",
-      ".//date",
-      './/marc:datafield[@tag="260"]/marc:subfield[@code="c"]',
-      './/mxc:datafield[@tag="260"]/mxc:subfield[@code="c"]',
-      './/marc:datafield[@tag="264"]/marc:subfield[@code="c"]',
-      './/mxc:datafield[@tag="264"]/mxc:subfield[@code="c"]',
-    ];
-    for (const path of yearPaths) {
-      const el = find(path);
-      if (el?.textContent) {
-        const ym = el.textContent.match(/\b(1\d{3}|20\d{2})\b/);
-        if (ym) {
-          record.year = ym[1];
-          break;
-        }
-      }
-    }
-    // Publisher
-    const pubPaths = [
-      ".//dc:publisher",
-      ".//dcterms:publisher",
-      ".//publisher",
-      './/marc:datafield[@tag="260"]/marc:subfield[@code="b"]',
-      './/mxc:datafield[@tag="260"]/mxc:subfield[@code="b"]',
-      './/marc:datafield[@tag="264"]/marc:subfield[@code="b"]',
-      './/mxc:datafield[@tag="264"]/mxc:subfield[@code="b"]',
-    ];
-    for (const path of pubPaths) {
-      const el = find(path);
-      if (el?.textContent) {
-        record.publisher_name = el.textContent.replace(/[,:]$/, "").trim();
-        break;
-      }
-    }
-    // ISBN
-    const isbnPaths = [
-      ".//bibo:isbn13",
-      ".//bibo:isbn10",
-      ".//bibo:isbn",
-      './/dc:identifier[contains(text(), "ISBN")]',
-      './/marc:datafield[@tag="020"]/marc:subfield[@code="a"]',
-      './/mxc:datafield[@tag="020"]/mxc:subfield[@code="a"]',
-    ];
-    for (const path of isbnPaths) {
-      const el = find(path);
-      if (el?.textContent) {
-        const im = el.textContent.match(/(?:ISBN[:\s]*)?(\d[\d\-X]+)/);
-        record.isbn = im ? im[1] : el.textContent.trim();
-        break;
-      }
-    }
-    // URLs
-    const urlPaths = [
-      ".//foaf:primaryTopic",
-      ".//umbel:isLike",
-      './/dc:identifier[contains(text(), "http")]',
-      './/marc:datafield[@tag="856"]/marc:subfield[@code="u"]',
-      './/mxc:datafield[@tag="856"]/mxc:subfield[@code="u"]',
-    ];
-    findAll(urlPaths.join(" | ")).forEach((el) => {
-      const res = this.getResourceAttribute(el);
-      if (res?.startsWith("http") && !record.urls.includes(res))
-        record.urls.push(res);
-      else if (
-        el.textContent?.trim().startsWith("http") &&
-        !record.urls.includes(el.textContent.trim())
-      )
-        record.urls.push(el.textContent.trim());
-    });
-
-    return record;
-  }
-
-  /**
-   * Parse RDFxml formatted records
-   * Accepts Node/XPathResult
-   */
-  /**
-   * Parse RDFxml formatted records (Revised for DNB structure)
-   * Accepts Node/XPathResult
-   */
-  private parseRdfXml(
-    element: Element, // The <recordData> element
-    recordId: string,
-    rawXml: string | undefined,
-    nodeConst: typeof Node,
-    xpathResultConst: typeof XPathResult,
-  ): BiblioRecord {
-    const record: BiblioRecord = {
-      id: recordId,
-      title: "Untitled",
-      authors: [],
-      editors: [],
-      translators: [],
-      contributors: [],
-      urls: [],
-      subjects: [],
-      raw_data: rawXml,
-      schema: "RDFxml",
-    };
-    const find = (context: Element, xpath: string) =>
-      this.findElement(context, xpath, nodeConst, xpathResultConst);
-    const findAll = (context: Element, xpath: string) =>
-      this.findElements(context, xpath, nodeConst, xpathResultConst);
-    const seenNames = new Set<string>(); // Keep track of names added
-
-    // Helper to process names and roles (can be simplified if roles aren't complex in DNB data)
-    const processNameWithRole = (
-      name: string | null | undefined,
-    ): { cleanName: string | null; role: string; isDuplicate: boolean } => {
-      if (!name) return { cleanName: null, role: "author", isDuplicate: true };
-      name = cleanPersonName(name.trim());
-      if (!name) return { cleanName: null, role: "author", isDuplicate: true };
-      let role = "author"; // Default role
-      let cleanName = name;
-      // Basic role detection (can be expanded if needed)
-      if (/\([Hh]g\.?\)|\([Hh]rsg\.?\)|\([Ee]d\.?\)/i.test(name)) {
-        role = "editor";
-      } else if (/\([Üü]bers\.?\)|\([Tt]rans\.?\)/i.test(name)) {
-        role = "translator";
-      }
-      // Remove potential role indicators in parentheses and trailing punctuation
-      cleanName = cleanName
-        .replace(/\s*\(.*?\)\s*$/, "")
-        .replace(/[,.;]$/, "")
-        .trim();
-      if (!cleanName) return { cleanName: null, role, isDuplicate: true };
-      const isDuplicate = seenNames.has(cleanName);
-      if (!isDuplicate) seenNames.add(cleanName);
-      return { cleanName, role, isDuplicate };
-    };
-
-    // Find the main <rdf:Description> for the item
-    const desc = find(element, ".//rdf:Description[not(@rdf:nodeID)]"); // Find the main description, not blank nodes
-    if (!desc) {
-      ztoolkit.log(
-        `No main RDF:Description found in record ${recordId}`,
-        "warn",
-      );
-      return record; // Return minimal record if structure is unexpected
-    }
-
-    // --- Title and Subtitle ---
-    record.title = find(desc, "./dc:title")?.textContent?.trim() || "Untitled";
-    const subtitle = find(desc, "./rdau:P60493")?.textContent?.trim();
-    // Append subtitle only if it exists and isn't already obviously part of the title
-    if (
-      subtitle &&
-      record.title !== "Untitled" &&
-      !record.title.includes(subtitle) &&
-      !record.title.endsWith(":")
-    ) {
-      record.title += `: ${subtitle}`;
-    } else if (subtitle && record.title === "Untitled") {
-      record.title = subtitle; // Use subtitle as title if main title is missing
-    }
-
-    // --- Author ---
-    // Priority 1: Parse the Statement of Responsibility literal
-    const statementOfResponsibility = find(
-      desc,
-      "./rdau:P60327",
-    )?.textContent?.trim();
-    if (statementOfResponsibility) {
-      // Basic split, assumes single author here based on example
-      const potentialAuthors = statementOfResponsibility
-        .split(";")[0]
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      potentialAuthors.forEach((name) => {
-        const { cleanName, role, isDuplicate } = processNameWithRole(name);
-        // Add only if it seems like an author and not already found
-        if (cleanName && !isDuplicate && role === "author") {
-          ztoolkit.log(
-            `Record ${recordId}: Adding author from P60327: ${cleanName}`,
-          );
-          record.authors.push(cleanName);
-        } else if (cleanName && !isDuplicate && role === "editor") {
-          ztoolkit.log(
-            `Record ${recordId}: Adding editor from P60327: ${cleanName}`,
-          );
-          record.editors.push(cleanName);
-        } // Add other roles if needed
-      });
-    }
-
-    // Priority 2: If no author found yet, check dcterms:creator (less reliable for name here)
-    // This logic is less useful now as the linked description isn't included.
-    // We keep the GND ID extraction for potential future use or debugging.
-    if (record.authors.length === 0) {
-      findAll(desc, "./dcterms:creator").forEach((creator) => {
-        const resource = this.getResourceAttribute(creator);
-        if (resource) {
-          ztoolkit.log(
-            `Record ${recordId}: Found dcterms:creator link: ${resource}. Name not directly available in record.`,
-            "warn",
-          );
-          // Could store the GND ID if needed: record.gndId = resource.split('/').pop();
-        } else if (creator.textContent) {
-          // Fallback if dcterms:creator has a literal name (unlikely in DNB RDF)
-          const { cleanName, role, isDuplicate } = processNameWithRole(
-            creator.textContent,
-          );
-          if (cleanName && !isDuplicate && role === "author") {
-            ztoolkit.log(
-              `Record ${recordId}: Adding author from literal dcterms:creator: ${cleanName}`,
-            );
-            record.authors.push(cleanName);
-          }
-        }
-      });
-    }
-
-    // --- Other Fields (mostly unchanged, verified against XML) ---
-    record.year = find(desc, "./dcterms:issued")?.textContent?.match(
-      /\b(1\d{3}|20\d{2})\b/,
-    )?.[1];
-    record.publisher_name = find(desc, "./dc:publisher")?.textContent?.trim();
-    record.place_of_publication = find(
-      desc,
-      "./rdau:P60163",
-    )?.textContent?.trim(); // Use P60163 for place
-    record.edition = find(desc, "./bibo:edition")?.textContent?.trim();
-
-    // Extent / Pages
-    record.extent =
-      find(desc, "./isbd:P1053")?.textContent?.trim() ||
-      find(desc, "./dcterms:extent")?.textContent?.trim();
-    if (record.extent) {
-      // Match digits possibly followed by " S." or " Seiten" etc.
-      const pm = record.extent.match(/(\d+)\s*(?:S\.|Seiten)?/i);
-      if (pm) record.pages = pm[1]; // Extract just the number
-    }
-
-    // Document Type (Infer from ISBN if generic)
-    const typeElement =
-      find(desc, "./dcterms:type") ||
-      find(desc, "./dc:type") ||
-      find(desc, "./rdf:type");
-    if (typeElement) {
-      const res = this.getResourceAttribute(typeElement);
-      const typeUri = res || typeElement.textContent?.trim();
-      // Extract meaningful part or use text content
-      record.document_type = typeUri?.includes("/")
-        ? typeUri.split("/").pop()
-        : typeUri;
-      // If type is too generic (like 'Document'), try to infer
-      if (record.document_type === "Document" || !record.document_type) {
-        for (const isbnField of ["isbn13", "isbn10", "isbn", "gtin14"]) {
-          const el = find(desc, `./bibo:${isbnField}`);
-          if (el?.textContent) {
-            record.document_type = "Book"; // Infer Book if ISBN exists
-            break;
-          }
-        }
-      }
-    } else {
-      // Fallback if no type element found at all
-      for (const isbnField of ["isbn13", "isbn10", "isbn", "gtin14"]) {
-        const el = find(desc, `./bibo:${isbnField}`);
-        if (el?.textContent) {
-          record.document_type = "Book";
-          break;
-        }
-      }
-    }
-    record.format = record.document_type; // Use document_type as format
-
-    // ISBN (find first available)
-    for (const isbnField of ["isbn13", "isbn10", "isbn", "gtin14"]) {
-      const el = find(desc, `./bibo:${isbnField}`);
-      if (el?.textContent) {
-        record.isbn = el.textContent.trim().replace(/-/g, ""); // Clean ISBN
-        break;
-      }
-    }
-    record.issn = find(desc, "./bibo:issn")?.textContent?.trim();
-    record.doi = find(desc, "./bibo:doi")?.textContent?.trim();
-
-    // Subjects (Combine GND links and DDC codes)
-    const seenSubjects = new Set<string>();
-    // GND Subject Links
-    findAll(desc, "./dcterms:subject").forEach((subj) => {
-      const res = this.getResourceAttribute(subj);
-      if (res && res.includes("d-nb.info/gnd/")) {
-        const gndId = res.split("/").pop(); // Get GND ID
-        if (gndId && !seenSubjects.has(gndId)) {
-          record.subjects.push(gndId); // Add GND ID as subject tag
-          seenSubjects.add(gndId);
-        }
-      } else if (
-        subj.textContent?.trim() &&
-        !seenSubjects.has(subj.textContent.trim())
-      ) {
-        // Fallback for literal subjects if any
-        record.subjects.push(subj.textContent.trim());
-        seenSubjects.add(subj.textContent.trim());
-      }
-    });
-    // DDC Subject Codes
-    findAll(
-      desc,
-      './dc:subject[@rdf:datatype="https://d-nb.info/standards/elementset/dnb#ddc-subject-category"]',
-    ).forEach((subj) => {
-      const ddcCode = subj.textContent?.trim();
-      if (ddcCode && !seenSubjects.has(`DDC:${ddcCode}`)) {
-        // Prefix DDC codes
-        record.subjects.push(`DDC:${ddcCode}`);
-        seenSubjects.add(`DDC:${ddcCode}`);
-      }
-    });
-
-    // Language
-    const langEl = find(desc, "./dcterms:language");
-    if (langEl) {
-      const res = this.getResourceAttribute(langEl);
-      // Extract code like 'ger' from 'http://id.loc.gov/vocabulary/iso639-2/ger'
-      record.language = res ? res.split("/").pop() : langEl.textContent?.trim();
-    }
-
-    // Abstract
-    for (const path of ["./dc:description", "./dcterms:abstract"]) {
-      const el = find(desc, path);
-      if (el?.textContent) {
-        record.abstract = el.textContent.trim();
-        break;
-      }
-    }
-
-    // URLs (Example uses foaf:primaryTopic, umbel:isLike, also check rdau:P60372 for ToC)
-    findAll(
-      desc,
-      "./foaf:primaryTopic | ./umbel:isLike | ./rdau:P60372",
-    ).forEach((el) => {
-      const res = this.getResourceAttribute(el);
-      if (res?.startsWith("http") && !record.urls.includes(res)) {
-        record.urls.push(res);
-      } else if (
-        el.textContent?.trim().startsWith("http") &&
-        !record.urls.includes(el.textContent.trim())
-      ) {
-        record.urls.push(el.textContent.trim());
-      }
-    });
-
-    // Cleanup empty arrays
-
-    record.authors = record.authors || [];
-    record.editors = record.editors || [];
-    record.translators = record.translators || [];
-    record.contributors = record.contributors || [];
-    record.urls = record.urls || [];
-    record.subjects = record.subjects || [];
-
-    return record;
-  }
-
-  /**
    * Helper method to find a single XML element using XPath.
    * Accepts Node/XPathResult
    */
@@ -1388,24 +795,5 @@ export class SRUClient {
       );
     }
     return elements;
-  }
-
-  /** Helper to get RDF resource attribute */
-  private getResourceAttribute(element: Element): string | null {
-    for (const prefix of ["rdf", ""]) {
-      const attr =
-        element.getAttribute(`${prefix}:resource`) ||
-        element.getAttribute("resource");
-      if (attr) return attr;
-    }
-    if (
-      element.localName === "Description" &&
-      element.namespaceURI === NAMESPACES.rdf
-    ) {
-      const aboutAttr =
-        element.getAttribute("rdf:about") || element.getAttribute("about");
-      if (aboutAttr) return aboutAttr;
-    }
-    return null;
   }
 } // End SRUClient
