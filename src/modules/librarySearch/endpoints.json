@@ -159,6 +159,19 @@
         "isbn": "alma.isbn=9783658310844",
         "advanced": "alma.title=Python and alma.creator=Rossum"
       }
+    },
+    "hebis": {
+      "name": "hebis (Hesse + Rhineland-Palatinate union catalogue)",
+      "url": "http://sru.hebis.de/sru/DB=2.1",
+      "defaultSchema": "marcxml",
+      "description": "Hessian union catalogue (~60 academic libraries), PICA/CBS stack",
+      "version": "1.1",
+      "examples": {
+        "title": "pica.tit=Python",
+        "author": "pica.per=Einstein",
+        "isbn": "pica.isb=9783658310844",
+        "advanced": "pica.tit=Python and pica.jhr=2023"
+      }
     }
   },
   "oai": {

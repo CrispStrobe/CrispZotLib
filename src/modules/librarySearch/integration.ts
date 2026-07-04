@@ -545,6 +545,19 @@ export class LibrarySearchIntegration {
           ...parseCreatorName(translator),
         });
       });
+      // Contributors carry a raw, often language-specific relator role (or
+      // "corporate" for MARC 7XX bodies). Map them all to Zotero's generic
+      // "contributor" creator type (valid for every item type) so corporate
+      // co-authors, film crew and advisors aren't dropped on import; corporate
+      // names stay single-field.
+      (record.contributors || []).forEach((c) => {
+        if (!c || !c.name) return;
+        const parsed =
+          c.role === "corporate"
+            ? { name: c.name, fieldMode: 1 }
+            : parseCreatorName(c.name);
+        creators.push({ creatorType: "contributor", ...parsed });
+      });
 
       // Create base Zotero item
       const item: any = {
@@ -577,6 +590,25 @@ export class LibrarySearchIntegration {
       } else if (itemType === "book") {
         item.series = record.series;
         item.edition = record.edition;
+      }
+
+      // Physical extent → numPages for paginated standalone types (e.g. a MARC
+      // 300$a / RDF isbd:P1053 "350 Seiten"). Skipped for "1 Online-Ressource",
+      // "1 videocassette", etc. which carry no page count.
+      if (record.extent && ["book", "thesis", "report"].includes(itemType)) {
+        const m = record.extent.match(
+          /(\d[\d.]*)\s*(?:S\.|Seiten|Bl\.|p\.?|pages|pp)\b/i,
+        );
+        if (m) item.numPages = m[1].replace(/\./g, "");
+      }
+      // Only urls[0] fills the url field; keep secondary URLs (ToC, cover,
+      // resolver) in Extra instead of dropping them.
+      if (record.urls && record.urls.length > 1) {
+        const extraUrls = record.urls
+          .slice(1)
+          .map((u) => `URL: ${u}`)
+          .join("\n");
+        item.extra = item.extra ? `${item.extra}\n${extraUrls}` : extraUrls;
       }
 
       // Clean up undefined/null/empty values

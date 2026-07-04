@@ -75,4 +75,19 @@ describe("indexMarcRecord", () => {
     expect(marc.getSub(field100, "e")?.textContent).toBe("author");
     expect(marc.getSub(field100, "x")).toBeNull();
   });
+
+  // hebis / PICA-CBS return namespace-LESS MARCXML (<record>/<datafield> with no
+  // MARC21 namespace). getElementsByTagNameNS("*", …) still matches, so the
+  // plugin parses it — unlike the Python repos' prefixed XPath, which needed a fix.
+  it("indexes namespace-less MARCXML (hebis-style bare <record>)", () => {
+    const bare = indexMarcRecord(
+      parseRecord(
+        '<record><leader>00000nam</leader><datafield tag="245" ind1="1"><subfield code="a">Bare Title</subfield></datafield></record>',
+      ),
+      ELEMENT_NODE,
+    );
+    expect(bare.leader).toBe("00000nam");
+    expect(bare.getData("245", "a")).toEqual(["Bare Title"]);
+    expect(bare.getFields("245")).toHaveLength(1);
+  });
 });

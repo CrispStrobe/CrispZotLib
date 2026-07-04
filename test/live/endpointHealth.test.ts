@@ -26,10 +26,12 @@ const LIVE = !!process.env.LIVE_PROBE;
 // Endpoints that block/filter cloud IP ranges while working fine for real
 // users: kb (http-only) resets connections from GitHub runners, b3kat's
 // port 5661 is filtered there (verified 2026-07-04, issue #23; neither offers
-// an https/443 alternative). Skip them ON RUNNERS ONLY — they are still
-// probed by local `npm run probe:endpoints` runs — so the weekly cron alerts
-// solely on failures that reproduce for actual users.
-const CLOUD_BLOCKED_SRU = new Set(["kb", "b3kat"]);
+// an https/443 alternative). hebis is likewise http-only (sru.hebis.de) with no
+// https alternative, so it's assumed cloud-blocked for the same reason. Skip
+// them ON RUNNERS ONLY — they are still probed by local
+// `npm run probe:endpoints` runs — so the weekly cron alerts solely on failures
+// that reproduce for actual users.
+const CLOUD_BLOCKED_SRU = new Set(["kb", "b3kat", "hebis"]);
 const ON_RUNNER = !!process.env.GITHUB_ACTIONS;
 
 // Some catalogs reject bare bot UAs; identify like a browser, as Zotero does.

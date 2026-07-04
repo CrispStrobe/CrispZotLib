@@ -139,6 +139,25 @@ export function cleanPersonName(name: string): string {
   return n.trim().replace(/,\s*$/, "").trim();
 }
 
+/**
+ * Map DC `dc:type` free text (dcmitype terms + BnF French labels, possibly
+ * several joined) to a document_type for non-text material, or "" for text /
+ * unknown. The returned values feed mapRecordToItemType (Video → videoRecording,
+ * Audio → audioRecording, Image → artwork, Map → map, Software/Dataset →
+ * computerProgram). "video" is tested before "image" so "moving image" wins.
+ */
+export function mapDcType(dcTypeText: string): string {
+  const t = dcTypeText.toLowerCase();
+  if (/moving image|image anim|\bvideo\b|\bfilm\b/.test(t)) return "Video";
+  if (/\bsound\b|\baudio\b|\bmusic\b|musique|enregistrement sonore/.test(t))
+    return "Audio";
+  if (/still image|image fixe|photograph|\bartwork\b/.test(t)) return "Image";
+  if (/cartograph|\bmap\b|\bcarte\b/.test(t)) return "Map";
+  if (/software|logiciel/.test(t)) return "Software";
+  if (/\bdataset\b|données de (?:la )?recherche/.test(t)) return "Dataset";
+  return "";
+}
+
 function blankRecord(
   recordId: string,
   rawXml: string | undefined,
@@ -289,8 +308,19 @@ export function parseSruDublinCore(
     Object.assign(record, parsedSource);
   }
 
+  // dc:type material typing (BnF etc. emit "moving image" / "image animée",
+  // "sound", … per record). Without this, films/audio/maps fall through to the
+  // isbn/format→Book fallback below and import into Zotero as books.
+  const avType = mapDcType(
+    findAll("type")
+      .map((e) => e.textContent?.toLowerCase().trim() || "")
+      .join(" | "),
+  );
+
   if (record.journal_title && (record.volume || record.issue)) {
     record.document_type = "Journal Article";
+  } else if (avType) {
+    record.document_type = avType;
   } else if (record.series) {
     record.document_type = "Book Chapter";
   } else if (record.format?.toLowerCase().includes("book")) {

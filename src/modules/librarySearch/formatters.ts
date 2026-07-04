@@ -515,6 +515,22 @@ export function formatRecord(
           ...parseCreatorName(editor),
         });
       }
+      for (const translator of record.translators || []) {
+        zoteroData.creators.push({
+          creatorType: "translator",
+          ...parseCreatorName(translator),
+        });
+      }
+      // Corporate bodies, film crew, advisors etc. — kept as "contributor"
+      // instead of being dropped (mirrors integration.ts).
+      for (const c of record.contributors || []) {
+        if (!c || !c.name) continue;
+        const parsed =
+          c.role === "corporate"
+            ? { name: c.name, fieldMode: 1 }
+            : parseCreatorName(c.name);
+        zoteroData.creators.push({ creatorType: "contributor", ...parsed });
+      }
 
       // Add journal article specific fields
       if (record.journal_title) {
@@ -522,6 +538,23 @@ export function formatRecord(
         zoteroData.volume = record.volume;
         zoteroData.issue = record.issue;
         zoteroData.pages = record.pages;
+      }
+      // Physical extent → numPages (paginated standalone types).
+      if (
+        record.extent &&
+        ["book", "thesis", "report"].includes(zoteroData.itemType)
+      ) {
+        const m = record.extent.match(
+          /(\d[\d.]*)\s*(?:S\.|Seiten|Bl\.|p\.?|pages|pp)\b/i,
+        );
+        if (m) zoteroData.numPages = m[1].replace(/\./g, "");
+      }
+      // Secondary URLs preserved in Extra (only urls[0] fills url).
+      if (record.urls && record.urls.length > 1) {
+        zoteroData.extra = record.urls
+          .slice(1)
+          .map((u) => `URL: ${u}`)
+          .join("\n");
       }
 
       return JSON.stringify(zoteroData, null, 2);
