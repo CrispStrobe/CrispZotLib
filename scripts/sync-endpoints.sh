@@ -5,6 +5,10 @@
 #   - test/fixtures/parity/* -> CrispLib          (formatter parity fixtures +
 #     goldens, asserted by test/formatterParity.test.ts here and
 #     test_formatter_parity.py there; citer has no BiblioRecord formatters)
+#   - parity/parser-records.json -> citer         (SRU parser golden; CrispLib
+#     already receives it via the test/fixtures/parity/* glob above. Asserted by
+#     test_parser_parity.py / tests/parser_parity_test.py, and the DC cases by
+#     test/parserParity.test.ts here.)
 #
 #   scripts/sync-endpoints.sh          # copy canonical -> siblings
 #   scripts/sync-endpoints.sh --check  # verify identical (CI/pre-commit)
@@ -19,6 +23,10 @@ pairs+=("$endpoints	$here/../citer/endpoints.json")
 for f in "$here"/test/fixtures/parity/*; do
   pairs+=("$f	$here/../CrispLib/fixtures/parity/$(basename "$f")")
 done
+# citer parses SRU but has no BiblioRecord formatters, so it only needs the
+# parser golden (not records.json/expected.bib/expected.ris).
+parser_golden="$here/test/fixtures/parity/parser-records.json"
+pairs+=("$parser_golden	$here/../citer/fixtures/parity/parser-records.json")
 
 # The repo a target belongs to: the path component right after $here/../
 repo_of() { local rel="${1#"$here/../"}"; printf '%s' "$here/../${rel%%/*}"; }

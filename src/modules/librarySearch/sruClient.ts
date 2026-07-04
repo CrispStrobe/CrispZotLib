@@ -539,7 +539,7 @@ export class SRUClient {
         let role = defaultRole;
         let cleanName = name;
         if (roleText) {
-          if (/edit|hrsg|hg/.test(roleText)) role = "editor";
+          if (/edit|hrsg|hg|herausg/.test(roleText)) role = "editor";
           else if (/transl|übers/.test(roleText)) role = "translator";
           // Author relator terms across languages (DNB/K10plus use "Verfasser").
           // Without this, a primary 100 $e="Verfasser" was mis-filed as a

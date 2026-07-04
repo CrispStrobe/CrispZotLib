@@ -1,0 +1,64 @@
+[
+  {
+    "name": "marc_verfasser_book",
+    "schema": "marcxml",
+    "xml": "<record xmlns=\"http://www.loc.gov/MARC21/slim\"><leader>00000nam a2200000c 4500</leader><datafield tag=\"245\" ind1=\"1\" ind2=\"0\"><subfield code=\"a\">Systematische Theologie</subfield><subfield code=\"b\">Eine Einführung</subfield></datafield><datafield tag=\"100\" ind1=\"1\" ind2=\" \"><subfield code=\"a\">Habermas, Jürgen</subfield><subfield code=\"e\">Verfasser</subfield></datafield><datafield tag=\"700\" ind1=\"1\" ind2=\" \"><subfield code=\"a\">Meyer, Anna</subfield><subfield code=\"e\">Herausgeber</subfield></datafield><datafield tag=\"700\" ind1=\"1\" ind2=\" \"><subfield code=\"a\">Schmidt, Paul</subfield><subfield code=\"e\">Übersetzer</subfield></datafield><datafield tag=\"020\" ind1=\" \" ind2=\" \"><subfield code=\"a\">9783161500000</subfield></datafield><datafield tag=\"264\" ind1=\" \" ind2=\"1\"><subfield code=\"a\">Frankfurt</subfield><subfield code=\"b\">Suhrkamp</subfield><subfield code=\"c\">2020</subfield></datafield></record>",
+    "expected": {
+      "authors": ["Habermas, Jürgen"],
+      "document_type": "Book",
+      "editors": ["Meyer, Anna"],
+      "isbn": "9783161500000",
+      "place_of_publication": "Frankfurt",
+      "publisher_name": "Suhrkamp",
+      "title": "Systematische Theologie: Eine Einführung",
+      "translators": ["Schmidt, Paul"],
+      "year": "2020"
+    }
+  },
+  {
+    "name": "marc_journal_773_serial",
+    "schema": "marcxml",
+    "xml": "<record xmlns=\"http://www.loc.gov/MARC21/slim\"><leader>00000naa a2200000c 4500</leader><datafield tag=\"245\" ind1=\"1\" ind2=\"0\"><subfield code=\"a\">Quia ignoro, adoro</subfield></datafield><datafield tag=\"100\" ind1=\"1\" ind2=\" \"><subfield code=\"a\">Bauer, Klaus</subfield><subfield code=\"e\">Verfasser</subfield></datafield><datafield tag=\"773\" ind1=\"0\" ind2=\"8\"><subfield code=\"t\">Heiliger Dienst</subfield><subfield code=\"g\">78(2024), 3, Seite 205-213</subfield><subfield code=\"7\">nnas</subfield><subfield code=\"x\">0017-9620</subfield></datafield></record>",
+    "expected": {
+      "authors": ["Bauer, Klaus"],
+      "document_type": "Journal Article",
+      "issn": "0017-9620",
+      "issue": "3",
+      "journal_title": "Heiliger Dienst",
+      "pages": "205-213",
+      "title": "Quia ignoro, adoro",
+      "volume": "78"
+    }
+  },
+  {
+    "name": "marc_corporate_110",
+    "schema": "marcxml",
+    "xml": "<record xmlns=\"http://www.loc.gov/MARC21/slim\"><leader>00000nam a2200000c 4500</leader><datafield tag=\"245\" ind1=\"1\" ind2=\"0\"><subfield code=\"a\">Klimabericht</subfield></datafield><datafield tag=\"520\" ind1=\" \" ind2=\" \"><subfield code=\"a\">Eine Zusammenfassung des Berichts.</subfield></datafield><datafield tag=\"082\" ind1=\"0\" ind2=\"4\"><subfield code=\"a\">551.6</subfield></datafield><datafield tag=\"110\" ind1=\"2\" ind2=\" \"><subfield code=\"a\">Deutsche Nationalbibliothek</subfield></datafield></record>",
+    "expected": {
+      "abstract": "Eine Zusammenfassung des Berichts.",
+      "authors": ["Deutsche Nationalbibliothek"],
+      "document_type": "Book",
+      "subjects": ["DDC:551.6"],
+      "title": "Klimabericht"
+    }
+  },
+  {
+    "name": "dc_bnf_roles",
+    "schema": "dublincore",
+    "xml": "<srw_dc:dc xmlns:srw_dc=\"info:srw/schema/1/dc-v1.1\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\"><dc:title>Zeit der Übergänge</dc:title><dc:creator>Habermas, Jürgen (1929-2026). Auteur du texte</dc:creator><dc:contributor>Meyer, Anna. Collaborateur</dc:contributor><dc:identifier>ISBN 3518122622</dc:identifier><dc:date>2001</dc:date><dc:publisher>Suhrkamp</dc:publisher></srw_dc:dc>",
+    "expected": {
+      "authors": ["Habermas, Jürgen"],
+      "contributors": [
+        {
+          "name": "Meyer, Anna",
+          "role": "contributor"
+        }
+      ],
+      "document_type": "Book",
+      "isbn": "3518122622",
+      "publisher_name": "Suhrkamp",
+      "title": "Zeit der Übergänge",
+      "year": "2001"
+    }
+  }
+]

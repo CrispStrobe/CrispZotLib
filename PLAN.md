@@ -153,6 +153,18 @@ Everything above is point‑in‑time verified; Phase 7 makes the guarantees _st
 
 ---
 
+## Phase 8 — Cross‑repo optimization pass (2026‑07‑04)
+
+An audit of all three repos for further optimization surfaced **two real bugs** — both from parser source that drifted between CrispLib and citer with nothing guarding it — plus cleanup.
+
+- [x] **8.1 citer `Verfasser` author bug.** citer's `parse_marcxml` lacked the author‑relator branch CrispLib + CrispZotLib have (PLAN 5.3): a MARC 100/700 `$e="Verfasser"` — the standard German author relator used by **every** German SRU endpoint citer gained in 4.1 (DNB/K10plus/B3Kat/ÖBV) — was misfiled as a _contributor_ instead of an author, so the primary author of any German‑catalogued book came out wrong. Added the `verf/author/autor/creator → author` branch to both the 100 and 700 loops.
+- [x] **8.2 `Herausgeber` editor bug (all three repos).** The MARC `$e` editor matcher only caught `edit`/`hrsg`/`hg` (abbreviations), so the full German word "Herausgeber" (what DNB actually emits) fell through to a generic contributor instead of `editors`. Added `herausg` to the editor pattern in CrispZotLib (`sruClient.ts`), CrispLib, and citer. Surfaced by the new parity guard (8.4) the moment it ran.
+- [x] **8.3 citer cleanup.** Removed the 90‑line dead `SRU_ENDPOINTS` table in `lib/sru_client.py` (PLAN 4.1 flagged it; zero references). Fixed two invalid escape sequences `"\&"`/`"\%"` in `ixtheo_client.py:944,1007` (a `DeprecationWarning` today → `SyntaxError` in a future Python) via raw strings — same runtime value.
+- [x] **8.4 Parser‑parity guard (closes the gap that hid 8.1/8.2).** The weekly `sync-check` compared `endpoints.json` + formatter goldens but never PARSER source — which is exactly how the relator bugs drifted undetected. New shared golden `test/fixtures/parity/parser-records.json` (canonical here; 4 cases: Verfasser+Herausgeber+Übersetzer book, serial‑773 journal article, corporate‑110, BnF DC roles) carries the agreed parsed‑field output, synced to CrispLib + citer via `sync-endpoints.sh`. Asserted by `test_parser_parity.py` (CrispLib), `tests/parser_parity_test.py` (citer), and the DC cases by `test/parserParity.test.ts` here (the canonical repo validates the golden it hosts). After the fixes, all three parse the fixtures **byte‑identically** (CrispLib 43 tests, citer parity 4 + contract 6, CrispZotLib 136).
+- [!] **8.5 Deferred: eliminate the Python parser duplication.** CrispLib `sru_library.py` and citer `lib/sru_client.py` still keep near‑identical copies of the SRU parsers (`parse_dublin_core` 256 lines / 1 differing, `infer_document_type` byte‑identical, `parse_marcxml`, `clean_person_name`, `bibtex_from_record`). 8.4 now GUARDS the drift; extracting them into one shared module (as `endpoints.json` did for endpoint data) would ELIMINATE it — a bigger, riskier refactor across both repos, deferred until there's appetite for it.
+
+---
+
 ## Verified reference data (2026‑07‑03, live)
 
 - Zotero local API: `http://127.0.0.1:23119/api/users/0/…` (enable: Settings → Advanced → "Allow other applications on this computer to communicate with Zotero").
