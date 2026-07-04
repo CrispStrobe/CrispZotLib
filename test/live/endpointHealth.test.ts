@@ -30,13 +30,22 @@ const HEADERS = {
 };
 
 async function fetchText(url: string, timeoutMs: number, cookie?: string) {
-  const res = await fetch(url, {
-    headers: cookie ? { ...HEADERS, Cookie: cookie } : HEADERS,
-    signal: AbortSignal.timeout(timeoutMs),
-    redirect: "follow",
-  });
-  const text = await res.text();
-  return { res, text };
+  // One retry after a short pause: a transient ECONNRESET/timeout must not
+  // page anyone — only reproducible failures should.
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetch(url, {
+        headers: cookie ? { ...HEADERS, Cookie: cookie } : HEADERS,
+        signal: AbortSignal.timeout(timeoutMs),
+        redirect: "follow",
+      });
+      const text = await res.text();
+      return { res, text };
+    } catch (e) {
+      if (attempt >= 1) throw e;
+      await new Promise((r) => setTimeout(r, 5000));
+    }
+  }
 }
 
 describe.runIf(LIVE)("SRU endpoint health (live)", () => {
