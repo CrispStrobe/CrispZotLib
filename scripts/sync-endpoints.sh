@@ -9,6 +9,10 @@
 #     already receives it via the test/fixtures/parity/* glob above. Asserted by
 #     test_parser_parity.py / tests/parser_parity_test.py, and the DC cases by
 #     test/parserParity.test.ts here.)
+#   - CrispLib/sru_shared.py -> citer/lib/sru_shared.py  (PLAN 8.5 — the shared
+#     Python SRU parsers. Canonical in CrispLib, the Python reference, NOT here;
+#     CrispZotLib has its own TS parsers. This is the one pair whose source is a
+#     sibling rather than this repo.)
 #
 #   scripts/sync-endpoints.sh          # copy canonical -> siblings
 #   scripts/sync-endpoints.sh --check  # verify identical (CI/pre-commit)
@@ -27,6 +31,8 @@ done
 # parser golden (not records.json/expected.bib/expected.ris).
 parser_golden="$here/test/fixtures/parity/parser-records.json"
 pairs+=("$parser_golden	$here/../citer/fixtures/parity/parser-records.json")
+# Shared Python SRU parsers — canonical in the CrispLib sibling (PLAN 8.5).
+pairs+=("$here/../CrispLib/sru_shared.py	$here/../citer/lib/sru_shared.py")
 
 # The repo a target belongs to: the path component right after $here/../
 repo_of() { local rel="${1#"$here/../"}"; printf '%s' "$here/../${rel%%/*}"; }
@@ -36,6 +42,7 @@ if [[ "${1:-}" == "--check" ]]; then
   for pair in "${pairs[@]}"; do
     src="${pair%%	*}" t="${pair#*	}"
     if [[ ! -d "$(repo_of "$t")" ]]; then continue; fi
+    if [[ ! -f "$src" ]]; then continue; fi  # canonical source absent (e.g. sibling not cloned)
     if [[ ! -f "$t" ]]; then echo "MISSING: $t"; rc=1; continue; fi
     if ! diff -q "$src" "$t" >/dev/null; then echo "DRIFT: $t differs from canonical"; rc=1; fi
   done
@@ -45,6 +52,7 @@ fi
 
 for pair in "${pairs[@]}"; do
   src="${pair%%	*}" t="${pair#*	}"
+  if [[ ! -f "$src" ]]; then echo "skip (no source): $src"; continue; fi
   if [[ -d "$(repo_of "$t")" ]]; then
     mkdir -p "$(dirname "$t")"
     cp "$src" "$t"
