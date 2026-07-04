@@ -92,10 +92,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Clone sibling repos
-        run: |
-          git clone --depth 1 https://github.com/CrispStrobe/CrispLib ../CrispLib
-          git clone --depth 1 https://github.com/CrispStrobe/citer ../citer
-
+      # Re-clone + re-check with retries: a shared-file change lands here first
+      # and in the siblings seconds later, so a single clone can read a stale
+      # sibling and false-red. A REAL drift persists across all attempts; a
+      # push-race resolves once the sibling commit is visible.
       - name: Verify shared files are in sync
-        run: scripts/sync-endpoints.sh --check
+        run: |
+          attempt() {
+            rm -rf ../CrispLib ../citer
+            git clone --depth 1 https://github.com/CrispStrobe/CrispLib ../CrispLib
+            git clone --depth 1 https://github.com/CrispStrobe/citer ../citer
+            scripts/sync-endpoints.sh --check
+          }
+          for i in 1 2 3; do
+            if attempt; then exit 0; fi
+            echo "::warning::sync-check attempt $i failed (siblings may be mid-push); retrying in 45s"
+            sleep 45
+          done
+          echo "::error::shared files still out of sync after 3 attempts — real drift"
+          exit 1

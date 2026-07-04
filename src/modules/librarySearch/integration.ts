@@ -592,10 +592,11 @@ export class LibrarySearchIntegration {
         item.edition = record.edition;
       }
 
-      // Physical extent → numPages for paginated standalone types (e.g. a MARC
-      // 300$a / RDF isbd:P1053 "350 Seiten"). Skipped for "1 Online-Ressource",
-      // "1 videocassette", etc. which carry no page count.
-      if (record.extent && ["book", "thesis", "report"].includes(itemType)) {
+      // Physical extent → numPages (e.g. a MARC 300$a / RDF isbd:P1053
+      // "350 Seiten"). Only book/thesis have a numPages field (verified against
+      // Zotero's live schema — report does NOT, so it's excluded to avoid a
+      // silent setField drop). Skipped for "1 Online-Ressource" etc.
+      if (record.extent && ["book", "thesis"].includes(itemType)) {
         const m = record.extent.match(
           /(\d[\d.]*)\s*(?:S\.|Seiten|Bl\.|p\.?|pages|pp)\b/i,
         );
@@ -660,12 +661,29 @@ export class LibrarySearchIntegration {
           }
 
           if (itemData._creatorsData && itemData._creatorsData.length > 0) {
+            const itemTypeID = newItem.itemTypeID;
             itemData._creatorsData.forEach((creator: any, i: number) => {
-              const creatorTypeID = Zotero.CreatorTypes.getID(
+              // getID only checks the creator-type NAME exists globally; it can
+              // still be invalid FOR THIS ITEM TYPE (e.g. "author"/"editor" on a
+              // videoRecording, whose creators are director/castMember/…).
+              // setCreator would then throw and lose the WHOLE item — so fall
+              // back to the item type's primary creator type (director/artist/…).
+              let creatorTypeID = Zotero.CreatorTypes.getID(
                 creator.creatorType,
               );
+              if (
+                !creatorTypeID ||
+                !Zotero.CreatorTypes.isValidForItemType(
+                  creatorTypeID,
+                  itemTypeID,
+                )
+              ) {
+                creatorTypeID =
+                  Zotero.CreatorTypes.getPrimaryIDForType(itemTypeID);
+              }
               const validCreatorType =
-                creatorTypeID !== 0 ? creator.creatorType : "author";
+                (creatorTypeID && Zotero.CreatorTypes.getName(creatorTypeID)) ||
+                "author";
               // Single-field (corporate/mononym) vs two-field personal name.
               const zc: any =
                 creator.fieldMode === 1 || creator.name

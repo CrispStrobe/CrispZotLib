@@ -1,7 +1,7 @@
 {
   "name": "zotero-library-search",
   "type": "module",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "Search library catalogs and repositories directly from Zotero",
   "homepage": "https://github.com/CrispStrobe/CrispZotLib",
   "config": {
@@ -27,7 +27,8 @@
     "test:watch": "vitest",
     "update-deps": "npm update --save",
     "test:coverage": "vitest run --coverage --coverage.include='src/**'",
-    "probe:endpoints": "LIVE_PROBE=1 vitest run test/live/endpointHealth.test.ts"
+    "probe:endpoints": "LIVE_PROBE=1 vitest run test/live/endpointHealth.test.ts",
+    "validate:zotero": "node scripts/validate-zotero-schema.mjs"
   },
   "dependencies": {
     "zotero-plugin-toolkit": "^5.1.4"

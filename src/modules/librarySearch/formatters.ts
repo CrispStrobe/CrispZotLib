@@ -539,11 +539,8 @@ export function formatRecord(
         zoteroData.issue = record.issue;
         zoteroData.pages = record.pages;
       }
-      // Physical extent → numPages (paginated standalone types).
-      if (
-        record.extent &&
-        ["book", "thesis", "report"].includes(zoteroData.itemType)
-      ) {
+      // Physical extent → numPages (only book/thesis have the field in Zotero).
+      if (record.extent && ["book", "thesis"].includes(zoteroData.itemType)) {
         const m = record.extent.match(
           /(\d[\d.]*)\s*(?:S\.|Seiten|Bl\.|p\.?|pages|pp)\b/i,
         );
