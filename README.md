@@ -105,7 +105,15 @@ _(Searches IxTheo via HTML scraping and fetches details in the chosen format)_
 ### Testing
 
 - Unit tests: `npm test` (vitest — covers formatters, identifier detection & ISBN/ISSN checksum validation, MARCXML field indexing, charset-aware XML decoding, the IxTheo proof-of-work solver, and endpoint-table sanity).
+- Record/replay tests parse **real captured** SRU (DNB MARCXML) and OAI-PMH (DNB + DOAJ Dublin Core) responses fully offline through the actual production parsers (`test/*Replay.test.ts`).
+- Cross-language parity: `test/fixtures/parity/` holds shared fixture records and BibTeX/RIS golden files that both this repo (vitest) and the sibling [CrispLib](https://github.com/CrispStrobe/CrispLib) (pytest) assert byte-for-byte, so the TypeScript and Python formatters cannot silently diverge. Regenerate with `UPDATE_GOLDENS=1 npx vitest run test/formatterParity.test.ts`, then run `scripts/sync-endpoints.sh` to propagate.
+- Coverage: `npm run test:coverage`.
+- Live endpoint health: `npm run probe:endpoints` replays every endpoint's example query against the live services (also run weekly in CI, which opens an issue on breakage).
 - Development: `npm start` launches Zotero with the plugin hot-reloaded (`zotero-plugin serve`).
+
+### Shared files across the sibling repos
+
+`endpoints.json` (endpoint manifest) and `test/fixtures/parity/` (formatter parity fixtures + goldens) are canonical **here** and byte-copied to [CrispLib](https://github.com/CrispStrobe/CrispLib) / [citer](https://github.com/CrispStrobe/citer) by `scripts/sync-endpoints.sh`; CI verifies the copies stay identical (`sync-endpoints.sh --check`).
 
 ## Known Issues
 
