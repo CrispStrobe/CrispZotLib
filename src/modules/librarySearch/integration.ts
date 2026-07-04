@@ -640,23 +640,49 @@ export class LibrarySearchIntegration {
           const newItem = new Zotero.Item(itemData.itemType);
           newItem.libraryID = libraryID;
 
+          // Identifiers worth keeping in Extra when the item type has no native
+          // field for them (DOI on a book, ISSN on a serial-as-book, publisher
+          // on a film) — Zotero's convention for type-less metadata, rather than
+          // silently dropping them.
+          const RESCUE_TO_EXTRA: Record<string, string> = {
+            DOI: "DOI",
+            ISSN: "ISSN",
+            ISBN: "ISBN",
+            publisher: "Publisher",
+          };
+          const extraLines: string[] = [];
+          if (itemData.extra) extraLines.push(String(itemData.extra));
+
           for (const field in itemData) {
             if (
               field === "itemType" ||
               field === "_creatorsData" ||
               field === "tags" ||
-              field === "libraryID"
+              field === "libraryID" ||
+              field === "extra"
             )
               continue;
             if (!itemData[field]) continue;
-            // Per-field isolation: a field that is invalid for this item
-            // type (e.g. ISBN on a journalArticle) is skipped, not fatal.
+            // Per-field isolation: a field invalid for this item type is skipped,
+            // not fatal. Identifiers are rescued into Extra instead of lost.
             try {
               newItem.setField(field, itemData[field]);
             } catch (fieldErr) {
+              if (RESCUE_TO_EXTRA[field]) {
+                extraLines.push(
+                  `${RESCUE_TO_EXTRA[field]}: ${itemData[field]}`,
+                );
+              }
               Zotero.debug(
-                `[LibrarySearch] Skipping field "${field}" for itemType "${itemData.itemType}": ${fieldErr}`,
+                `[LibrarySearch] Field "${field}" invalid for itemType "${itemData.itemType}"${RESCUE_TO_EXTRA[field] ? " → Extra" : ""}: ${fieldErr}`,
               );
+            }
+          }
+          if (extraLines.length > 0) {
+            try {
+              newItem.setField("extra", extraLines.join("\n"));
+            } catch {
+              /* every item type has an Extra field; ignore */
             }
           }
 

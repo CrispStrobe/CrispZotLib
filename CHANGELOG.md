@@ -28,6 +28,10 @@ Catalogue coverage, correctness, and the record → Zotero handoff. See `PLAN.md
   invalid creator type could silently lose the whole item.
 - **Page counts** (`extent` → `numPages`) and **secondary URLs** (table of
   contents, cover, resolver → the `Extra` field) are preserved.
+- **Identifiers survive on any item type.** A DOI on a book, an ISSN on a serial,
+  or a publisher on a film — fields the item type has no native slot for — now go
+  to the `Extra` field instead of being silently dropped. Verified by dry-running
+  100 live records through the import mapping against Zotero's real schema.
 
 ### Name cleaning
 
