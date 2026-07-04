@@ -23,6 +23,15 @@ import { solveIxTheoPow } from "../../src/modules/librarySearch/ixtheoPow";
 
 const LIVE = !!process.env.LIVE_PROBE;
 
+// Endpoints that block/filter cloud IP ranges while working fine for real
+// users: kb (http-only) resets connections from GitHub runners, b3kat's
+// port 5661 is filtered there (verified 2026-07-04, issue #23; neither offers
+// an https/443 alternative). Skip them ON RUNNERS ONLY — they are still
+// probed by local `npm run probe:endpoints` runs — so the weekly cron alerts
+// solely on failures that reproduce for actual users.
+const CLOUD_BLOCKED_SRU = new Set(["kb", "b3kat"]);
+const ON_RUNNER = !!process.env.GITHUB_ACTIONS;
+
 // Some catalogs reject bare bot UAs; identify like a browser, as Zotero does.
 const HEADERS = {
   "User-Agent":
@@ -50,31 +59,35 @@ async function fetchText(url: string, timeoutMs: number, cookie?: string) {
 
 describe.runIf(LIVE)("SRU endpoint health (live)", () => {
   for (const [id, ep] of Object.entries(SRU_ENDPOINTS)) {
-    it(`${id}: title example query returns hits`, async () => {
-      const params = new URLSearchParams({
-        operation: "searchRetrieve",
-        version: ep.version ?? "1.1",
-        query: String(ep.examples?.title),
-        maximumRecords: "1",
-      });
-      for (const [k, v] of Object.entries(ep.queryParams ?? {})) {
-        params.set(k, v);
-      }
-      const { res, text } = await fetchText(
-        `${ep.url}?${params.toString()}`,
-        40_000,
-      );
-      expect(res.ok, `${id}: HTTP ${res.status}`).toBe(true);
-      const m = text.match(/numberOfRecords[^>]*>\s*(\d+)/);
-      expect(
-        m,
-        `${id}: no numberOfRecords in response: ${text.slice(0, 400)}`,
-      ).toBeTruthy();
-      expect(
-        Number(m![1]),
-        `${id}: 0 hits for '${ep.examples?.title}'`,
-      ).toBeGreaterThan(0);
-    }, 60_000);
+    it.skipIf(ON_RUNNER && CLOUD_BLOCKED_SRU.has(id))(
+      `${id}: title example query returns hits`,
+      async () => {
+        const params = new URLSearchParams({
+          operation: "searchRetrieve",
+          version: ep.version ?? "1.1",
+          query: String(ep.examples?.title),
+          maximumRecords: "1",
+        });
+        for (const [k, v] of Object.entries(ep.queryParams ?? {})) {
+          params.set(k, v);
+        }
+        const { res, text } = await fetchText(
+          `${ep.url}?${params.toString()}`,
+          40_000,
+        );
+        expect(res.ok, `${id}: HTTP ${res.status}`).toBe(true);
+        const m = text.match(/numberOfRecords[^>]*>\s*(\d+)/);
+        expect(
+          m,
+          `${id}: no numberOfRecords in response: ${text.slice(0, 400)}`,
+        ).toBeTruthy();
+        expect(
+          Number(m![1]),
+          `${id}: 0 hits for '${ep.examples?.title}'`,
+        ).toBeGreaterThan(0);
+      },
+      60_000,
+    );
   }
 });
 
