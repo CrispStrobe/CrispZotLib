@@ -156,6 +156,31 @@ describe("parseOaiDublinCore role markers and source parsing", () => {
     expect(rec.document_type).toBe("Journal Article");
   });
 
+  it("types AV/image material from dc:type (Europeana/DDB) instead of book", () => {
+    const film = parseOaiDublinCore(
+      dc(
+        `<dc:title>Un film</dc:title>
+         <dc:type>moving image</dc:type>`,
+      ),
+      "av1",
+    )!;
+    expect(film.document_type).toBe("Video");
+    const sound = parseOaiDublinCore(
+      dc(`<dc:title>Konzert</dc:title><dc:type>sound</dc:type>`),
+      "av2",
+    )!;
+    expect(sound.document_type).toBe("Audio");
+    // Plain text dc:type must NOT override the isbn→book inference.
+    const book = parseOaiDublinCore(
+      dc(
+        `<dc:title>Buch</dc:title><dc:type>text</dc:type>
+         <dc:identifier>ISBN 9783658310844</dc:identifier>`,
+      ),
+      "av3",
+    )!;
+    expect(book.document_type).toBe("Book");
+  });
+
   it("returns null for deleted records via processOaiRecordElement", () => {
     const xml = `<OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/"><ListRecords>
       <record><header status="deleted"><identifier>x</identifier></header></record>

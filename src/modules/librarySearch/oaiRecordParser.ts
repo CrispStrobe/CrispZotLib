@@ -10,6 +10,7 @@
 
 import { BiblioRecord } from "./models";
 import { extractIsbn, extractIssn } from "./recordUtils";
+import { mapDcType } from "./sruRecordParser";
 
 export type ParserLog = (
   message: string,
@@ -333,8 +334,18 @@ export function parseOaiDublinCore(
   }
 
   // --- Refine Document Type ---
+  // dc:type material typing (Europeana / DDB feeds carry lots of AV & images as
+  // "moving image"/"sound"/"still image"). Without this they fall through to the
+  // isbn/format heuristics below and import as books.
+  const oaiAvType = mapDcType(
+    queryDC("type")
+      .map((e) => e.textContent?.toLowerCase().trim() || "")
+      .join(" | "),
+  );
   if (record.journal_title && (record.volume || record.issue)) {
     record.document_type = "Journal Article";
+  } else if (oaiAvType) {
+    record.document_type = oaiAvType;
   } else if (record.issn && !record.isbn) {
     record.document_type = "Journal";
   } else if (record.series && record.pages && !record.journal_title) {

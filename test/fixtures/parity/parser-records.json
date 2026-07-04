@@ -81,10 +81,10 @@
     "xml": "<srw_dc:dc xmlns:srw_dc=\"info:srw/schema/1/dc-v1.1\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\"><dc:title>Cinéma Paradiso</dc:title><dc:creator>Tornatore, Giuseppe. Réalisateur</dc:creator><dc:contributor>Morricone, Ennio. Compositeur</dc:contributor><dc:date>2019</dc:date><dc:type xml:lang=\"fre\">image animée</dc:type><dc:type xml:lang=\"eng\">moving image</dc:type></srw_dc:dc>",
     "expected": {
       "title": "Cinéma Paradiso",
-      "authors": ["Tornatore, Giuseppe. Réalisateur"],
+      "authors": ["Tornatore, Giuseppe"],
       "contributors": [
         {
-          "name": "Morricone, Ennio. Compositeur",
+          "name": "Morricone, Ennio",
           "role": "contributor"
         }
       ],

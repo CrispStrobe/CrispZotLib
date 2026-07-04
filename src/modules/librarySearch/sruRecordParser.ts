@@ -125,18 +125,43 @@ export function getResourceAttribute(element: Element): string | null {
   return null;
 }
 
+// Controlled relator vocabulary (FR / DE / EN) that DC/RDF sources — chiefly
+// BnF and GND — append to a creator name after a period, e.g.
+// "Tornatore, Giuseppe (1956-....). Réalisateur". Kept explicit so ordinary
+// period-bearing names ("Smith, J. R.") are never truncated. Must stay in sync
+// with clean_person_name in CrispLib/sru_library.py + citer/lib/sru_client.py
+// (enforced by the parser-parity golden).
+const RELATOR_WORDS =
+  "Auteur|[ÉE]diteur|Traducteur|Pr[ée]facier|Postfacier|Collaborateur|" +
+  "Illustrateur|Annotateur|Directeur|R[ée]alisateur|Sc[ée]nariste|Adaptateur|" +
+  "Compositeur|Act(?:eur|rice)|Interpr[èe]te|Chanteu(?:r|se)|Photographe|" +
+  "Dessinateur|Graveur|Metteur\\s+en\\s+sc[èe]ne|Producteur|Narrateur|" +
+  "Chor[ée]graphe|Danseu(?:r|se)|Musicien|Arrangeur|Parolier|Distributeur|" +
+  "Imprimeur|Cartographe|Lithographe|Peintre|Sculpteur|Architecte|R[ée]dacteur|" +
+  "Monteur|Commissaire|Conseiller|" +
+  "Herausgeber(?:in)?|[ÜU]bersetzer(?:in)?|Verfasser(?:in)?|Mitwirkende[rn]?|" +
+  "Bearbeiter|Erz[äa]hler|Komponist|Regisseur|Schauspieler|" +
+  "Author|Editor|Translator|Contributor|Illustrator|Narrator|Composer|" +
+  "Director|Screenwriter|Producer|Performer|Actor|Photographer|Cartographer";
+const ROLE_SUFFIX_RE = new RegExp(
+  "\\.\\s*(?:" + RELATOR_WORDS + ")\\b[^.]*$",
+  "i",
+);
+
 // Strip life dates and role phrases that DC/RDF sources (esp. BnF) append to
 // creator names, e.g. "Habermas, Jürgen (1929-2026). Auteur du texte".
 export function cleanPersonName(name: string): string {
   if (!name) return name;
   let n = name.trim();
-  n = n.replace(
-    /\.\s*(?:Auteur|[ÉE]diteur|Traducteur|Pr[ée]facier|Collaborateur|Illustrateur|Annotateur|Directeur|Author|Editor|Translator|Contributor)[^.]*$/i,
-    "",
-  );
-  n = n.replace(/\s*\(\s*\d{3,4}\s*-\s*\d{0,4}\.?\s*\)\s*$/, "");
-  n = n.replace(/,?\s*\d{4}\s*-\s*\d{0,4}\s*$/, "");
-  return n.trim().replace(/,\s*$/, "").trim();
+  // Life-date parenthetical, anywhere: "(1929-2026)", "(1956-)", "(1956-....)",
+  // "(1963-.... ; actrice)". Requires 3-4 leading digits + a dash so ordinary
+  // parentheticals like "(2nd ed.)" are left alone.
+  n = n.replace(/\s*\(\s*\d{3,4}\s*[-–][^)]*\)/g, "");
+  // Trailing controlled relator phrase after a period.
+  n = n.replace(ROLE_SUFFIX_RE, "");
+  // Bare trailing life-date range: "Einstein, Albert 1879-1955".
+  n = n.replace(/,?\s*\d{3,4}\s*[-–]\s*\d{0,4}\s*$/, "");
+  return n.trim().replace(/[,;\s]+$/, "");
 }
 
 /**

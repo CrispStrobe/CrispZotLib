@@ -50,4 +50,25 @@ describe("cleanPersonName", () => {
       "Deutsche Nationalbibliothek",
     );
   });
+
+  it("strips BnF French AV relators and open-ended life dates", () => {
+    expect(
+      cleanPersonName("Tornatore, Giuseppe (1956-....). Réalisateur"),
+    ).toBe("Tornatore, Giuseppe");
+    expect(cleanPersonName("Morricone, Ennio (1928-2020). Compositeur")).toBe(
+      "Morricone, Ennio",
+    );
+    expect(
+      cleanPersonName("Attili, Antonella (1963-.... ; actrice). Acteur"),
+    ).toBe("Attili, Antonella");
+    expect(cleanPersonName("Müller, Hans. Herausgeber")).toBe("Müller, Hans");
+  });
+
+  it("does not truncate ordinary names that contain periods", () => {
+    // "R." must not be mistaken for a relator; "(2nd ed.)" is not a life date.
+    expect(cleanPersonName("Smith, J. R.")).toBe("Smith, J. R.");
+    expect(cleanPersonName("King, Martin Luther, Jr.")).toBe(
+      "King, Martin Luther, Jr.",
+    );
+  });
 });
