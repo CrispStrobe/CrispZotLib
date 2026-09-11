@@ -6,7 +6,7 @@ import { OAIClient } from "./oaiClient"; // Ensure this is the updated OAIClient
 import { SRU_ENDPOINTS, OAI_ENDPOINTS, IXTHEO_ENDPOINTS } from "./endpoints";
 import { getPref } from "../../utils/prefs";
 import { fetchWithTimeout } from "./httpUtils";
-import { solveIxTheoPow, IxTheoPowToken } from "./ixtheoPow";
+import { isIxTheoChallenge, solveIxTheoPowFromHtml } from "./ixtheoPow";
 
 // Assuming SearchParams is correctly defined in integration.ts
 // import { SearchParams } from './integration'; // Adjust path if needed
@@ -22,37 +22,93 @@ export class SearchService {
   // OAI client cache
   private static oaiClients: Record<string, OAIClient> = {};
 
-  // Cached IxTheo proof-of-work token (see ixtheoPow.ts). Solving is ~0.1M
-  // SHA-256 hashes, so reuse it across the many per-record IxTheo requests
-  // until it nears its 30-minute expiry.
-  private static ixtheoPow: IxTheoPowToken | null = null;
+  // IxTheo anti-bot session (see ixtheoPow.ts). Its proof-of-work token is
+  // single-use, so we never rely on a cached token alone: a `pow_token` is only
+  // accepted alongside the session cookies (notably `hmac`) that the server
+  // returns with the first successful response. We keep every cookie the server
+  // hands back and resend them, so a normal request is a single round trip and a
+  // fresh challenge is solved only when the session has actually lapsed.
+  private static ixtheoCookieJar: Record<string, string> = {};
+
+  /** Build a `Cookie:` header value from the IxTheo cookie jar. */
+  private static ixtheoJarHeader(): string | undefined {
+    const entries = Object.entries(this.ixtheoCookieJar);
+    return entries.length
+      ? entries.map(([k, v]) => `${k}=${v}`).join("; ")
+      : undefined;
+  }
+
+  /** Merge any `Set-Cookie` values from a response into the jar (best effort). */
+  private static captureIxTheoCookies(res: Response): void {
+    // Set-Cookie is a forbidden header in a web context; in Zotero's privileged
+    // fetch it may be readable via getSetCookie(). If not, the jar stays empty
+    // and every request simply solves a fresh challenge — still correct.
+    const get = (res.headers as { getSetCookie?: () => string[] }).getSetCookie;
+    const list = typeof get === "function" ? get.call(res.headers) : [];
+    for (const raw of list) {
+      const pair = raw.split(";")[0];
+      const eq = pair.indexOf("=");
+      if (eq > 0) {
+        const name = pair.slice(0, eq).trim();
+        if (name) this.ixtheoCookieJar[name] = pair.slice(eq + 1).trim();
+      }
+    }
+  }
+
+  private static ixtheoWebCrypto(): Crypto | undefined {
+    const win = Zotero.getMainWindow();
+    return win?.crypto ?? (globalThis as { crypto?: Crypto }).crypto;
+  }
 
   /**
-   * Return the `Cookie` header value that clears the IxTheo "Verifying your
-   * browser" proof-of-work wall, solving (and caching) the challenge as needed.
-   * Returns undefined if Web Crypto is unavailable so the caller degrades to an
-   * unauthenticated request rather than throwing.
+   * Fetch a URL from IxTheo, transparently clearing the JavaScript proof-of-work
+   * "Verifying your browser" wall: if the response is the challenge page, fetch
+   * its server-issued nonce, solve it, and retry once with the freshly minted
+   * `pow_token` cookie. Never throws for the wall itself — a still-challenged
+   * response is returned so the caller can surface it.
    */
-  private static async ixtheoCookie(
+  private static async ixtheoFetch(
+    url: string,
+    headers: Record<string, string>,
     log: (message: string, level?: "log" | "warn" | "error") => void,
-  ): Promise<string | undefined> {
-    const now = Date.now();
-    if (!this.ixtheoPow || this.ixtheoPow.expiresMs < now + 60_000) {
-      const win = Zotero.getMainWindow();
-      const cryptoObj: Crypto | undefined =
-        win?.crypto ?? (globalThis as { crypto?: Crypto }).crypto;
-      if (!cryptoObj?.subtle) {
-        log(
-          "Web Crypto unavailable — cannot solve IxTheo PoW challenge.",
-          "warn",
-        );
-        return undefined;
-      }
-      log("Solving IxTheo proof-of-work challenge…");
-      this.ixtheoPow = await solveIxTheoPow(cryptoObj, now);
-      log("IxTheo proof-of-work solved.");
+  ): Promise<Response> {
+    const send = () => {
+      const jar = this.ixtheoJarHeader();
+      return fetchWithTimeout(url, {
+        headers: { ...headers, ...(jar ? { Cookie: jar } : {}) },
+      });
+    };
+
+    let response = await send();
+    this.captureIxTheoCookies(response);
+    if (!response.ok) {
+      // Let the caller report the HTTP error (non-2xx is not the PoW wall).
+      return response;
     }
-    return `pow_token=${this.ixtheoPow.token}`;
+    if (!isIxTheoChallenge(await response.clone().text())) {
+      return response;
+    }
+
+    // The proof-of-work wall. Solve the challenge embedded in this very page and
+    // retry with the new single-use token.
+    const challengeHtml = await response.text();
+    const cryptoObj = this.ixtheoWebCrypto();
+    if (!cryptoObj?.subtle) {
+      log(
+        "Web Crypto unavailable — cannot solve IxTheo PoW challenge.",
+        "warn",
+      );
+      return new Response(challengeHtml, { status: response.status });
+    }
+
+    log("Solving IxTheo proof-of-work challenge…");
+    const { token } = await solveIxTheoPowFromHtml(cryptoObj, challengeHtml);
+    log("IxTheo proof-of-work solved — retrying request.");
+    // Replace any stale token with the fresh one; the session cookies stay.
+    this.ixtheoCookieJar.pow_token = token;
+    response = await send();
+    this.captureIxTheoCookies(response);
+    return response;
   }
 
   /**
@@ -372,19 +428,19 @@ export class SearchService {
     log(`IxTheo HTML Search URL: ${searchUrl}`);
 
     try {
-      // 2. Fetch HTML results page
-      const ixtheoCookie = await this.ixtheoCookie(log);
-      const htmlResponse = await fetchWithTimeout(searchUrl, {
-        headers: {
+      // 2. Fetch HTML results page (solving the IxTheo PoW wall if needed).
+      const htmlResponse = await this.ixtheoFetch(
+        searchUrl,
+        {
           // Add browser-like headers
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
           Accept:
             "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
           "Accept-Language": "en-US,en;q=0.5",
-          ...(ixtheoCookie ? { Cookie: ixtheoCookie } : {}),
         },
-      });
+        log,
+      );
       if (!htmlResponse.ok) {
         throw new Error(
           `IxTheo HTML search request failed: ${htmlResponse.status} ${htmlResponse.statusText}`,
@@ -822,18 +878,18 @@ export class SearchService {
     const exportUrl = `${baseUrl}/Record/${recordId}/Export?style=${exportFormat}`;
     log(`Fetching ${exportFormat} export from URL: ${exportUrl}`);
     try {
-      const ixtheoCookie = await this.ixtheoCookie(log);
-      const response = await fetchWithTimeout(exportUrl, {
-        headers: {
+      const response = await this.ixtheoFetch(
+        exportUrl,
+        {
           // Mimic browser request
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
           Accept: "text/plain, */*; q=0.01", // Correct accept header for export
           "X-Requested-With": "XMLHttpRequest", // Often used for AJAX requests
           Referer: `${baseUrl}/Record/${recordId}`, // Referer header
-          ...(ixtheoCookie ? { Cookie: ixtheoCookie } : {}),
         },
-      });
+        log,
+      );
 
       log(
         `Response status for ${exportFormat} export ${recordId}: ${response.status}`,
@@ -921,17 +977,17 @@ export class SearchService {
     const detailUrl = `${baseUrl}/Record/${recordId}`;
     log(`Fetching HTML detail page from: ${detailUrl}`);
     try {
-      const ixtheoCookie = await this.ixtheoCookie(log);
-      const response = await fetchWithTimeout(detailUrl, {
-        headers: {
+      const response = await this.ixtheoFetch(
+        detailUrl,
+        {
           // Standard browser headers
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
           Accept:
             "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-          ...(ixtheoCookie ? { Cookie: ixtheoCookie } : {}),
         },
-      });
+        log,
+      );
       if (!response.ok) {
         throw new Error(
           `Detail page request failed: ${response.status} ${response.statusText}`,

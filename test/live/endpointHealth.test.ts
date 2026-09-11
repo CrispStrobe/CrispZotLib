@@ -10,16 +10,20 @@
 //   - OAI: Identify must answer, and ListMetadataFormats must still offer the
 //     endpoint's defaultMetadataPrefix (this catches the Crossref-style rot
 //     where the host lives on but stops serving the format we parse).
-//   - IxTheo: solves the real proof-of-work challenge via the plugin's own
-//     solveIxTheoPow and requires a search to return result markers — a canary
-//     for the anti-bot wall changing again (PLAN 4.2 broke all three repos).
+//   - IxTheo: fetches the real proof-of-work challenge page, solves its
+//     server-issued nonce via the plugin's own solver, and retries with the
+//     single-use `pow_token` — a canary for the anti-bot wall changing again
+//     (PLAN 4.2 changed it once; issue #26 once more).
 import { describe, expect, it } from "vitest";
 import {
   IXTHEO_ENDPOINTS,
   OAI_ENDPOINTS,
   SRU_ENDPOINTS,
 } from "../../src/modules/librarySearch/endpoints";
-import { solveIxTheoPow } from "../../src/modules/librarySearch/ixtheoPow";
+import {
+  parseIxTheoChallenge,
+  solveIxTheoChallenge,
+} from "../../src/modules/librarySearch/ixtheoPow";
 
 const LIVE = !!process.env.LIVE_PROBE;
 
@@ -123,16 +127,21 @@ describe.runIf(LIVE)("OAI-PMH endpoint health (live)", () => {
 describe.runIf(LIVE)("IxTheo proof-of-work canary (live)", () => {
   it("solves the PoW wall and a search returns result markers", async () => {
     const ep = Object.values(IXTHEO_ENDPOINTS)[0];
-    const pow = await solveIxTheoPow(globalThis.crypto, Date.now());
     const url = `${ep.baseUrl}/Search/Results?${new URLSearchParams({
       lookfor: "Habermas",
       type: "AllFields",
     })}`;
-    const { res, text } = await fetchText(
-      url,
-      60_000,
-      `pow_token=${pow.token}`,
-    );
+
+    // 1. A cookie-less request must come back as the challenge page.
+    const challenge = parseIxTheoChallenge((await fetchText(url, 60_000)).text);
+    expect(
+      challenge,
+      "no IxTheo PoW challenge found — the wall likely changed again (PLAN 4.2 / issue #26)",
+    ).toBeTruthy();
+
+    // 2. Solve it and retry with the single-use token, exactly like the browser.
+    const { token } = await solveIxTheoChallenge(globalThis.crypto, challenge!);
+    const { res, text } = await fetchText(url, 60_000, `pow_token=${token}`);
     expect(res.ok, `HTTP ${res.status}`).toBe(true);
     expect(
       /record-list|hiddenId/.test(text),
