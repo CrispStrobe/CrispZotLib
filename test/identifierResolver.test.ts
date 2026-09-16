@@ -56,11 +56,12 @@ describe("identifier network resolvers", () => {
         publisher: "Test Pub",
         type: "journal-article",
         URL: "http://dx.doi.org/10.123/456",
-        DOI: "10.123/456"
-      })
+        DOI: "10.123/456",
+      }),
     } as any);
 
-    const { resolveDoi } = await import("../src/modules/librarySearch/identifierResolver");
+    const { resolveDoi } =
+      await import("../src/modules/librarySearch/identifierResolver");
     const result = await resolveDoi("10.123/456");
     expect(result.title).toBe("Test Title");
     expect(result.authors).toEqual(["Doe, John"]);
@@ -73,33 +74,37 @@ describe("identifier network resolvers", () => {
     fetchStub.mockResolvedValueOnce({
       ok: false,
       status: 404,
-      statusText: "Not Found"
+      statusText: "Not Found",
     } as any);
 
-    const { resolveDoi } = await import("../src/modules/librarySearch/identifierResolver");
+    const { resolveDoi } =
+      await import("../src/modules/librarySearch/identifierResolver");
     await expect(resolveDoi("10.123/789")).rejects.toThrow("DOI lookup failed");
   });
 
   it("resolveIsbn checks Open Library then Google Books", async () => {
     fetchStub.mockResolvedValueOnce({
       ok: false,
-      status: 404
+      status: 404,
     } as any);
     fetchStub.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        items: [{
-          volumeInfo: {
-            title: "Google Book",
-            authors: ["Author G"],
-            publishedDate: "2021",
-            pageCount: 123
-          }
-        }]
-      })
+        items: [
+          {
+            volumeInfo: {
+              title: "Google Book",
+              authors: ["Author G"],
+              publishedDate: "2021",
+              pageCount: 123,
+            },
+          },
+        ],
+      }),
     } as any);
 
-    const { resolveIsbn } = await import("../src/modules/librarySearch/identifierResolver");
+    const { resolveIsbn } =
+      await import("../src/modules/librarySearch/identifierResolver");
     const result = await resolveIsbn("9781234567890");
     expect(result.title).toBe("Google Book");
     expect(result.authors).toEqual(["Author G"]);
@@ -116,13 +121,14 @@ describe("identifier network resolvers", () => {
             title: "PubMed Title",
             authors: [{ name: "P. Author" }],
             pubdate: "2022 Jan 01",
-            articleids: [{ idtype: "doi", value: "10.000/123" }]
-          }
-        }
-      })
+            articleids: [{ idtype: "doi", value: "10.000/123" }],
+          },
+        },
+      }),
     } as any);
 
-    const { resolvePmid } = await import("../src/modules/librarySearch/identifierResolver");
+    const { resolvePmid } =
+      await import("../src/modules/librarySearch/identifierResolver");
     const result = await resolvePmid("12345");
     expect(result.title).toBe("PubMed Title");
     expect(result.authors).toEqual(["P. Author"]);
