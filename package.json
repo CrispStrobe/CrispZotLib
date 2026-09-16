@@ -36,7 +36,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.0",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^5.0.0",
     "@xmldom/xmldom": ">=0.9.12",
     "eslint": "^10.10.0",
     "prettier": "^3.9.6",
