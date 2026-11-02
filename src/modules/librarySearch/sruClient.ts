@@ -415,8 +415,9 @@ export class SRUClient {
           diagnosticMessages.push(detailsElem.textContent.trim());
       }
     };
-    processDiagnostics(".//sd:diagnostic"); // BNF-specific
-    processDiagnostics(".//srw:diagnostics/sd:diagnostic"); // Standard SRU
+    // Matches standard <srw:diagnostics><sd:diagnostic> and BnF's bare form;
+    // a second, narrower query would report every diagnostic twice.
+    processDiagnostics(".//sd:diagnostic");
     return diagnosticMessages;
   }
 
@@ -436,6 +437,7 @@ export class SRUClient {
       switch (schema) {
         case "dublincore":
         case "dc":
+        case "oai_dc":
         case "info:srw/schema/1/dc-v1.1":
           return parseSruDublinCore(
             recordDataElement,
@@ -525,9 +527,11 @@ export class SRUClient {
     const findLead = () => marc.leader;
     const seenNames = new Set<string>();
 
-    let title =
-      findData("245", "a")[0]?.replace(/[/:]$/, "").trim() || "Untitled";
-    const subtitle = findData("245", "b")[0]?.trim();
+    // Strip trailing ISBD punctuation (" /", " :", " ;", " =", ",") from
+    // both title parts, as cataloguers append it before the next subfield.
+    const stripIsbd = (v?: string) => v?.replace(/[\s/:;=,]+$/, "").trim();
+    let title = stripIsbd(findData("245", "a")[0]) || "Untitled";
+    const subtitle = stripIsbd(findData("245", "b")[0]);
     if (subtitle) title += `: ${subtitle}`;
     record.title = title;
 

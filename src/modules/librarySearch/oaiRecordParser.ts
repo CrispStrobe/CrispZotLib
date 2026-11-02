@@ -10,7 +10,12 @@
 
 import { BiblioRecord } from "./models";
 import { extractIsbn, extractIssn } from "./recordUtils";
-import { mapDcType } from "./sruRecordParser";
+import {
+  EDITOR_ROLE_RE,
+  mapDcType,
+  stripRoleMarkers,
+  TRANSLATOR_ROLE_RE,
+} from "./sruRecordParser";
 
 export type ParserLog = (
   message: string,
@@ -123,12 +128,13 @@ function detectRole(
     }
   } else if (defaultRole === "contributor") {
     // Keyword roles without brackets (contributor field only)
-    if (/\b(editor|ed\.|hrsg|hg\.)\b/i.test(name)) {
+    // Shared with the SRU DC parser: "ed."/"(Hg.)" count, first name "Ed" doesn't.
+    if (EDITOR_ROLE_RE.test(name)) {
       role = "editor";
-      cleanName = name.replace(/\b(editor|ed\.|hrsg|hg\.)\b/i, "").trim();
-    } else if (/\b(translator|trans\.|übers)\b/i.test(name)) {
+      cleanName = stripRoleMarkers(name);
+    } else if (TRANSLATOR_ROLE_RE.test(name)) {
       role = "translator";
-      cleanName = name.replace(/\b(translator|trans\.|übers)\b/i, "").trim();
+      cleanName = stripRoleMarkers(name);
     }
   }
   return { role, cleanName };
@@ -168,7 +174,8 @@ export function parseOaiDublinCore(
   if (titleElements.length > 0 && titleElements[0].textContent) {
     record.title = titleElements[0].textContent.trim();
     // Clean up title - remove author info like " / Author Name" at the end
-    record.title = record.title.replace(/\s*\/\s*[^/]+$/, "").trim();
+    // (spaced slash only, so "TCP/IP Illustrated" stays whole — PLAN 2.15).
+    record.title = record.title.replace(/\s+\/\s+[^/]+$/, "").trim();
   } else {
     log(`${logPrefix} No title found for ${identifier}.`, "warn");
   }
@@ -274,20 +281,21 @@ export function parseOaiDublinCore(
       if (!record.urls.includes(idText)) {
         record.urls.push(idText);
       }
+    } else if (
+      // DOI first: Springer-style DOIs embed an ISBN ("10.1007/978-3-…").
+      idTextLower.startsWith("doi:") ||
+      idTextLower.startsWith("10.")
+    ) {
+      const doiMatch = idText.match(
+        /(?:doi:)?\s*(10\.\d{4,9}\/[-._;()/:A-Z0-9]+)/i,
+      );
+      if (doiMatch && !record.doi) record.doi = doiMatch[1];
     } else if (idTextLower.startsWith("isbn") || extractIsbn(idText)) {
       const isbn = extractIsbn(idText);
       if (isbn && !record.isbn) record.isbn = isbn;
     } else if (idTextLower.startsWith("issn") || extractIssn(idText)) {
       const issn = extractIssn(idText);
       if (issn && !record.issn) record.issn = issn;
-    } else if (
-      idTextLower.startsWith("doi:") ||
-      idTextLower.startsWith("10.")
-    ) {
-      const doiMatch = idText.match(
-        /(?:doi:)?(10\.\d{4,9}\/[-._;()/:A-Z0-9]+)/i,
-      );
-      if (doiMatch && !record.doi) record.doi = doiMatch[1];
     }
   }
 

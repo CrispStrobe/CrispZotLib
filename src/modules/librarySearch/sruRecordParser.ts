@@ -164,6 +164,41 @@ export function cleanPersonName(name: string): string {
   return n.trim().replace(/[,;\s]+$/, "");
 }
 
+// Role markers that DC creator/contributor strings carry ("Miller, Jane (Ed.)",
+// "Smith, John, ed.", "Müller, K. (Hrsg.)"). A bare "ed"/"hg" only counts when
+// abbreviated with a period, parenthesised, or after a comma, so first names
+// like "Ed" and endings like "Fred"/"Mohammed" are never mistaken for roles.
+const L = "(?<![\\p{L}])"; // letter boundary that also works for "ü"
+const R = "(?![\\p{L}])";
+const EDITOR_WORDS = "editors?|eds?\\.|hrsg\\.?|herausgeber(?:in)?|hg\\.";
+const TRANSLATOR_WORDS =
+  "translators?|trans\\.|transl\\.?|übersetz\\w*|übers\\.";
+export const EDITOR_ROLE_RE = new RegExp(
+  `${L}(?:${EDITOR_WORDS})${R}|\\((?:eds?|hg)\\.?\\)`,
+  "iu",
+);
+export const TRANSLATOR_ROLE_RE = new RegExp(
+  `${L}(?:${TRANSLATOR_WORDS})${R}|\\(trans\\.?\\)`,
+  "iu",
+);
+const ROLE_PAREN_RE = new RegExp(
+  `\\s*[([][^)\\]]*${L}(?:${EDITOR_WORDS}|${TRANSLATOR_WORDS}|eds?|hg|trans|edit\\w*)${R}[^)\\]]*[)\\]]`,
+  "giu",
+);
+const ROLE_TRAILING_RE = new RegExp(
+  `(?:,\\s*|\\s+)(?:${EDITOR_WORDS}|${TRANSLATOR_WORDS})\\s*$`,
+  "iu",
+);
+
+/** Remove role markers (see EDITOR_ROLE_RE) from a person-name string. */
+export function stripRoleMarkers(name: string): string {
+  return name
+    .replace(ROLE_PAREN_RE, "")
+    .replace(ROLE_TRAILING_RE, "")
+    .trim()
+    .replace(/[,;\s]+$/, "");
+}
+
 /**
  * Map DC `dc:type` free text (dcmitype terms + BnF French labels, possibly
  * several joined) to a document_type for non-text material, or "" for text /
@@ -238,17 +273,22 @@ export function parseSruDublinCore(
       /([^,]+),\s*(?:Vol(?:ume)?\.?\s*(\d+))?,?\s*(?:No\.?\s*(\d+))?,?\s*(?:pp\.?\s*(\d+(?:-\d+)?))?/.exec(
         source,
       );
-    if (journalMatch) {
+    // Only a journal citation when volume/issue/pages actually follow — a
+    // bare comma ("In: Handbook of Logic, Springer") is not enough.
+    if (
+      journalMatch &&
+      (journalMatch[2] || journalMatch[3] || journalMatch[4])
+    ) {
       result.journal_title = journalMatch[1]?.trim();
       result.volume = journalMatch[2];
       result.issue = journalMatch[3];
       result.pages = journalMatch[4];
       return result;
     }
-    if (/in:?/i.test(source)) {
-      const bookMatch = /in:?\s*([^,]+)/i.exec(source);
-      if (bookMatch) result.series = bookMatch[1]?.trim();
-    }
+    // "In: Host title, …" — anchored, so "in" inside a word ("Springer
+    // Berlin") is not mistaken for a host-item marker.
+    const bookMatch = /^\s*in:?\s+([^,]+)/i.exec(source);
+    if (bookMatch) result.series = bookMatch[1]?.trim();
     return result;
   };
 
@@ -264,23 +304,9 @@ export function parseSruDublinCore(
     name = cleanPersonName(name.trim());
     if (!name) return;
     let role = defaultRole || "author";
-    let cleanName = name;
-    if (/\b(?:ed(?:itor)?|hrsg|hg)\b|\(ed|\(hg/i.test(name)) {
-      role = "editor";
-    } else if (
-      /\b(?:trans|transl|translator|übersetz|übers)\b|\(trans|\(übers/i.test(
-        name,
-      )
-    ) {
-      role = "translator";
-    }
-    cleanName = cleanName
-      .replace(/\s*[([][^)]*(?:ed|hrsg|edit|hg|trans|übersetz)[^)]*[)\]]/g, "")
-      .replace(
-        /\s*(?:ed|hrsg|edit|hg|trans|transl|translator|übersetz|übers)\.?\s*$/g,
-        "",
-      )
-      .trim();
+    if (EDITOR_ROLE_RE.test(name)) role = "editor";
+    else if (TRANSLATOR_ROLE_RE.test(name)) role = "translator";
+    const cleanName = stripRoleMarkers(name);
     if (!cleanName || seenNames.has(cleanName)) return;
     seenNames.add(cleanName);
     if (role === "editor") record.editors.push(cleanName);
@@ -304,20 +330,26 @@ export function parseSruDublinCore(
   record.year = find("date")?.textContent?.match(/\b(1\d{3}|20\d{2})\b/)?.[1];
   record.publisher_name = find("publisher")?.textContent?.trim();
   findAll("identifier").forEach((elem) => {
-    const idText = elem.textContent?.trim().toLowerCase();
+    // Detect on a lowercased copy, but extract from the original text so URLs
+    // keep their case and a check digit "X" survives.
+    const idText = elem.textContent?.trim();
     if (!idText) return;
-    if (idText.includes("isbn")) {
+    const lower = idText.toLowerCase();
+    if (lower.includes("isbn")) {
       record.isbn =
-        idText.match(/(?:isbn[:\s]*)?(\d[\d\-X]+)/)?.[1] || record.isbn;
-    } else if (idText.includes("issn")) {
+        idText.match(/(?:isbn[:\s]*)?(\d[\d\-Xx]+)/i)?.[1]?.toUpperCase() ||
+        record.isbn;
+    } else if (lower.includes("issn")) {
       record.issn =
-        idText.match(/(?:issn[:\s]*)?(\d{4}-\d{3}[\dX])/)?.[1] || record.issn;
-    } else if (idText.includes("doi") || idText.includes("doi.org")) {
+        idText
+          .match(/(?:issn[:\s]*)?(\d{4}-\d{3}[\dXx])/i)?.[1]
+          ?.toUpperCase() || record.issn;
+    } else if (lower.includes("doi")) {
       record.doi =
         idText.match(
-          /(?:doi[:\s]*)?(?:https?:\/\/doi\.org\/)?(\d+\.\d+\/[^\s]+)/,
+          /(?:doi[:\s]*)?(?:https?:\/\/(?:dx\.)?doi\.org\/)?(\d+\.\d+\/[^\s]+)/i,
         )?.[1] || record.doi;
-    } else if (idText.startsWith("http")) {
+    } else if (lower.startsWith("http")) {
       record.urls.push(idText);
     }
   });
