@@ -4,9 +4,51 @@ import { BiblioRecord } from "./models";
 import { SRUClient } from "./sruClient";
 import { OAIClient } from "./oaiClient"; // Ensure this is the updated OAIClient
 import { SRU_ENDPOINTS, OAI_ENDPOINTS, IXTHEO_ENDPOINTS } from "./endpoints";
-import { getPref } from "../../utils/prefs";
 import { fetchWithTimeout } from "./httpUtils";
 import { isIxTheoChallenge, solveIxTheoPowFromHtml } from "./ixtheoPow";
+
+// MARC indicator pair in IxTheo's mnemonic export: digits, or blanks written
+// as "\\", " ", "_" or "#" ("=700  1\\$a…", "=245  10$a…").
+const MARC_IND = "[\\d\\\\ _#]{2}";
+// Trailing ISBD punctuation cataloguers put before the next subfield.
+const ISBD_TRAIL = /[\s/:;=,.]+$/;
+
+// Parallel IxTheo detail fetches. Unbounded Promise.all fired one request per
+// result at once; a small pool is gentler on the server and its PoW wall.
+const IXTHEO_DETAIL_CONCURRENCY = 4;
+
+/** Map items through an async fn with at most `limit` in flight; keeps order. */
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i]);
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, worker),
+  );
+  return out;
+}
+
+/** Drop undefined/null/""/[] so they don't overwrite good values in a spread merge. */
+function definedFields<T extends object>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(
+      ([, v]) =>
+        v !== undefined &&
+        v !== null &&
+        v !== "" &&
+        !(Array.isArray(v) && v.length === 0),
+    ),
+  ) as Partial<T>;
+}
 
 // Assuming SearchParams is correctly defined in integration.ts
 // import { SearchParams } from './integration'; // Adjust path if needed
@@ -462,7 +504,9 @@ export class SearchService {
       }
 
       // 4. Fetch detailed data for each result concurrently
-      const detailedRecordsPromises = parsedResults.map(
+      const detailedRecordsPromises = mapWithConcurrency(
+        parsedResults,
+        IXTHEO_DETAIL_CONCURRENCY,
         async ({ id, basicInfo }) => {
           try {
             log(
@@ -490,8 +534,10 @@ export class SearchService {
                 subjects: [],
                 // Overwrite with basic info first
                 ...basicInfo,
-                // Overwrite/add detailed info
-                ...detailedRecordData,
+                // Overwrite/add detailed info — only fields the detail
+                // parser actually found, so a missing MARC 245 or empty
+                // author list can't erase the list-page values.
+                ...definedFields(detailedRecordData),
                 // Ensure ID and schema are correct
                 id: id,
                 schema: `ixtheo-${params.format}`,
@@ -554,9 +600,7 @@ export class SearchService {
       );
 
       // Wait for all detail fetches and filter out nulls/errors if needed
-      const detailedRecords = (
-        await Promise.all(detailedRecordsPromises)
-      ).filter(
+      const detailedRecords = (await detailedRecordsPromises).filter(
         (record): record is BiblioRecord =>
           record !== null && record.schema !== "ixtheo-error",
       ); // Filter out nulls and error records
@@ -911,7 +955,8 @@ export class SearchService {
         );
       }
 
-      const contentType = response.headers.get("Content-Type");
+      // Media types are case-insensitive.
+      const contentType = response.headers.get("Content-Type")?.toLowerCase();
       const data = await response.text();
       log(
         `Response Content-Type for ${exportFormat} export ${recordId}: ${contentType}`,
@@ -1178,28 +1223,27 @@ export class SearchService {
       const findSubfield = (
         tag: string,
         code: string,
-        ind: string = "\\d\\d",
+        ind: string = MARC_IND,
       ) => {
         const r = new RegExp(
-          `=${tag}\\s+${ind}\\s+(?:\\$\\S[^$]*)*?\\$${code}([^$]+)`,
+          `=${tag}\\s+${ind}\\s*(?:\\$[^$\\n][^$\\n]*)*?\\$${code}([^$\\n]+)`,
         );
         const m = marcText.match(r);
-        return m ? m[1].trim().replace(/[/\s.;,]+$/, "") : undefined;
+        return m ? m[1].trim().replace(ISBD_TRAIL, "") : undefined;
       };
       const findSubfieldsInBlock = (
         tag: string,
         code: string,
-        ind: string = "\\d\\d",
+        ind: string = MARC_IND,
       ) => {
+        // Every occurrence of a repeatable field (co-authors, subjects, URLs),
+        // not just the first.
         const v: string[] = [];
-        const fr = new RegExp(`^=${tag}\\s+${ind}\\s+.*$`, "m");
-        const fm = marcText.match(fr);
-        if (fm) {
-          const fb = fm[0];
-          const sr = new RegExp(`\\$${code}([^$]+)`, "g");
-          let sm;
-          while ((sm = sr.exec(fb)) !== null)
-            v.push(sm[1].trim().replace(/[/\s.;,]+$/, ""));
+        const fr = new RegExp(`^=${tag}\\s+${ind}\\s*.*$`, "gm");
+        for (const fm of marcText.matchAll(fr)) {
+          const sr = new RegExp(`\\$${code}([^$\\n]+)`, "g");
+          for (const sm of fm[0].matchAll(sr))
+            v.push(sm[1].trim().replace(ISBD_TRAIL, ""));
         }
         return v;
       };
@@ -1211,14 +1255,14 @@ export class SearchService {
       if (a100) record.authors?.push(a100);
       record.authors?.push(...findSubfieldsInBlock("700", "a"));
       const eNames: string[] = [];
-      const r700 = /^=700\s+\d\d\s+.*$/gm;
+      const r700 = new RegExp(`^=700\\s+${MARC_IND}\\s*.*$`, "gm");
       let m700;
       while ((m700 = r700.exec(marcText)) !== null) {
         const fb = m700[0];
         const rm = fb.match(/\$e(.*?)(?:$|\$)/);
         const nm = fb.match(/\$a(.*?)(?:$|\$)/);
         if (rm && nm && rm[1].trim().match(/edt|Hrsg|hrsg|editeur|éditeur/i))
-          eNames.push(nm[1].trim().replace(/[/\s.;,]+$/, ""));
+          eNames.push(nm[1].trim().replace(ISBD_TRAIL, ""));
       }
       record.editors = eNames;
       if (record.authors && record.editors)
@@ -1240,7 +1284,8 @@ export class SearchService {
       record.language = findSubfield("041", "a");
       record.subjects = findSubfieldsInBlock("650", "a");
       record.abstract = findSubfield("520", "a");
-      const lm = marcText.match(/=LDR\s+(\S{24})/);
+      // The leader is 24 chars and contains blanks ("00000nam a2200000 c 4500").
+      const lm = marcText.match(/=LDR\s+(\d[^\n]{23})/);
       if (lm) {
         const l = lm[1];
         const tc = l.length > 6 ? l[6] : "?";
@@ -1263,7 +1308,7 @@ export class SearchService {
       } else if (ht) {
         record.series = ht;
       }
-      record.urls = findSubfieldsInBlock("856", "u", "4\\d");
+      record.urls = findSubfieldsInBlock("856", "u", "4[\\d\\\\ _#]");
       record.authors = record.authors || [];
       record.editors = record.editors || [];
       record.subjects = record.subjects || [];

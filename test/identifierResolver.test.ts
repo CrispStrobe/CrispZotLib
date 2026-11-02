@@ -135,4 +135,25 @@ describe("identifier network resolvers", () => {
     expect(result.year).toBe("2022");
     expect(result.doi).toBe("10.000/123");
   });
+
+  it("resolves PMCIDs against db=pmc, not PubMed", async () => {
+    fetchStub.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        result: { "5334499": { title: "PMC Title", authors: [] } },
+      }),
+    } as any);
+
+    const { resolveIdentifier } =
+      await import("../src/modules/librarySearch/identifierResolver");
+    const result = await resolveIdentifier("PMC5334499");
+    expect(fetchStub).toHaveBeenCalledWith(
+      expect.stringContaining("db=pmc&id=5334499"),
+      expect.any(Object),
+    );
+    expect(result.title).toBe("PMC Title");
+    expect(result.urls).toEqual([
+      "https://pmc.ncbi.nlm.nih.gov/articles/PMC5334499/",
+    ]);
+  });
 });

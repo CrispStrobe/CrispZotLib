@@ -96,6 +96,14 @@ export async function solveIxTheoChallenge(
   maxIters = 50_000_000,
 ): Promise<IxTheoPowToken> {
   const { nonce, ts, difficultyBits, ttlSeconds } = challenge;
+  // leadingZeroBits() only inspects the first 3 digest bytes (as the page
+  // does), so it can never report more than 24 — fail fast rather than burn
+  // maxIters hashes on an unsatisfiable target.
+  if (!(difficultyBits >= 0 && difficultyBits <= 24)) {
+    throw new Error(
+      `IxTheo PoW difficulty ${difficultyBits} bits is unsupported (max 24)`,
+    );
+  }
   const enc = new TextEncoder();
 
   for (let i = 0; i < maxIters; i++) {

@@ -133,19 +133,43 @@ export async function resolvePmid(
   pmid: string,
   timeoutMs = 15000,
 ): Promise<BiblioRecord> {
-  const pid = pmid.replace(/\D/g, "");
+  return resolveNcbi("pubmed", pmid, timeoutMs);
+}
+
+/**
+ * Resolve a PubMed Central ID ("PMC1234567"). PMCIDs are a separate number
+ * space from PMIDs, so they must be looked up in db=pmc — stripping "PMC" and
+ * querying PubMed returns an unrelated article.
+ */
+export async function resolvePmcid(
+  pmcid: string,
+  timeoutMs = 15000,
+): Promise<BiblioRecord> {
+  return resolveNcbi("pmc", pmcid, timeoutMs);
+}
+
+async function resolveNcbi(
+  db: "pubmed" | "pmc",
+  id: string,
+  timeoutMs: number,
+): Promise<BiblioRecord> {
+  const label = db === "pmc" ? "PMCID" : "PMID";
+  const pid = id.replace(/\D/g, "");
+  if (!pid) throw new Error(`${label} "${id}" has no digits`);
   const resp = await fetchWithTimeout(
-    `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=${pid}&retmode=json`,
+    `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=${db}&id=${pid}&retmode=json`,
     { "User-Agent": USER_AGENT },
     timeoutMs,
   );
   if (!resp.ok)
-    throw new Error(`PMID lookup failed: ${resp.status} ${resp.statusText}`);
+    throw new Error(
+      `${label} lookup failed: ${resp.status} ${resp.statusText}`,
+    );
   const j: any = await resp.json();
   const result = j.result?.[pid];
-  if (!result) throw new Error(`PMID ${pid} not found`);
+  if (!result || result.error) throw new Error(`${label} ${pid} not found`);
 
-  const rec = emptyRecord(pid);
+  const rec = emptyRecord(db === "pmc" ? `PMC${pid}` : pid);
   rec.title = result.title || "Untitled";
   rec.authors = (result.authors || []).map((a: any) => a.name).filter(Boolean);
   rec.year = (result.pubdate || "").split(" ")[0] || undefined;
@@ -156,7 +180,11 @@ export async function resolvePmid(
   rec.doi =
     (result.articleids || []).find((a: any) => a.idtype === "doi")?.value ||
     undefined;
-  rec.urls = [`https://pubmed.ncbi.nlm.nih.gov/${pid}/`];
+  rec.urls = [
+    db === "pmc"
+      ? `https://pmc.ncbi.nlm.nih.gov/articles/PMC${pid}/`
+      : `https://pubmed.ncbi.nlm.nih.gov/${pid}/`,
+  ];
   rec.document_type = "article-journal";
   rec.schema = "ncbi-esummary";
   rec.raw_data = JSON.stringify(result);
@@ -314,8 +342,9 @@ export async function resolveIdentifier(
     case "doi":
       return resolveDoi(identifier, timeoutMs);
     case "pmid":
-    case "pmcid":
       return resolvePmid(identifier, timeoutMs);
+    case "pmcid":
+      return resolvePmcid(identifier, timeoutMs);
     case "isbn":
       return resolveIsbn(identifier, timeoutMs);
     case "url":
