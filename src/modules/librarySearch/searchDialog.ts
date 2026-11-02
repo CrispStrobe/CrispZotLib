@@ -832,7 +832,6 @@ export async function openSearchDialog(): Promise<void> {
           const [success, results, totalRecords, initialOaiToken] =
             await LibrarySearchIntegration.executeSearch(searchParams);
           if (success && results && results.length > 0) {
-            addon.data.lastSearchResults = results;
             const searchDialogRef = addon.data.dialog;
             addon.data.dialog = undefined;
             if (searchDialogRef?.window && !searchDialogRef.window.closed) {

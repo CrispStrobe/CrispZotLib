@@ -7,7 +7,6 @@ import { openSearchDialog } from "./searchDialog";
 import { createStyledDialog } from "../../utils/dialogUtils";
 import { SearchService } from "./searchService";
 import { getString } from "../../utils/locale";
-import { config } from "../../../package.json";
 
 // Define a type for the search parameters needed for pagination
 export type SearchParams = {

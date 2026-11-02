@@ -41,7 +41,9 @@ export async function registerPrefsScripts(_window: Window) {
   // Apply theme to the preferences window
   ThemeUtils.applyTheme(_window);
 
-  // Set up theme change observer
+  // Set up theme change observer (replacing the one from a previous opening
+  // of the prefs pane, which would otherwise leak and keep that window alive)
+  addon.data.themeObserver?.disconnect();
   const themeObserver = ThemeUtils.observeThemeChanges((isDarkMode) => {
     if (addon.data.prefs?.window) {
       ThemeUtils.applyTheme(addon.data.prefs.window);

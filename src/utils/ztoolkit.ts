@@ -55,7 +55,11 @@ export { createZToolkit, safeConsole };
  * @param level Log level ('log', 'warn', 'error')
  * @param args Arguments to log
  */
-function safeLog(level: "log" | "warn" | "error", ...args: any[]): void {
+function safeLog(
+  level: "log" | "warn" | "error",
+  toConsole: boolean,
+  ...args: any[]
+): void {
   try {
     // Try to stringify objects for better logging
     const processed = args.map((arg) => {
@@ -74,7 +78,7 @@ function safeLog(level: "log" | "warn" | "error", ...args: any[]): void {
     });
 
     // First try regular console
-    if (typeof console !== "undefined" && console[level]) {
+    if (toConsole && typeof console !== "undefined" && console[level]) {
       console[level](...args);
     }
 
@@ -104,9 +108,9 @@ function safeLog(level: "log" | "warn" | "error", ...args: any[]): void {
  * Safe console implementation that works in all environments
  */
 const safeConsole = {
-  log: (...args: any[]) => safeLog("log", ...args),
-  warn: (...args: any[]) => safeLog("warn", ...args),
-  error: (...args: any[]) => safeLog("error", ...args),
+  log: (...args: any[]) => safeLog("log", true, ...args),
+  warn: (...args: any[]) => safeLog("warn", true, ...args),
+  error: (...args: any[]) => safeLog("error", true, ...args),
   // Add trace method that properly handles undefined console.trace
   trace: (...args: any[]) => {
     try {
@@ -117,13 +121,13 @@ const safeConsole = {
         console.trace(...args);
       } else {
         // Fallback to regular logging with stack trace info
-        safeLog("log", "[TRACE]", ...args);
+        safeLog("log", true, "[TRACE]", ...args);
 
         // Attempt to create a stack trace manually
         try {
           const err = new Error();
           if (err.stack) {
-            safeLog("log", err.stack.split("\n").slice(1).join("\n"));
+            safeLog("log", true, err.stack.split("\n").slice(1).join("\n"));
           }
         } catch (e) {
           // If even this fails, just continue
@@ -131,7 +135,7 @@ const safeConsole = {
       }
     } catch (e) {
       // Fallback to regular logging if tracing fails
-      safeLog("log", "[TRACE Fallback]", ...args);
+      safeLog("log", true, "[TRACE Fallback]", ...args);
     }
   },
   // Keep your existing group methods
@@ -140,11 +144,11 @@ const safeConsole = {
       if (typeof console !== "undefined" && console.group) {
         console.group(...args);
       } else {
-        safeLog("log", `GROUP START: ${args.join(" ")}`);
+        safeLog("log", true, `GROUP START: ${args.join(" ")}`);
       }
     } catch (e) {
       // Fallback to regular log
-      safeLog("log", ...args);
+      safeLog("log", true, ...args);
     }
   },
   groupEnd: () => {
@@ -152,7 +156,7 @@ const safeConsole = {
       if (typeof console !== "undefined" && console.groupEnd) {
         console.groupEnd();
       } else {
-        safeLog("log", "GROUP END");
+        safeLog("log", true, "GROUP END");
       }
     } catch (e) {
       // Nothing to do on error
@@ -209,9 +213,18 @@ function initZToolkit(_ztoolkit: ReturnType<typeof createZToolkit>) {
   _ztoolkit.basicOptions.log.prefix = `[${config.addonName}]`;
   _ztoolkit.basicOptions.log.disableConsole = env === "production";
 
-  // Override logging to use safeConsole
+  // Override logging. Call sites pass a trailing level ("log" | "warn" |
+  // "error") — honor it instead of printing it, and keep production builds
+  // off the browser console (Zotero.debug output only).
+  const LEVELS = new Set(["log", "warn", "error"]);
   _ztoolkit.log = function (message: any, ...optionalParams: any[]) {
-    safeConsole.log(message, ...optionalParams);
+    let level: "log" | "warn" | "error" = "log";
+    const last = optionalParams[optionalParams.length - 1];
+    if (typeof last === "string" && LEVELS.has(last)) {
+      level = last as typeof level;
+      optionalParams = optionalParams.slice(0, -1);
+    }
+    safeLog(level, env !== "production", message, ...optionalParams);
   };
 
   // UI options

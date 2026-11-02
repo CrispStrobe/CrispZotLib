@@ -2,7 +2,6 @@ import { config } from "../package.json";
 import { ColumnOptions, DialogHelper } from "zotero-plugin-toolkit";
 import hooks from "./hooks";
 import { createZToolkit } from "./utils/ztoolkit";
-import { BiblioRecord } from "./modules/librarySearch/models";
 
 class Addon {
   public data: {
@@ -24,10 +23,8 @@ class Addon {
       rows: Array<{ [dataKey: string]: string }>;
     };
     dialog?: DialogHelper;
-    lastSearchResults?: BiblioRecord[];
 
-    // Fields for theme support
-    mainThemeObserver?: MutationObserver;
+    // Prefs-pane theme observer (disconnected on shutdown / re-open)
     themeObserver?: MutationObserver;
   };
 
@@ -43,7 +40,6 @@ class Addon {
       config,
       env: __env__,
       ztoolkit: createZToolkit(),
-      lastSearchResults: [],
     };
     this.hooks = hooks;
     this.api = {};
