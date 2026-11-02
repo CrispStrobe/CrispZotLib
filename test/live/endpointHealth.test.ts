@@ -20,6 +20,7 @@ import {
   OAI_ENDPOINTS,
   SRU_ENDPOINTS,
 } from "../../src/modules/librarySearch/endpoints";
+import { parseRetryAfter } from "../../src/modules/librarySearch/httpUtils";
 import {
   parseIxTheoChallenge,
   solveIxTheoChallenge,
@@ -46,7 +47,8 @@ const HEADERS = {
 
 async function fetchText(url: string, timeoutMs: number, cookie?: string) {
   // One retry after a short pause: a transient ECONNRESET/timeout must not
-  // page anyone — only reproducible failures should.
+  // page anyone — only reproducible failures should. A 429 is retried once
+  // more, after the server's Retry-After (capped).
   for (let attempt = 0; ; attempt++) {
     try {
       const res = await fetch(url, {
@@ -55,11 +57,31 @@ async function fetchText(url: string, timeoutMs: number, cookie?: string) {
         redirect: "follow",
       });
       const text = await res.text();
+      if (res.status === 429 && attempt < 1) {
+        await sleep(parseRetryAfter(res.headers.get("retry-after")) ?? 5000);
+        continue;
+      }
       return { res, text };
     } catch (e) {
       if (attempt >= 1) throw e;
-      await new Promise((r) => setTimeout(r, 5000));
+      await sleep(5000);
     }
+  }
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// A host that answers 429 is alive and rate-limiting — typically the shared
+// GitHub-runner IP range (harvard did this 2026-10-26 and 2026-11-02, issue
+// #37). That is not endpoint rot, so on runners it skips instead of paging;
+// local `npm run probe:endpoints` runs still fail on it.
+function skipIfRateLimited(
+  ctx: { skip: (note?: string) => void },
+  id: string,
+  res: Response,
+) {
+  if (ON_RUNNER && res.status === 429) {
+    ctx.skip(`${id}: HTTP 429 (rate-limited on runner IPs)`);
   }
 }
 
@@ -67,7 +89,7 @@ describe.runIf(LIVE)("SRU endpoint health (live)", () => {
   for (const [id, ep] of Object.entries(SRU_ENDPOINTS)) {
     it.skipIf(ON_RUNNER && CLOUD_BLOCKED_SRU.has(id))(
       `${id}: title example query returns hits`,
-      async () => {
+      async (ctx) => {
         const params = new URLSearchParams({
           operation: "searchRetrieve",
           version: ep.version ?? "1.1",
@@ -81,6 +103,7 @@ describe.runIf(LIVE)("SRU endpoint health (live)", () => {
           `${ep.url}?${params.toString()}`,
           40_000,
         );
+        skipIfRateLimited(ctx, id, res);
         expect(res.ok, `${id}: HTTP ${res.status}`).toBe(true);
         const m = text.match(/numberOfRecords[^>]*>\s*(\d+)/);
         expect(
@@ -99,8 +122,9 @@ describe.runIf(LIVE)("SRU endpoint health (live)", () => {
 
 describe.runIf(LIVE)("OAI-PMH endpoint health (live)", () => {
   for (const [id, ep] of Object.entries(OAI_ENDPOINTS)) {
-    it(`${id}: Identify answers and default metadata prefix is offered`, async () => {
+    it(`${id}: Identify answers and default metadata prefix is offered`, async (ctx) => {
       const { res, text } = await fetchText(`${ep.url}?verb=Identify`, 60_000);
+      skipIfRateLimited(ctx, id, res);
       expect(res.ok, `${id}: HTTP ${res.status}`).toBe(true);
       expect(
         /<(\w+:)?Identify[\s>]/.test(text),
@@ -112,6 +136,7 @@ describe.runIf(LIVE)("OAI-PMH endpoint health (live)", () => {
         `${ep.url}?verb=ListMetadataFormats`,
         60_000,
       );
+      skipIfRateLimited(ctx, id, res2);
       expect(res2.ok, `${id}: ListMetadataFormats HTTP ${res2.status}`).toBe(
         true,
       );
