@@ -47,13 +47,18 @@ export function extractIsbn(text: string): string | null {
   if (!text) return null;
   const candidates = text.match(/[0-9][0-9\- ]{8,}[0-9Xx]/g);
   if (!candidates) return null;
+  const valid = (d: string) =>
+    (d.length === 10 && isValidIsbn10(d)) ||
+    (d.length === 13 && isValidIsbn13(d));
   for (const c of candidates) {
     const digits = c.replace(/[\s-]/g, "").toUpperCase();
-    if (
-      (digits.length === 10 && isValidIsbn10(digits)) ||
-      (digits.length === 13 && isValidIsbn13(digits))
-    ) {
-      return digits;
+    if (valid(digits)) return digits;
+    // The candidate regex allows spaces, so an ISBN followed by another
+    // number ("978-3-16-148410-0 2020") merges into one run; try each
+    // space-separated part on its own.
+    for (const part of c.split(/\s+/)) {
+      const d = part.replace(/-/g, "").toUpperCase();
+      if (valid(d)) return d;
     }
   }
   return null;
