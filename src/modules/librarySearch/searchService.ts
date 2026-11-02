@@ -37,6 +37,20 @@ async function mapWithConcurrency<T, R>(
   return out;
 }
 
+/** Escape a value for use inside a double-quoted CQL term. */
+export function cqlEscape(value: string): string {
+  return value.replace(/[\\"]/g, "\\$&");
+}
+
+/**
+ * A value for an unquoted `index=value` CQL clause: left bare when it is
+ * plain words, quoted+escaped when it contains CQL syntax characters that
+ * would otherwise make the query invalid.
+ */
+export function cqlBareTerm(value: string): string {
+  return /[()<>=/"\\]/.test(value) ? `"${cqlEscape(value)}"` : value;
+}
+
 /** Drop undefined/null/""/[] so they don't overwrite good values in a spread merge. */
 function definedFields<T extends object>(obj: T): Partial<T> {
   return Object.fromEntries(
@@ -1502,14 +1516,14 @@ export class SearchService {
       author: "PER",
       isbn: "NUM",
       rel: "=",
-      allFields: (t) => `woe=${t}`,
+      allFields: (t) => `woe=${cqlBareTerm(t)}`,
     },
     zdb: {
       title: "TIT",
       author: "PER",
       isbn: "ISS",
       rel: "=",
-      allFields: (t) => `woe=${t}`,
+      allFields: (t) => `woe=${cqlBareTerm(t)}`,
     },
     bnf: {
       title: "bib.title",
@@ -1531,7 +1545,7 @@ export class SearchService {
       const searchTerm = params.allFieldsTerm.trim();
       return family?.allFields
         ? family.allFields(searchTerm)
-        : `cql.anywhere all "${searchTerm}"`;
+        : `cql.anywhere all "${cqlEscape(searchTerm)}"`;
     }
 
     const queryParts: string[] = [];
@@ -1544,14 +1558,20 @@ export class SearchService {
     ): string | null => {
       if (!value?.trim()) return null;
       const trimmedValue = value.trim();
+      // CQL escaping: inside quotes, backslash-escape \ and ". A bare term
+      // that contains CQL syntax characters ("TCP/IP", "C++ (Programming)")
+      // is a syntax error, so quote it; plain words stay bare so existing
+      // search semantics are unchanged.
+      const quoted = cqlEscape(trimmedValue);
+      const bare = cqlBareTerm(trimmedValue);
 
       // --- Data-driven index family for endpoints with a known CQL family ---
       if (family) {
         const index = family[key];
         if (index) {
           return family.rel === "="
-            ? `${index}=${trimmedValue}`
-            : `${index} ${family.rel} "${trimmedValue}"`;
+            ? `${index}=${bare}`
+            : `${index} ${family.rel} "${quoted}"`;
         }
         // No index defined for this key (e.g. no ISBN) — fall through to generic.
       }
@@ -1566,25 +1586,25 @@ export class SearchService {
             const prefix = parts[0].trim();
             const suffixTemplate = parts[1] || ""; // Default to empty string if no suffix part
             return suffixTemplate.trim().startsWith('"')
-              ? `${prefix}="${trimmedValue}"`
-              : `${prefix}=${trimmedValue}`;
+              ? `${prefix}="${quoted}"`
+              : `${prefix}=${bare}`;
           } else if (example.includes(" any ")) {
             const [prefix] = example.split(" any ", 1);
-            return `${prefix} any "${trimmedValue}"`;
+            return `${prefix} any "${quoted}"`;
           } else if (example.includes(" all ")) {
             const [prefix] = example.split(" all ", 1);
-            return `${prefix} all "${trimmedValue}"`;
+            return `${prefix} all "${quoted}"`;
           } else {
             // Assume it's just a prefix if no operator/equals found
-            return `${example}=${trimmedValue}`; // Default to equals if unsure
+            return `${example}=${bare}`; // Default to equals if unsure
           }
         } else if (typeof example === "object" && example !== null) {
           const prefix = example.prefix || "";
           const operator = example.operator || "="; // Default operator
           if (prefix) {
             return operator === "="
-              ? `${prefix}${trimmedValue}`
-              : `${prefix} ${operator} "${trimmedValue}"`;
+              ? `${prefix}${bare}`
+              : `${prefix} ${operator} "${quoted}"`;
           }
         }
       }
@@ -1595,16 +1615,16 @@ export class SearchService {
       switch (key) {
         case "isbn":
           return endpointId === "bnf"
-            ? `bib.isbn any "${trimmedValue}"`
-            : `isbn=${trimmedValue}`;
+            ? `bib.isbn any "${quoted}"`
+            : `isbn=${bare}`;
         case "author":
           return endpointId === "bnf"
-            ? `bib.author any "${trimmedValue}"`
-            : `author="${trimmedValue}"`;
+            ? `bib.author any "${quoted}"`
+            : `author="${quoted}"`;
         case "title":
           return endpointId === "bnf"
-            ? `bib.title any "${trimmedValue}"`
-            : `title="${trimmedValue}"`;
+            ? `bib.title any "${quoted}"`
+            : `title="${quoted}"`;
       }
       return null;
     };

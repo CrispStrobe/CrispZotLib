@@ -17,7 +17,27 @@ export type IdentifierType = "doi" | "pmid" | "pmcid" | "isbn" | "url";
 const USER_AGENT =
   "CrispZotLib-IdentifierResolver/1.0 (+https://github.com/CrispStrobe/CrispZotLib)";
 
-const DOI_RE = /\b(10\.\d{4,9}\/[-._;()/:A-Z0-9]+)\b/i;
+// DOI suffixes may contain almost anything (SICI DOIs carry "<", ">", ";",
+// and end in ")"), so match up to whitespace/quotes and trim afterwards
+// (see cleanDoi) rather than ending on a word boundary.
+const DOI_RE = /\b(10\.\d{4,9}\/[^\s"']+)/i;
+
+/**
+ * Trim sentence punctuation a DOI picked up from surrounding text, and a
+ * closing ")" or "]" only when it is unbalanced ("(see 10.1000/x)").
+ */
+export function cleanDoi(doi: string): string {
+  let d = doi.replace(/[.,;:]+$/, "");
+  for (const [open, close] of [
+    ["(", ")"],
+    ["[", "]"],
+  ]) {
+    while (d.endsWith(close) && d.split(close).length > d.split(open).length) {
+      d = d.slice(0, -1).replace(/[.,;:]+$/, "");
+    }
+  }
+  return d;
+}
 const URL_RE = /^https?:\/\//i;
 
 function emptyRecord(id: string): BiblioRecord {
@@ -73,10 +93,12 @@ export async function resolveDoi(
 ): Promise<BiblioRecord> {
   const m = DOI_RE.exec(doi);
   const doiClean = m
-    ? m[1]
+    ? cleanDoi(m[1])
     : doi.trim().replace(/^doi:/i, "").replace(/^\//, "").trim();
+  // Encode each path segment so "#", "?", "<" etc. in the suffix reach
+  // doi.org instead of being read as URL syntax.
   const resp = await fetchWithTimeout(
-    `https://doi.org/${doiClean}`,
+    `https://doi.org/${doiClean.split("/").map(encodeURIComponent).join("/")}`,
     {
       Accept: "application/vnd.citationstyles.csl+json",
       "User-Agent": USER_AGENT,

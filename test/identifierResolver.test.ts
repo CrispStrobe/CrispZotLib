@@ -157,3 +157,19 @@ describe("identifier network resolvers", () => {
     ]);
   });
 });
+
+describe("cleanDoi", () => {
+  it("keeps a SICI DOI's balanced parentheses and angle brackets", async () => {
+    const { cleanDoi } =
+      await import("../src/modules/librarySearch/identifierResolver");
+    const sici =
+      "10.1002/(SICI)1097-4636(199711)36:2<240::AID-JBM14>3.0.CO;2-I";
+    expect(cleanDoi(sici)).toBe(sici);
+  });
+  it("drops trailing sentence punctuation and an unbalanced ')'", async () => {
+    const { cleanDoi } =
+      await import("../src/modules/librarySearch/identifierResolver");
+    expect(cleanDoi("10.1000/xyz123).")).toBe("10.1000/xyz123");
+    expect(cleanDoi("10.1000/abc(1)")).toBe("10.1000/abc(1)");
+  });
+});
