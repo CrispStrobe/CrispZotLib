@@ -1,5 +1,41 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- **OAI-PMH paging no longer skips records.** A harvested page (DNB: 50
+  records) was cut to the requested size, but "Next" followed the server's
+  token past the whole page. Whole pages are now shown, and a failed
+  Previous/Next no longer desyncs the page history.
+- **Rate limits are retried.** HTTP 429 now counts as transient, and the
+  retry waits for the server's `Retry-After` (capped at 10 s). The weekly
+  endpoint probe skips a host that is rate-limiting GitHub's runners
+  instead of reporting it dead (issue #37, harvard).
+- **Better metadata from Dublin Core and MARC.**
+  - ISBN/ISSN check digit "X" and URL case are kept.
+  - Names ending in "ed" ("Smith, Fred") are no longer truncated.
+  - "TCP/IP"-style titles stay whole.
+  - Springer DOIs that embed an ISBN stay DOIs.
+  - ISBD punctuation is stripped from MARC titles.
+  - Choosing "DC" on DNB/ZDB uses the proper Dublin Core parser.
+- **IxTheo.** All co-authors, subjects and URLs come through (only the
+  first of each was kept). Detail data no longer erases list-page values,
+  and detail fetches are rate-capped.
+- **Searches with special characters** ("TCP/IP", quotes) produce valid CQL.
+- **PMCIDs** resolve via PubMed Central (they previously hit unrelated
+  PubMed articles). DOIs ending in ")" or containing "<>" are kept intact.
+- **Security:** remote OAI set names are no longer inserted as HTML.
+- **Clean shutdown:** the error handler and the theme observers are now
+  removed when the add-on is disabled.
+
+### Maintenance
+
+- Updated all dependencies, including zotero-plugin-toolkit 6 and GitHub
+  Actions v7. `npm audit` is clean. TypeScript stays on 6.0 until
+  typescript-eslint supports 7.
+- Removed unused modules.
+
 ## 0.2.0
 
 Catalogue coverage, correctness, and the record → Zotero handoff. See `PLAN.md`
