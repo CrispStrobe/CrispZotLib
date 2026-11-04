@@ -135,4 +135,41 @@ describe("identifier network resolvers", () => {
     expect(result.year).toBe("2022");
     expect(result.doi).toBe("10.000/123");
   });
+
+  it("resolves PMCIDs against db=pmc, not PubMed", async () => {
+    fetchStub.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        result: { "5334499": { title: "PMC Title", authors: [] } },
+      }),
+    } as any);
+
+    const { resolveIdentifier } =
+      await import("../src/modules/librarySearch/identifierResolver");
+    const result = await resolveIdentifier("PMC5334499");
+    expect(fetchStub).toHaveBeenCalledWith(
+      expect.stringContaining("db=pmc&id=5334499"),
+      expect.any(Object),
+    );
+    expect(result.title).toBe("PMC Title");
+    expect(result.urls).toEqual([
+      "https://pmc.ncbi.nlm.nih.gov/articles/PMC5334499/",
+    ]);
+  });
+});
+
+describe("cleanDoi", () => {
+  it("keeps a SICI DOI's balanced parentheses and angle brackets", async () => {
+    const { cleanDoi } =
+      await import("../src/modules/librarySearch/identifierResolver");
+    const sici =
+      "10.1002/(SICI)1097-4636(199711)36:2<240::AID-JBM14>3.0.CO;2-I";
+    expect(cleanDoi(sici)).toBe(sici);
+  });
+  it("drops trailing sentence punctuation and an unbalanced ')'", async () => {
+    const { cleanDoi } =
+      await import("../src/modules/librarySearch/identifierResolver");
+    expect(cleanDoi("10.1000/xyz123).")).toBe("10.1000/xyz123");
+    expect(cleanDoi("10.1000/abc(1)")).toBe("10.1000/abc(1)");
+  });
 });

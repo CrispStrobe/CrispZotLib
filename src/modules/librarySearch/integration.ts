@@ -7,7 +7,6 @@ import { openSearchDialog } from "./searchDialog";
 import { createStyledDialog } from "../../utils/dialogUtils";
 import { SearchService } from "./searchService";
 import { getString } from "../../utils/locale";
-import { config } from "../../../package.json";
 
 // Define a type for the search parameters needed for pagination
 export type SearchParams = {
@@ -44,7 +43,9 @@ export interface ResultsDialogData {
   // page so "Previous" can re-fetch (index 0 = page 1, fetched with no token).
   oaiNextToken?: string;
   oaiTokenStack?: (string | undefined)[];
-  loadCallback?: (window: Window) => void;
+  // Start record of each page on oaiTokenStack (OAI pages are server-sized).
+  oaiStartStack?: number[];
+  loadCallback?: () => void;
   unloadCallback?: () => void;
 }
 
@@ -115,9 +116,13 @@ export class LibrarySearchIntegration {
       isLoading: false,
       oaiNextToken: initialOaiToken,
       oaiTokenStack: [undefined], // page 1 was reached with no token
+      oaiStartStack: [1],
 
-      loadCallback: (window: Window) => {
-        console.log("Results dialog opened");
+      // The toolkit invokes loadCallback() with no arguments; take the
+      // window from the helper instead.
+      loadCallback: () => {
+        const window = dialogHelper.window;
+        if (!window) return;
         if (window.document && window.document.body) {
           window.document.body.classList.add("librarysearch-dialog");
           // Add class to body for overall dialog styling if needed
@@ -129,7 +134,6 @@ export class LibrarySearchIntegration {
         updatePaginationControls(window.document, dialogData);
       },
       unloadCallback: () => {
-        console.log("Results dialog closed");
         if (addon.data.dialog === dialogHelper) {
           addon.data.dialog = undefined;
         }
@@ -326,17 +330,20 @@ export class LibrarySearchIntegration {
                   dialogData.currentStartRecord -
                   dialogData.searchParams.maxRecords;
                 if (isOaiPagination(dialogData.searchParams)) {
-                  const stack = dialogData.oaiTokenStack || [undefined];
-                  if (stack.length <= 1) return; // already on page 1
-                  stack.pop(); // discard the token that reached the current page
-                  const prevToken = stack[stack.length - 1]; // token that reached the previous page
-                  if (newStartRecord >= 1) {
-                    await fetchAndDisplayPage(
-                      newStartRecord,
-                      dialogData,
-                      dialogHelper.window.document,
-                      prevToken,
-                    );
+                  const tokens = (dialogData.oaiTokenStack ||= [undefined]);
+                  const starts = (dialogData.oaiStartStack ||= [1]);
+                  if (tokens.length <= 1) return; // already on page 1
+                  // Re-fetch the previous page with the token that reached it;
+                  // pop the current page only once that succeeded.
+                  const ok = await fetchAndDisplayPage(
+                    starts[starts.length - 2] ?? 1,
+                    dialogData,
+                    dialogHelper.window.document,
+                    tokens[tokens.length - 2],
+                  );
+                  if (ok) {
+                    tokens.pop();
+                    starts.pop();
                   }
                 } else if (newStartRecord >= 1) {
                   await fetchAndDisplayPage(
@@ -374,13 +381,21 @@ export class LibrarySearchIntegration {
                 if (isOaiPagination(dialogData.searchParams)) {
                   const token = dialogData.oaiNextToken;
                   if (!token) return; // no more pages
-                  (dialogData.oaiTokenStack ||= [undefined]).push(token); // token used to reach the next page
-                  await fetchAndDisplayPage(
-                    newStartRecord,
+                  // OAI pages are server-sized: the next page starts right
+                  // after the records currently shown.
+                  const nextStart =
+                    dialogData.currentStartRecord +
+                    dialogData.searchResults.length;
+                  const ok = await fetchAndDisplayPage(
+                    nextStart,
                     dialogData,
                     dialogHelper.window.document,
                     token,
                   );
+                  if (ok) {
+                    (dialogData.oaiTokenStack ||= [undefined]).push(token);
+                    (dialogData.oaiStartStack ||= [1]).push(nextStart);
+                  }
                 } else if (newStartRecord <= dialogData.totalRecords) {
                   await fetchAndDisplayPage(
                     newStartRecord,
@@ -468,7 +483,8 @@ export class LibrarySearchIntegration {
       dialogData: ResultsDialogData,
       doc: Document, // Pass the document context
       oaiToken?: string, // For OAI: the resumption token that fetches this page
-    ): Promise<void> {
+    ): Promise<boolean> {
+      let ok = false;
       dialogData.isLoading = true;
       updatePaginationControls(doc, dialogData, "Loading..."); // Update status/buttons
 
@@ -487,6 +503,7 @@ export class LibrarySearchIntegration {
           // Token to fetch the page *after* this one (undefined => no more pages).
           dialogData.oaiNextToken = nextToken;
           dialogData.selectedResults = []; // Clear selection
+          ok = true;
 
           const resultsContainer = doc.getElementById("results-container");
           if (resultsContainer) {
@@ -512,8 +529,12 @@ export class LibrarySearchIntegration {
         if (statusEl) statusEl.textContent = "Error loading results.";
       } finally {
         dialogData.isLoading = false;
-        updatePaginationControls(doc, dialogData); // Update status/buttons
+        // Keep an error message visible; otherwise refresh the status line.
+        if (ok) updatePaginationControls(doc, dialogData);
+        else
+          updatePaginationControls(doc, dialogData, "Error loading results.");
       }
+      return ok;
     }
   }
 
@@ -783,11 +804,25 @@ function updatePaginationControls(
     if (statusText) {
       statusLabel.textContent = statusText;
     } else {
-      const endRecord = Math.min(
-        dialogData.currentStartRecord + dialogData.searchParams.maxRecords - 1,
-        dialogData.totalRecords,
-      );
-      statusLabel.textContent = `Showing ${dialogData.currentStartRecord}-${endRecord} of ${dialogData.totalRecords}`; // Simplified text
+      const start = dialogData.currentStartRecord;
+      const shown = dialogData.searchResults.length;
+      let endRecord: number;
+      let total = dialogData.totalRecords;
+      if (isOaiPagination(dialogData.searchParams)) {
+        // Server-sized pages; completeListSize is optional, so never show a
+        // total smaller than what has already been paged through.
+        endRecord = start + shown - 1;
+        total = Math.max(total, endRecord);
+      } else {
+        endRecord = Math.min(
+          start + dialogData.searchParams.maxRecords - 1,
+          total,
+        );
+      }
+      statusLabel.textContent =
+        shown === 0
+          ? `No results (${total} total)`
+          : `Showing ${start}-${endRecord} of ${total}`;
     }
   }
 

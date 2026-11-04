@@ -1,20 +1,21 @@
 // src/errorHandling.ts
 
+// Undo actions for everything installed below, run by teardownErrorHandling()
+// from onShutdown. Without this, every disable/enable cycle stacked another
+// capture listener and window2 getter on the main window that pointed into
+// the unloaded plugin sandbox ("dead object" errors).
+const cleanups: Array<() => void> = [];
+
 /**
  * Safely patches window2 references and sets up error handling
  * This should be imported early in the bootstrap process
  */
 export function setupErrorHandling() {
   try {
-    // Patch window2 access
     patchWindow2Access();
-
-    // Setup appropriate error handlers based on environment
     setupErrorListeners();
-
     Zotero.debug("[LibrarySearch] Error handling system initialized");
   } catch (e) {
-    // Last-resort error logging
     try {
       Zotero.debug("[LibrarySearch] Failed to setup error handling: " + e);
     } catch (_) {
@@ -23,113 +24,79 @@ export function setupErrorHandling() {
   }
 }
 
+/** Remove the listener and window2 patch installed by setupErrorHandling. */
+export function teardownErrorHandling() {
+  while (cleanups.length) {
+    try {
+      cleanups.pop()!();
+    } catch (_) {
+      // The window may already be gone; nothing to undo.
+    }
+  }
+}
+
 /**
- * Patches access to window2 which is used by some debugging tools
+ * Define `window2` on the main window for toolkit code that expects it.
+ * (zotero-plugin-toolkit <6 registered a debug bridge that read it; the old
+ * BasicTool.getZotero monkey-patch for that bridge is no longer needed.)
  */
 function patchWindow2Access() {
   try {
-    // Get the main Zotero window
-    const mainWindow = getZoteroWindow();
-
-    if (mainWindow) {
-      // Define a window2 property that just returns the main window
-      const mainWindowAny = mainWindow as any;
-
-      if (!Object.prototype.hasOwnProperty.call(mainWindowAny, "window2")) {
-        Object.defineProperty(mainWindowAny, "window2", {
-          get: function () {
-            return mainWindow;
-          },
-          configurable: true,
-        });
-      }
-
-      // Also patch BasicTool.getZotero if it exists
-      if (mainWindowAny.BasicTool && mainWindowAny.BasicTool.getZotero) {
-        const originalGetZotero = mainWindowAny.BasicTool.getZotero;
-        mainWindowAny.BasicTool.getZotero = function () {
-          const _Zotero = originalGetZotero();
-          if (_Zotero) {
-            // Add _toolkitGlobal if it doesn't exist
-            const zoteroAny = _Zotero as any;
-            if (!zoteroAny._toolkitGlobal) {
-              zoteroAny._toolkitGlobal = {
-                debugBridge: {
-                  version: 0,
-                  disableDebugBridgePassword: true,
-                  password: "",
-                  initializeDebugBridge: function () {},
-                },
-                pluginBridge: {
-                  version: 0,
-                  initializePluginBridge: function () {},
-                },
-                currentWindow: mainWindow,
-              };
-            }
-          }
-          return _Zotero;
-        };
-      }
+    const mainWindow = getZoteroWindow() as any;
+    if (
+      mainWindow &&
+      !Object.prototype.hasOwnProperty.call(mainWindow, "window2")
+    ) {
+      Object.defineProperty(mainWindow, "window2", {
+        get: () => mainWindow,
+        configurable: true,
+      });
+      cleanups.push(() => {
+        delete mainWindow.window2;
+      });
     }
   } catch (e) {
     Zotero.debug("[LibrarySearch] Error patching window2: " + e);
   }
 }
 
+// Known-noisy messages from old toolkit/console shims that we swallow.
+const SUPPRESSED_ERRORS = [
+  "_console.trace is not a function",
+  "window2 is undefined",
+  "Attempt to override an existing message",
+];
+
 /**
  * Sets up error listeners in the appropriate context
  */
 function setupErrorListeners() {
   try {
-    // Get the appropriate window to attach the listener to
     const targetWindow = getTargetWindow();
-
-    if (targetWindow) {
-      // Add the error listener to the appropriate window
-      (targetWindow as any).addEventListener(
-        "error",
-        function (event: any) {
-          try {
-            if (typeof Zotero !== "undefined" && Zotero.debug) {
-              const message = event.message || "Unknown error";
-              const filename = event.filename || "unknown";
-              const lineno = event.lineno || 0;
-
-              Zotero.debug(
-                "[UNCAUGHT ERROR] " +
-                  message +
-                  " at " +
-                  filename +
-                  ":" +
-                  lineno,
-              );
-
-              // Prevent the error from showing in the console if it's related to our known issues
-              if (
-                message &&
-                (message.includes("_console.trace is not a function") ||
-                  message.includes("window2 is undefined") ||
-                  message.includes("Attempt to override an existing message"))
-              ) {
-                event.preventDefault();
-                return true;
-              }
-            }
-          } catch (e) {
-            // If even our error handler fails, just let the default handler run
-          }
-          return false;
-        },
-        true,
-      );
-
-      Zotero.debug("[LibrarySearch] Successfully registered error handler");
-    } else {
+    if (!targetWindow) {
       Zotero.debug(
         "[LibrarySearch] Skip registering error handler - no suitable target window",
       );
+      return;
     }
+    const onError = (event: ErrorEvent) => {
+      try {
+        const message = event.message || "Unknown error";
+        Zotero.debug(
+          `[UNCAUGHT ERROR] ${message} at ${event.filename || "unknown"}:${event.lineno || 0}`,
+        );
+        if (SUPPRESSED_ERRORS.some((m) => message.includes(m))) {
+          event.preventDefault();
+        }
+      } catch (_) {
+        // If even our error handler fails, just let the default handler run
+      }
+    };
+    targetWindow.addEventListener("error", onError, true);
+    cleanups.push(() =>
+      targetWindow.removeEventListener("error", onError, true),
+    );
+    Zotero.debug("[LibrarySearch] Successfully registered error handler");
   } catch (e) {
     Zotero.debug("[LibrarySearch] Error setting up error listeners: " + e);
   }

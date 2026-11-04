@@ -2,7 +2,7 @@ import { getString, initLocale } from "./utils/locale";
 import { registerPrefsScripts } from "./modules/preferenceScript";
 import { createZToolkit } from "./utils/ztoolkit";
 import { initializeLibrarySearch } from "./modules/librarySearch/index";
-import { ThemeUtils } from "./modules/themeUtils";
+import { teardownErrorHandling } from "./errorHandling";
 import { NotificationService } from "./modules/librarySearch/notificationService";
 
 async function onStartup() {
@@ -96,15 +96,6 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
 
       // Add to the tools menu
       registerToolsMenuItem(win);
-
-      // Set up theme change observer for main window
-      const themeObserver = ThemeUtils.observeThemeChanges((isDarkMode) => {
-        // Update theme-dependent UI elements if needed
-        ztoolkit.log(`Theme changed to ${isDarkMode ? "dark" : "light"} mode`);
-      });
-
-      // Store the observer in addon data so it can be cleaned up later
-      addon.data.mainThemeObserver = themeObserver;
 
       popupWin.changeLine({
         progress: 100,
@@ -262,12 +253,6 @@ function registerToolsMenuItem(win: _ZoteroTypes.MainWindow) {
 
 async function onMainWindowUnload(win: Window): Promise<void> {
   try {
-    // Disconnect theme observers
-    if (addon.data.mainThemeObserver) {
-      addon.data.mainThemeObserver.disconnect();
-      addon.data.mainThemeObserver = undefined;
-    }
-
     ztoolkit.unregisterAll();
     if (addon.data.dialog?.window && !addon.data.dialog.window.closed) {
       addon.data.dialog.window.close();
@@ -281,14 +266,9 @@ function onShutdown(): void {
   try {
     ztoolkit.log("Plugin shutting down");
 
-    // Disconnect all theme observers
-    if (addon.data.mainThemeObserver) {
-      addon.data.mainThemeObserver.disconnect();
-    }
-
-    if (addon.data.themeObserver) {
-      addon.data.themeObserver.disconnect();
-    }
+    addon.data.themeObserver?.disconnect();
+    addon.data.themeObserver = undefined;
+    teardownErrorHandling();
 
     ztoolkit.unregisterAll();
 

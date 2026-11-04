@@ -27,6 +27,9 @@ describe("extractIsbn", () => {
   it("pulls a hyphenated ISBN-13 out of noisy text with a price qualifier", () => {
     expect(extractIsbn("978-3-16-148410-0 : EUR 24.00")).toBe("9783161484100");
   });
+  it("separates an ISBN from a following number (e.g. a year)", () => {
+    expect(extractIsbn("978-3-16-148410-0 2020")).toBe("9783161484100");
+  });
   it("pulls an ISBN-10 with X check digit", () => {
     expect(extractIsbn("ISBN 0-8044-2957-X (pbk.)")).toBe("080442957X");
   });

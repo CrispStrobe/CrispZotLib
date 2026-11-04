@@ -85,7 +85,8 @@ export class OAIClient {
    * @param from_date Optional start date (YYYY-MM-DD or YYYY-MM-DDTHH:mm:ssZ).
    * @param until_date Optional end date (YYYY-MM-DD or YYYY-MM-DDTHH:mm:ssZ).
    * @param filterQuery Optional dictionary of terms for local filtering (e.g., { title: "...", author: "..." }).
-   * @param max_results Maximum number of results to return *after* filtering.
+   * @param _max_results Unused: OAI pages are server-sized and returned whole
+   *                     (see pageResult). Kept for call-site compatibility.
    * @param resumptionToken Optional token for fetching the next page of results.
    * @returns A Promise resolving to a tuple: [estimated total count, array of BiblioRecord, next resumption token or null].
    */
@@ -95,7 +96,7 @@ export class OAIClient {
     from_date?: string,
     until_date?: string,
     filterQuery: Record<string, string> = {},
-    max_results: number = 10,
+    _max_results: number = 10,
     resumptionToken?: string,
   ): Promise<[number, BiblioRecord[], string | null]> {
     const logPrefix = "[OAIClient.search]";
@@ -122,25 +123,7 @@ export class OAIClient {
           resumptionToken, // THE important part
         );
 
-        // Apply filtering and limit
-        const filteredRecords =
-          Object.keys(filterQuery).length > 0
-            ? records.filter((record) =>
-                this.record_matches_query(record, filterQuery),
-              )
-            : records;
-
-        const finalRecords = filteredRecords.slice(0, max_results);
-        // Note: The 'total' returned by listOrResumeRecords might be from the token,
-        // but it refers to the *original* query, not the filtered count.
-        // Returning filteredRecords.length might be more accurate for the current page context.
-        console.log(
-          `${logPrefix} Resumption returned ${records.length} records, filtered to ${finalRecords.length}. Next token: ${nextToken}`,
-        );
-        ztoolkit.log(
-          `${logPrefix} Resumption returned ${records.length}, filtered to ${finalRecords.length}.`,
-        );
-        return [filteredRecords.length, finalRecords, nextToken]; // Return filtered count for this page
+        return this.pageResult(records, total, nextToken, filterQuery);
       }
 
       // --- Handle Initial Search (No Resumption Token) ---
@@ -171,28 +154,40 @@ export class OAIClient {
         undefined, // No resumption token for initial request
       );
 
-      // Apply filtering and limit
-      const filteredRecords =
-        Object.keys(filterQuery).length > 0
-          ? records.filter((record) =>
-              this.record_matches_query(record, filterQuery),
-            )
-          : records;
-
-      const finalRecords = filteredRecords.slice(0, max_results);
-      // Similar note as above: 'total' might be from the token and refer to unfiltered size.
-      console.log(
-        `${logPrefix} Standard path returned ${records.length} records, filtered to ${finalRecords.length}. Next token: ${nextToken}`,
-      );
-      ztoolkit.log(
-        `${logPrefix} Standard path returned ${records.length}, filtered to ${finalRecords.length}.`,
-      );
-      return [filteredRecords.length, finalRecords, nextToken]; // Return filtered count for this page
+      return this.pageResult(records, total, nextToken, filterQuery);
     } catch (e: any) {
       console.error(`${logPrefix} Error: ${e.message}`);
       ztoolkit.log(`${logPrefix} Error: ${e.message}`, "error");
       return [0, [], null]; // Return empty result on error
     }
+  }
+
+  /**
+   * Shape one harvested page for the caller. OAI-PMH page size is set by the
+   * server (DNB: 50) and the resumption token always points past the *whole*
+   * page, so the page is returned in full: truncating it to the requested
+   * max would silently skip the rest of the page when "Next" follows the
+   * token. The total is the server's completeListSize when unfiltered, else
+   * the number of matches on this page.
+   */
+  private pageResult(
+    records: BiblioRecord[],
+    total: number,
+    nextToken: string | null,
+    filterQuery: Record<string, string>,
+  ): [number, BiblioRecord[], string | null] {
+    const filtered =
+      Object.keys(filterQuery).length > 0
+        ? records.filter((record) =>
+            this.record_matches_query(record, filterQuery),
+          )
+        : records;
+    const reportedTotal =
+      filtered === records && total > 0 ? total : filtered.length;
+    ztoolkit.log(
+      `[OAIClient.search] Page returned ${records.length} records, ${filtered.length} after filtering; total ${reportedTotal}.`,
+    );
+    return [reportedTotal, filtered, nextToken];
   }
 
   /**

@@ -119,3 +119,18 @@ describe("solveIxTheoPowFromHtml", () => {
     ).rejects.toThrow(/no nonce/);
   });
 });
+
+describe("solveIxTheoChallenge difficulty guard", () => {
+  it("rejects an unsatisfiable difficulty immediately", async () => {
+    const { solveIxTheoChallenge } =
+      await import("../src/modules/librarySearch/ixtheoPow");
+    await expect(
+      solveIxTheoChallenge(globalThis.crypto, {
+        nonce: "n",
+        ts: "0",
+        difficultyBits: 25,
+        ttlSeconds: 60,
+      }),
+    ).rejects.toThrow(/unsupported/);
+  });
+});

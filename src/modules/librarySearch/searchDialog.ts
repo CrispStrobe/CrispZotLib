@@ -189,7 +189,7 @@ export async function openSearchDialog(): Promise<void> {
             namespace: "html",
             properties: {
               value: key,
-              innerHTML: details.name,
+              textContent: details.name,
               selected:
                 dialogData.endpoint === key && dialogData.protocol === "sru",
             },
@@ -205,7 +205,7 @@ export async function openSearchDialog(): Promise<void> {
             namespace: "html",
             properties: {
               value: key,
-              innerHTML: details.name,
+              textContent: details.name,
               selected:
                 dialogData.endpoint === key && dialogData.protocol === "oai",
             },
@@ -221,7 +221,7 @@ export async function openSearchDialog(): Promise<void> {
             namespace: "html",
             properties: {
               value: key,
-              innerHTML: details.name,
+              textContent: details.name,
               selected:
                 dialogData.endpoint === key && dialogData.protocol === "ixtheo",
             },
@@ -832,7 +832,6 @@ export async function openSearchDialog(): Promise<void> {
           const [success, results, totalRecords, initialOaiToken] =
             await LibrarySearchIntegration.executeSearch(searchParams);
           if (success && results && results.length > 0) {
-            addon.data.lastSearchResults = results;
             const searchDialogRef = addon.data.dialog;
             addon.data.dialog = undefined;
             if (searchDialogRef?.window && !searchDialogRef.window.closed) {
@@ -1461,8 +1460,12 @@ export async function openSearchDialog(): Promise<void> {
                 }
 
                 if (infoArea) {
-                  // OK: infoArea is HTMLElement | null
-                  infoArea.innerHTML = `<strong>Selected:</strong> ${name || spec} (${spec})`;
+                  // setName/setSpec come from the remote OAI server: build
+                  // the DOM with textContent, never innerHTML, in this
+                  // chrome-privileged window.
+                  const label = infoArea.ownerDocument!.createElement("strong");
+                  label.textContent = "Selected:";
+                  infoArea.replaceChildren(label, ` ${name || spec} (${spec})`);
                   infoArea.style.fontStyle = "normal"; // OK
                 }
               });

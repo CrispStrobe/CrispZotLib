@@ -152,4 +152,35 @@ describe("OAIClient", () => {
       expect.any(Object),
     );
   });
+
+  it("returns the whole server page, never truncating before the resumption token", async () => {
+    const rec = (n: number) =>
+      `<record><header><identifier>oai:test:${n}</identifier></header><metadata><test>R${n}</test></metadata></record>`;
+    fetchStub.mockResolvedValueOnce({
+      ok: true,
+      headers: new Headers({ "content-type": "text/xml" }),
+      arrayBuffer: async () =>
+        new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
+<OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">
+  <ListRecords>
+    ${[1, 2, 3].map(rec).join("")}
+    <resumptionToken completeListSize="9">tok-2</resumptionToken>
+  </ListRecords>
+</OAI-PMH>`).buffer,
+    } as any);
+
+    const client = new OAIClient("http://test.repo/oai");
+    // Ask for 1: the token points past all 3, so all 3 must come back.
+    const [total, records, next] = await client.search(
+      "oai_dc",
+      undefined,
+      undefined,
+      undefined,
+      {},
+      1,
+    );
+    expect(records).toHaveLength(3);
+    expect(total).toBe(9);
+    expect(next).toBe("tok-2");
+  });
 });
