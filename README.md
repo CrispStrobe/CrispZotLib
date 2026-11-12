@@ -132,3 +132,7 @@ This project is licensed under the GNU Affero General Public License v3.0 (AGPL-
 
 - [![Using Zotero Plugin Template](https://img.shields.io/badge/Using-Zotero%20Plugin%20Template-blue?style=flat-square&logo=github)](https://github.com/windingwind/zotero-plugin-template)
 - Zotero Plugin Toolkit developers.
+
+## Trademarks and affiliation
+
+This project is independent and is not affiliated with, endorsed by or sponsored by the Corporation for Digital Scholarship or the Zotero project. Zotero is a trademark of the Corporation for Digital Scholarship. Other product names are trademarks of their respective owners.
