@@ -45,11 +45,16 @@ const HEADERS = {
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:128.0) Gecko/20100101 Firefox/128.0",
 };
 
+// Statuses that mean "alive, but refusing for now": 429 rate limit, 423 the
+// DNB's lock answer under load (2026-11-23), 503 a host shedding load.
+const TRANSIENT = new Set([423, 429, 503]);
+// Pauses before retries 1 and 2: a transient ECONNRESET/timeout/refusal must
+// not page anyone, only failures that persist across three attempts.
+const RETRY_PAUSES_MS = [5_000, 15_000];
+
 async function fetchText(url: string, timeoutMs: number, cookie?: string) {
-  // One retry after a short pause: a transient ECONNRESET/timeout must not
-  // page anyone — only reproducible failures should. A 429 is retried once
-  // more, after the server's Retry-After (capped).
   for (let attempt = 0; ; attempt++) {
+    const last = attempt >= RETRY_PAUSES_MS.length;
     try {
       const res = await fetch(url, {
         headers: cookie ? { ...HEADERS, Cookie: cookie } : HEADERS,
@@ -57,21 +62,26 @@ async function fetchText(url: string, timeoutMs: number, cookie?: string) {
         redirect: "follow",
       });
       const text = await res.text();
-      if (res.status === 429 && attempt < 1) {
-        await sleep(parseRetryAfter(res.headers.get("retry-after")) ?? 5000);
+      if (TRANSIENT.has(res.status) && !last) {
+        const wait = parseRetryAfter(res.headers.get("retry-after"));
+        await sleep(Math.min(wait ?? RETRY_PAUSES_MS[attempt], 30_000));
         continue;
       }
       return { res, text };
     } catch (e) {
-      if (attempt >= 1) throw e;
-      await sleep(5000);
+      if (last) throw e;
+      await sleep(RETRY_PAUSES_MS[attempt]);
     }
   }
 }
 
+// Worst case for one fetchText: three timeouts plus both pauses.
+const budget = (timeoutMs: number, fetches = 1) =>
+  fetches * (3 * timeoutMs + 20_000) + 10_000;
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// A host that answers 429 is alive and rate-limiting — typically the shared
+// A host that answers 429 (or the DNB's 423) is alive and rate-limiting — typically the shared
 // GitHub-runner IP range (harvard did this 2026-10-26 and 2026-11-02, issue
 // #37). That is not endpoint rot, so on runners it skips instead of paging;
 // local `npm run probe:endpoints` runs still fail on it.
@@ -80,8 +90,8 @@ function skipIfRateLimited(
   id: string,
   res: Response,
 ) {
-  if (ON_RUNNER && res.status === 429) {
-    ctx.skip(`${id}: HTTP 429 (rate-limited on runner IPs)`);
+  if (ON_RUNNER && (res.status === 429 || res.status === 423)) {
+    ctx.skip(`${id}: HTTP ${res.status} after retries (refusing runner IPs)`);
   }
 }
 
@@ -101,7 +111,7 @@ describe.runIf(LIVE)("SRU endpoint health (live)", () => {
         }
         const { res, text } = await fetchText(
           `${ep.url}?${params.toString()}`,
-          40_000,
+          30_000,
         );
         skipIfRateLimited(ctx, id, res);
         expect(res.ok, `${id}: HTTP ${res.status}`).toBe(true);
@@ -115,63 +125,79 @@ describe.runIf(LIVE)("SRU endpoint health (live)", () => {
           `${id}: 0 hits for '${ep.examples?.title}'`,
         ).toBeGreaterThan(0);
       },
-      60_000,
+      budget(30_000),
     );
   }
 });
 
 describe.runIf(LIVE)("OAI-PMH endpoint health (live)", () => {
   for (const [id, ep] of Object.entries(OAI_ENDPOINTS)) {
-    it(`${id}: Identify answers and default metadata prefix is offered`, async (ctx) => {
-      const { res, text } = await fetchText(`${ep.url}?verb=Identify`, 60_000);
-      skipIfRateLimited(ctx, id, res);
-      expect(res.ok, `${id}: HTTP ${res.status}`).toBe(true);
-      expect(
-        /<(\w+:)?Identify[\s>]/.test(text),
-        `${id}: no <Identify> in response: ${text.slice(0, 400)}`,
-      ).toBe(true);
+    it(
+      `${id}: Identify answers and default metadata prefix is offered`,
+      async (ctx) => {
+        const { res, text } = await fetchText(
+          `${ep.url}?verb=Identify`,
+          60_000,
+        );
+        skipIfRateLimited(ctx, id, res);
+        expect(res.ok, `${id}: HTTP ${res.status}`).toBe(true);
+        expect(
+          /<(\w+:)?Identify[\s>]/.test(text),
+          `${id}: no <Identify> in response: ${text.slice(0, 400)}`,
+        ).toBe(true);
 
-      const prefix = ep.defaultMetadataPrefix || "oai_dc";
-      const { res: res2, text: formats } = await fetchText(
-        `${ep.url}?verb=ListMetadataFormats`,
-        60_000,
-      );
-      skipIfRateLimited(ctx, id, res2);
-      expect(res2.ok, `${id}: ListMetadataFormats HTTP ${res2.status}`).toBe(
-        true,
-      );
-      expect(
-        formats.includes(`<metadataPrefix>${prefix}</metadataPrefix>`) ||
-          formats.includes(prefix),
-        `${id}: '${prefix}' no longer offered: ${formats.slice(0, 400)}`,
-      ).toBe(true);
-    }, 130_000);
+        const prefix = ep.defaultMetadataPrefix || "oai_dc";
+        const { res: res2, text: formats } = await fetchText(
+          `${ep.url}?verb=ListMetadataFormats`,
+          60_000,
+        );
+        skipIfRateLimited(ctx, id, res2);
+        expect(res2.ok, `${id}: ListMetadataFormats HTTP ${res2.status}`).toBe(
+          true,
+        );
+        expect(
+          formats.includes(`<metadataPrefix>${prefix}</metadataPrefix>`) ||
+            formats.includes(prefix),
+          `${id}: '${prefix}' no longer offered: ${formats.slice(0, 400)}`,
+        ).toBe(true);
+      },
+      budget(60_000, 2),
+    );
   }
 });
 
 describe.runIf(LIVE)("IxTheo proof-of-work canary (live)", () => {
-  it("solves the PoW wall and a search returns result markers", async () => {
-    const ep = Object.values(IXTHEO_ENDPOINTS)[0];
-    const url = `${ep.baseUrl}/Search/Results?${new URLSearchParams({
-      lookfor: "Habermas",
-      type: "AllFields",
-    })}`;
+  it(
+    "solves the PoW wall and a search returns result markers",
+    async () => {
+      const ep = Object.values(IXTHEO_ENDPOINTS)[0];
+      const url = `${ep.baseUrl}/Search/Results?${new URLSearchParams({
+        lookfor: "Habermas",
+        type: "AllFields",
+      })}`;
 
-    // 1. A cookie-less request must come back as the challenge page.
-    const challenge = parseIxTheoChallenge((await fetchText(url, 60_000)).text);
-    expect(
-      challenge,
-      "no IxTheo PoW challenge found — the wall likely changed again (PLAN 4.2 / issue #26)",
-    ).toBeTruthy();
+      // 1. A cookie-less request must come back as the challenge page.
+      const challenge = parseIxTheoChallenge(
+        (await fetchText(url, 60_000)).text,
+      );
+      expect(
+        challenge,
+        "no IxTheo PoW challenge found — the wall likely changed again (PLAN 4.2 / issue #26)",
+      ).toBeTruthy();
 
-    // 2. Solve it and retry with the single-use token, exactly like the browser.
-    const { token } = await solveIxTheoChallenge(globalThis.crypto, challenge!);
-    const { res, text } = await fetchText(url, 60_000, `pow_token=${token}`);
-    expect(res.ok, `HTTP ${res.status}`).toBe(true);
-    expect(
-      /record-list|hiddenId/.test(text),
-      `no result markers — PoW wall likely changed again (PLAN 4.2). ` +
-        `Body starts: ${text.slice(0, 400)}`,
-    ).toBe(true);
-  }, 180_000);
+      // 2. Solve it and retry with the single-use token, exactly like the browser.
+      const { token } = await solveIxTheoChallenge(
+        globalThis.crypto,
+        challenge!,
+      );
+      const { res, text } = await fetchText(url, 60_000, `pow_token=${token}`);
+      expect(res.ok, `HTTP ${res.status}`).toBe(true);
+      expect(
+        /record-list|hiddenId/.test(text),
+        `no result markers — PoW wall likely changed again (PLAN 4.2). ` +
+          `Body starts: ${text.slice(0, 400)}`,
+      ).toBe(true);
+    },
+    budget(60_000, 2),
+  );
 });
